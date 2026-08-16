@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+
+<title>Greenair TrendLog</title>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
+</script>
+
+<style>
+
+body {
+  margin: 0;
+  font-family: system-ui, Arial, sans-serif;
+  background: #f5f7f5;
+  color: #222;
+}
+
+.wrap {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
+
+.bianco-title {
+  text-align: center;
+  color: #f57c00;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+h1 {
+  text-align: center;
+  color: #1b5e20;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 16px;
+}
+
+.led {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.led.good {
+  background: #00c853;
+
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3px #7aa784,
+    0 0 12px rgba(0, 200, 83, 0.9);
+}
+
+.led.bad {
+  background: #d50000;
+
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3px #b37b7b,
+    0 0 12px rgba(213, 0, 0, 0.9);
+}
+
+.led.waiting {
+  background: #ffb300;
+
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3px #b9a477,
+    0 0 12px rgba(255, 179, 0, 0.9);
+}
+
+.values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.card {
+  background: white;
+  padding: 12px;
+  border-radius: 7px;
+  box-shadow: 0 1px 3px #0001;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.value {
+  margin-top: 4px;
+  font-size: 21px;
+  font-weight: 900;
+  color: #1b5e20;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 12px;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.export-button {
+  background: #263238;
+}
+
+.share-button {
+  background: #1565c0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.red {
+  background: red;
+}
+
+.blue {
+  background: blue;
+}
+
+.green {
+  background: green;
+}
+
+.orange {
+  background: orange;
+}
+
+.purple {
+  background: purple;
+}
+
+.black {
+  background: black;
+}
+
+.chart-box {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px #0001;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 520px;
+}
+
+.info {
+  text-align: center;
+  color: #666;
+  font-size: 11px;
+  margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+
+  .values {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-container {
+    height: 420px;
+  }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="wrap">
+
+<div class="bianco-title">
+BIANCO PRECAST
+</div>
+
+<h1>
+GREENAIR TRENDLOG
+</h1>
+
+<div class="status-row">
+
+  <div
+    id="connectionLed"
+    class="led waiting"
+    title="Connecting"
+  ></div>
+
+</div>
+
+<div
+  id="values"
+  class="values"
+></div>
+
+<div class="buttons">
+
+  <button
+    id="exportButton"
+    class="export-button"
+    type="button"
+  >
+    Export Data
+  </button>
+
+  <button
+    id="shareButton"
+    class="share-button"
+    type="button"
+  >
+    Share Trend Graph
+  </button>
+
+</div>
+
+<div class="legend">
+
+  <div class="legend-item">
+    <span class="dot red"></span>
+    Planks In
+  </div>
+
+  <div class="legend-item">
+    <span class="dot blue"></span>
+    Planks Out
+  </div>
+
+  <div class="legend-item">
+    <span class="dot green"></span>
+    Ambient
+  </div>
+
+  <div class="legend-item">
+    <span class="dot orange"></span>
+    Concrete
+  </div>
+
+  <div class="legend-item">
+    <span class="dot purple"></span>
+    Tank
+  </div>
+
+  <div class="legend-item">
+    <span class="dot black"></span>
+    Ambient − Concrete Diff
+  </div>
+
+</div>
+
+<div class="chart-box">
+
+  <div class="chart-container">
+
+    <canvas
+      id="trendChart"
+    ></canvas>
+
+  </div>
+
+</div>
+
+<div
+  id="info"
+  class="info"
+>
+Loading...
+</div>
+
+</div>
+
+<script>
+
+const POINTS = [
+
+  {
+    id: "in1",
+    name: "Planks In"
+  },
+
+  {
+    id: "in2",
+    name: "Planks Out"
+  },
+
+  {
+    id: "in3",
+    name: "Ambient"
+  },
+
+  {
+    id: "in4",
+    name: "Planks Concrete"
+  },
+
+  {
+    id: "in5",
+    name: "Planks Tank"
+  },
+
+  {
+    id: "diff",
+    name: "Ambient − Concrete Diff"
+  }
+
+];
+
+
+const valuesEl =
+  document.getElementById(
+    "values"
+  );
+
+const infoEl =
+  document.getElementById(
+    "info"
+  );
+
+const led =
+  document.getElementById(
+    "connectionLed"
+  );
+
+const exportButton =
+  document.getElementById(
+    "exportButton"
+  );
+
+const shareButton =
+  document.getElementById(
+    "shareButton"
+  );
+
+const canvas =
+  document.getElementById(
+    "trendChart"
+  );
+
+
+/*
+==================================================
+VALUE CARDS
+==================================================
+*/
+
+valuesEl.innerHTML =
+
+  POINTS.map(
+
+    point => `
+
+      <div
+        class="card"
+        data-id="${point.id}"
+      >
+
+        <div class="name">
+          ${point.name}
+        </div>
+
+        <div class="value">
+          —
+        </div>
+
+      </div>
+
+    `
+
+  ).join("");
+
+
+/*
+==================================================
+LED
+==================================================
+*/
+
+function setLed(
+  state
+) {
+
+  led.classList.remove(
+    "good",
+    "bad",
+    "waiting"
+  );
+
+
+  led.classList.add(
+    state
+  );
+
+
+  if (
+    state === "good"
+  ) {
+
+    led.title =
+      "Connection Good";
+
+  }
+
+  else if (
+    state === "bad"
+  ) {
+
+    led.title =
+      "Connection Bad";
+
+  }
+
+  else {
+
+    led.title =
+      "Connecting";
+
+  }
+
+}
+
+
+/*
+==================================================
+LIVE VALUES
+==================================================
+*/
+
+function renderState(
+  state
+) {
+
+  if (
+    !state ||
+    !state.ok
+  ) {
+
+    setLed(
+      "bad"
+    );
+
+    return;
+
+  }
+
+
+  setLed(
+    "good"
+  );
+
+
+  for (
+    const result
+    of state.results
+  ) {
+
+    const valueEl =
+
+      document.querySelector(
+
+        `[data-id="${result.id}"] .value`
+
+      );
+
+
+    if (
+      valueEl
+    ) {
+
+      valueEl.textContent =
+
+        Number(
+          result.value
+        ).toFixed(1)
+
+        +
+
+        " °C";
+
+    }
+
+  }
+
+}
+
+
+/*
+==================================================
+CHART
+==================================================
+*/
+
+const chart =
+  new Chart(
+
+    canvas,
+
+    {
+
+      type:
+        "line",
+
+      data: {
+
+        labels:
+          [],
+
+        datasets: [
+
+          {
+            label:
+              "Planks In",
+
+            data:
+              [],
+
+            borderColor:
+              "red",
+
+            backgroundColor:
+              "red",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          },
+
+          {
+            label:
+              "Planks Out",
+
+            data:
+              [],
+
+            borderColor:
+              "blue",
+
+            backgroundColor:
+              "blue",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          },
+
+          {
+            label:
+              "Ambient",
+
+            data:
+              [],
+
+            borderColor:
+              "green",
+
+            backgroundColor:
+              "green",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          },
+
+          {
+            label:
+              "Planks Concrete",
+
+            data:
+              [],
+
+            borderColor:
+              "orange",
+
+            backgroundColor:
+              "orange",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          },
+
+          {
+            label:
+              "Planks Tank",
+
+            data:
+              [],
+
+            borderColor:
+              "purple",
+
+            backgroundColor:
+              "purple",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          },
+
+          {
+            label:
+              "Ambient - Concrete Differential",
+
+            data:
+              [],
+
+            borderColor:
+              "black",
+
+            backgroundColor:
+              "black",
+
+            borderWidth:
+              2,
+
+            pointRadius:
+              0,
+
+            pointHoverRadius:
+              5,
+
+            tension:
+              0.15
+          }
+
+        ]
+
+      },
+
+      options: {
+
+        responsive:
+          true,
+
+        maintainAspectRatio:
+          false,
+
+        animation:
+          false,
+
+        interaction: {
+
+          mode:
+            "index",
+
+          intersect:
+            false
+
+        },
+
+        plugins: {
+
+          legend: {
+            display: false
+          },
+
+          tooltip: {
+
+            callbacks: {
+
+              label:
+                context => {
+
+                  const value =
+                    Number(
+                      context.raw
+                    );
+
+                  return (
+                    context.dataset.label
+                    +
+                    ": "
+                    +
+                    value.toFixed(1)
+                    +
+                    " °C"
+                  );
+
+                }
+
+            }
+
+          }
+
+        },
+
+        scales: {
+
+          x: {
+
+            title: {
+              display: true,
+              text: "Time"
+            },
+
+            ticks: {
+              maxTicksLimit: 12,
+              maxRotation: 0
+            }
+
+          },
+
+          y: {
+
+            title: {
+              display: true,
+              text: "Temperature °C"
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  );
+
+
+/*
+==================================================
+LOAD TREND
+==================================================
+*/
+
+async function loadTrend() {
+
+  try {
+
+    const response =
+      await fetch(
+
+        "/api/trend",
+
+        {
+          cache:
+            "no-store"
+        }
+
+      );
+
+
+    const trend =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !trend.ok
+    ) {
+
+      throw new Error(
+        "Trend unavailable"
+      );
+
+    }
+
+
+    const samples =
+      Array.isArray(
+        trend.samples
+      )
+
+      ? trend.samples
+
+      : [];
+
+
+    chart.data.labels =
+
+      samples.map(
+
+        sample =>
+
+          new Date(
+
+            sample.timestamp
+
+          ).toLocaleTimeString(
+
+            [],
+
+            {
+              hour:
+                "2-digit",
+
+              minute:
+                "2-digit",
+
+              second:
+                "2-digit"
+            }
+
+          )
+
+      );
+
+
+    chart.data.datasets[0].data =
+      samples.map(
+        s => s.in1
+      );
+
+    chart.data.datasets[1].data =
+      samples.map(
+        s => s.in2
+      );
+
+    chart.data.datasets[2].data =
+      samples.map(
+        s => s.in3
+      );
+
+    chart.data.datasets[3].data =
+      samples.map(
+        s => s.in4
+      );
+
+    chart.data.datasets[4].data =
+      samples.map(
+        s => s.in5
+      );
+
+    chart.data.datasets[5].data =
+      samples.map(
+        s => s.diff
+      );
+
+
+    chart.update(
+      "none"
+    );
+
+
+    infoEl.textContent =
+
+      samples.length
+
+      +
+
+      " samples stored";
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    infoEl.textContent =
+      "Trend unavailable";
+
+  }
+
+}
+
+
+/*
+==================================================
+BUILD CSV
+==================================================
+*/
+
+function buildCsv(
+  samples
+) {
+
+  const rows = [
+
+    [
+      "Date",
+      "Time",
+      "Planks In (C)",
+      "Planks Out (C)",
+      "Ambient (C)",
+      "Planks Concrete (C)",
+      "Planks Tank (C)",
+      "Ambient Concrete Differential (C)"
+    ]
+
+  ];
+
+
+  for (
+    const sample
+    of samples
+  ) {
+
+    const timestamp =
+      new Date(
+        sample.timestamp
+      );
+
+
+    rows.push([
+
+      timestamp
+        .toLocaleDateString(),
+
+      timestamp
+        .toLocaleTimeString(),
+
+      sample.in1,
+
+      sample.in2,
+
+      sample.in3,
+
+      sample.in4,
+
+      sample.in5,
+
+      sample.diff
+
+    ]);
+
+  }
+
+
+  return rows.map(
+
+    row =>
+
+      row.map(
+
+        value =>
+
+          `"${String(value)
+            .replace(
+              /"/g,
+              '""'
+            )}"`
+
+      ).join(",")
+
+  ).join("\r\n");
+
+}
+
+
+/*
+==================================================
+DOWNLOAD FILE
+==================================================
+*/
+
+function downloadBlob(
+  blob,
+  name
+) {
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+  link.download =
+    name;
+
+
+  document.body
+    .appendChild(
+      link
+    );
+
+
+  link.click();
+
+
+  link.remove();
+
+
+  setTimeout(
+
+    () =>
+      URL.revokeObjectURL(
+        url
+      ),
+
+    1000
+
+  );
+
+}
+
+
+/*
+==================================================
+EXPORT DATA
+==================================================
+*/
+
+exportButton.addEventListener(
+
+  "click",
+
+  async () => {
+
+
+    let fileHandle =
+      null;
+
+
+    try {
+
+
+      const fileName =
+        "Greenair_TrendLog.csv";
+
+
+      /*
+      SAVE AS DIALOG
+      */
+
+      if (
+        "showSaveFilePicker"
+        in window
+      ) {
+
+        fileHandle =
+          await window.showSaveFilePicker({
+
+            suggestedName:
+              fileName,
+
+            types: [
+
+              {
+
+                description:
+                  "CSV File",
+
+                accept: {
+
+                  "text/csv": [
+                    ".csv"
+                  ]
+
+                }
+
+              }
+
+            ]
+
+          });
+
+      }
+
+
+      /*
+      GET DATA
+      */
+
+      const response =
+        await fetch(
+
+          "/api/trend",
+
+          {
+            cache:
+              "no-store"
+          }
+
+        );
+
+
+      const trend =
+        await response.json();
+
+
+      if (
+        !trend.samples ||
+        trend.samples.length === 0
+      ) {
+
+        throw new Error(
+          "No trend data available"
+        );
+
+      }
+
+
+      const csv =
+        buildCsv(
+          trend.samples
+        );
+
+
+      /*
+      SAVE TO CHOSEN LOCATION
+      */
+
+      if (
+        fileHandle
+      ) {
+
+        const writable =
+          await fileHandle
+            .createWritable();
+
+
+        await writable.write(
+          csv
+        );
+
+
+        await writable.close();
+
+      }
+
+
+      /*
+      NORMAL DOWNLOAD
+      */
+
+      else {
+
+        const blob =
+          new Blob(
+
+            [csv],
+
+            {
+              type:
+                "text/csv;charset=utf-8"
+            }
+
+          );
+
+
+        downloadBlob(
+
+          blob,
+
+          fileName
+
+        );
+
+      }
+
+    }
+
+
+    catch (
+      error
+    ) {
+
+      if (
+        error &&
+        error.name ===
+        "AbortError"
+      ) {
+
+        return;
+
+      }
+
+
+      alert(
+        error.message
+      );
+
+    }
+
+  }
+
+);
+
+
+/*
+==================================================
+SHARE GRAPH
+==================================================
+*/
+
+shareButton.addEventListener(
+
+  "click",
+
+  async () => {
+
+    try {
+
+
+      await loadTrend();
+
+
+      const blob =
+
+        await new Promise(
+
+          (
+            resolve,
+            reject
+          ) => {
+
+
+            canvas.toBlob(
+
+              imageBlob => {
+
+
+                if (
+                  imageBlob
+                ) {
+
+                  resolve(
+                    imageBlob
+                  );
+
+                }
+
+                else {
+
+                  reject(
+
+                    new Error(
+                      "Could not create graph image"
+                    )
+
+                  );
+
+                }
+
+              },
+
+              "image/png",
+
+              1
+
+            );
+
+          }
+
+        );
+
+
+      const file =
+        new File(
+
+          [blob],
+
+          "Greenair_TrendLog.png",
+
+          {
+            type:
+              "image/png"
+          }
+
+        );
+
+
+      if (
+
+        navigator.share &&
+
+        navigator.canShare &&
+
+        navigator.canShare({
+
+          files:
+            [file]
+
+        })
+
+      ) {
+
+
+        await navigator.share({
+
+          title:
+            "Greenair TrendLog",
+
+          text:
+            "Bianco Precast Greenair TrendLog.",
+
+          files:
+            [file]
+
+        });
+
+      }
+
+
+      else {
+
+
+        downloadBlob(
+
+          blob,
+
+          "Greenair_TrendLog.png"
+
+        );
+
+      }
+
+    }
+
+
+    catch (
+      error
+    ) {
+
+      if (
+        error &&
+        error.name ===
+        "AbortError"
+      ) {
+
+        return;
+
+      }
+
+
+      alert(
+        error.message
+      );
+
+    }
+
+  }
+
+);
+
+
+/*
+==================================================
+INITIAL LIVE STATE
+==================================================
+*/
+
+setLed(
+  "waiting"
+);
+
+
+fetch(
+
+  "/api/state",
+
+  {
+    cache:
+      "no-store"
+  }
+
+)
+
+.then(
+
+  response =>
+    response.json()
+
+)
+
+.then(
+
+  state =>
+    renderState(
+      state
+    )
+
+)
+
+.catch(
+
+  () =>
+    setLed(
+      "bad"
+    )
+
+);
+
+
+/*
+==================================================
+LIVE STREAM
+==================================================
+*/
+
+const stream =
+  new EventSource(
+    "/api/stream"
+  );
+
+
+stream.addEventListener(
+
+  "state",
+
+  event => {
+
+    try {
+
+      renderState(
+
+        JSON.parse(
+          event.data
+        )
+
+      );
+
+    }
+
+    catch {
+
+      setLed(
+        "bad"
+      );
+
+    }
+
+  }
+
+);
+
+
+stream.onerror =
+
+  () => {
+
+    setLed(
+      "bad"
+    );
+
+  };
+
+
+/*
+==================================================
+START TREND
+==================================================
+*/
+
+loadTrend();
+
+
+setInterval(
+
+  loadTrend,
+
+  15000
+
+);
+
+</script>
+
+</body>
+
+</html>
