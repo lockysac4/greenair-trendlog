@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
 <meta charset="utf-8">
 
 <meta
@@ -12,9 +11,7 @@
 
 <title>Bianco Precast - Greenair TrendLog</title>
 
-<script
-  src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
 <style>
 
@@ -34,12 +31,7 @@ body {
   color: #222;
 }
 
-
-/*
-==================================================
-PAGE HEADER
-==================================================
-*/
+/* HEADER */
 
 .top-header {
   display: flex;
@@ -107,12 +99,7 @@ PAGE HEADER
   box-shadow: 0 0 7px rgba(255,179,0,0.8);
 }
 
-
-/*
-==================================================
-TOOLBAR
-==================================================
-*/
+/* TOOLBAR */
 
 .toolbar {
   display: flex;
@@ -131,8 +118,7 @@ TOOLBAR
 }
 
 .toolbar select,
-.toolbar button,
-.toolbar input {
+.toolbar button {
   height: 32px;
   border: 1px solid #c7c7c7;
   border-radius: 4px;
@@ -149,12 +135,6 @@ TOOLBAR
   background: #efefef;
 }
 
-.toolbar button.active {
-  background: #1565c0;
-  color: white;
-  border-color: #1565c0;
-}
-
 .live-button {
   color: #2e7d32;
   border-color: #a5d6a7 !important;
@@ -164,19 +144,14 @@ TOOLBAR
   margin-left: auto;
 }
 
-
-/*
-==================================================
-CUSTOM HISTORY BAR
-==================================================
-*/
+/* CUSTOM HISTORY BAR */
 
 .custom-history {
   display: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 7px;
+  padding: 9px 10px;
   background: #fff8e1;
   border-bottom: 1px solid #e4d6a4;
 }
@@ -194,6 +169,7 @@ CUSTOM HISTORY BAR
   height: 32px;
   border: 1px solid #c7c7c7;
   border-radius: 4px;
+  background: white;
   padding: 0 8px;
 }
 
@@ -201,28 +177,30 @@ CUSTOM HISTORY BAR
   height: 32px;
   border: 1px solid #c7c7c7;
   border-radius: 4px;
-  padding: 0 12px;
   background: white;
+  padding: 0 12px;
   cursor: pointer;
   font-weight: 700;
 }
 
-.custom-history button:hover {
-  background: #f1f1f1;
+.load-history-button {
+  background: #1565c0 !important;
+  color: white;
+  border-color: #1565c0 !important;
+}
+
+.apply-button {
+  background: #2e7d32 !important;
+  color: white;
+  border-color: #2e7d32 !important;
 }
 
 .history-status {
   font-size: 12px;
   color: #666;
-  margin-left: 4px;
 }
 
-
-/*
-==================================================
-MAIN LAYOUT
-==================================================
-*/
+/* MAIN LAYOUT */
 
 .main-layout {
   display: grid;
@@ -233,12 +211,7 @@ MAIN LAYOUT
   min-height: 620px;
 }
 
-
-/*
-==================================================
-LEFT SIDEBAR
-==================================================
-*/
+/* SIDEBAR */
 
 .sidebar {
   background: white;
@@ -250,7 +223,7 @@ LEFT SIDEBAR
 
 .filter-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3,1fr);
   gap: 6px;
   margin-bottom: 10px;
 }
@@ -314,36 +287,14 @@ LEFT SIDEBAR
   border-radius: 4px;
 }
 
-.color-red {
-  background: red;
-}
+.color-red { background: red; }
+.color-blue { background: blue; }
+.color-green { background: green; }
+.color-orange { background: orange; }
+.color-purple { background: purple; }
+.color-black { background: black; }
 
-.color-blue {
-  background: blue;
-}
-
-.color-green {
-  background: green;
-}
-
-.color-orange {
-  background: orange;
-}
-
-.color-purple {
-  background: purple;
-}
-
-.color-black {
-  background: black;
-}
-
-
-/*
-==================================================
-GRAPH
-==================================================
-*/
+/* GRAPH */
 
 .graph-panel {
   background: white;
@@ -367,24 +318,14 @@ GRAPH
   z-index: 2;
   font-size: 11px;
   color: #666;
-  background: rgba(255,255,255,0.88);
+  background: rgba(255,255,255,0.9);
   padding: 4px 7px;
   border-radius: 3px;
 }
 
-
-/*
-==================================================
-MOBILE
-==================================================
-*/
+/* MOBILE */
 
 @media (max-width: 850px) {
-
-  .top-header {
-    align-items: flex-start;
-    gap: 8px;
-  }
 
   .page-title {
     display: none;
@@ -396,10 +337,6 @@ MOBILE
     min-height: 0;
   }
 
-  .sidebar {
-    max-height: none;
-  }
-
   .graph-panel {
     height: 520px;
   }
@@ -407,27 +344,16 @@ MOBILE
   .export-button {
     margin-left: 0;
   }
-
 }
 
 @media (max-width: 560px) {
 
-  .toolbar {
-    gap: 4px;
-  }
-
-  .toolbar select,
-  .toolbar button {
-    padding: 0 7px;
-    font-size: 11px;
+  .graph-panel {
+    height: 430px;
   }
 
   .filter-row {
     grid-template-columns: 1fr;
-  }
-
-  .graph-panel {
-    height: 430px;
   }
 
   .custom-history {
@@ -438,15 +364,12 @@ MOBILE
   .custom-history button {
     width: 100%;
   }
-
 }
 
 </style>
-
 </head>
 
 <body>
-
 
 <!-- HEADER -->
 
@@ -577,7 +500,7 @@ MOBILE
 </div>
 
 
-<!-- CUSTOM HISTORY -->
+<!-- CUSTOM DEFINE HISTORY CONTROLS -->
 
 <div
   id="customHistory"
@@ -586,6 +509,7 @@ MOBILE
 
   <button
     id="loadHistoryButton"
+    class="load-history-button"
     type="button"
   >
     Load History File
@@ -618,6 +542,7 @@ MOBILE
 
   <button
     id="applyHistoryButton"
+    class="apply-button"
     type="button"
   >
     Apply
@@ -637,27 +562,20 @@ MOBILE
 
 <div class="main-layout">
 
-
   <aside class="sidebar">
 
     <div class="filter-row">
 
       <select>
-        <option>
-          All
-        </option>
+        <option>All</option>
       </select>
 
       <select>
-        <option>
-          By Type
-        </option>
+        <option>By Type</option>
       </select>
 
       <select>
-        <option>
-          By Unit
-        </option>
+        <option>By Unit</option>
       </select>
 
     </div>
@@ -671,9 +589,7 @@ MOBILE
 
     <div class="graph-container">
 
-      <canvas
-        id="trendChart"
-      ></canvas>
+      <canvas id="trendChart"></canvas>
 
     </div>
 
@@ -686,12 +602,10 @@ MOBILE
 
   </section>
 
-
 </div>
 
 
 <script>
-
 
 /*
 ==================================================
@@ -759,113 +673,75 @@ ELEMENTS
 */
 
 const pointList =
-  document.getElementById(
-    "pointList"
-  );
+  document.getElementById("pointList");
 
 const led =
-  document.getElementById(
-    "connectionLed"
-  );
+  document.getElementById("connectionLed");
 
 const canvas =
-  document.getElementById(
-    "trendChart"
-  );
+  document.getElementById("trendChart");
 
 const graphInfo =
-  document.getElementById(
-    "graphInfo"
-  );
+  document.getElementById("graphInfo");
 
 const timeBase =
-  document.getElementById(
-    "timeBase"
-  );
-
-const zoomInButton =
-  document.getElementById(
-    "zoomInButton"
-  );
-
-const zoomOutButton =
-  document.getElementById(
-    "zoomOutButton"
-  );
-
-const resetButton =
-  document.getElementById(
-    "resetButton"
-  );
-
-const liveButton =
-  document.getElementById(
-    "liveButton"
-  );
-
-const last5Button =
-  document.getElementById(
-    "last5Button"
-  );
-
-const exportButton =
-  document.getElementById(
-    "exportButton"
-  );
+  document.getElementById("timeBase");
 
 const customHistory =
-  document.getElementById(
-    "customHistory"
-  );
+  document.getElementById("customHistory");
 
 const loadHistoryButton =
-  document.getElementById(
-    "loadHistoryButton"
-  );
+  document.getElementById("loadHistoryButton");
 
 const historyFileInput =
-  document.getElementById(
-    "historyFileInput"
-  );
+  document.getElementById("historyFileInput");
 
 const fromDate =
-  document.getElementById(
-    "fromDate"
-  );
+  document.getElementById("fromDate");
 
 const toDate =
-  document.getElementById(
-    "toDate"
-  );
+  document.getElementById("toDate");
 
 const applyHistoryButton =
-  document.getElementById(
-    "applyHistoryButton"
-  );
+  document.getElementById("applyHistoryButton");
 
 const historyStatus =
-  document.getElementById(
-    "historyStatus"
-  );
+  document.getElementById("historyStatus");
+
+const zoomInButton =
+  document.getElementById("zoomInButton");
+
+const zoomOutButton =
+  document.getElementById("zoomOutButton");
+
+const resetButton =
+  document.getElementById("resetButton");
+
+const liveButton =
+  document.getElementById("liveButton");
+
+const last5Button =
+  document.getElementById("last5Button");
+
+const exportButton =
+  document.getElementById("exportButton");
 
 
 /*
 ==================================================
-DATA STATE
+DATA
 ==================================================
 */
 
-let liveSamples =
-  [];
+let liveSamples = [];
 
-let historySamples =
-  [];
+let historySamples = [];
 
-let currentMode =
-  "live";
+let filteredHistorySamples = [];
 
-let zoomFactor =
-  1;
+let currentMode = "live";
+
+let zoomFactor = 1;
 
 
 /*
@@ -874,49 +750,43 @@ POINT LIST
 ==================================================
 */
 
-pointList.innerHTML =
+pointList.innerHTML = POINTS.map(point => `
 
-  POINTS.map(
+  <div
+    class="point-row"
+    data-id="${point.id}"
+  >
 
-    point => `
+    <div class="point-number">
+      ${point.number}
+    </div>
 
-      <div
-        class="point-row"
-        data-id="${point.id}"
-      >
+    <div class="point-name">
+      ${point.name}
+    </div>
 
-        <div class="point-number">
-          ${point.number}
-        </div>
+    <div class="point-type">
+      IN
+    </div>
 
-        <div class="point-name">
-          ${point.name}
-        </div>
+    <div
+      class="point-unit"
+      style="color:${point.unitColor}"
+    >
+      Deg.C
+    </div>
 
-        <div class="point-type">
-          IN
-        </div>
+    <div
+      class="color-bar ${point.colorClass}"
+    ></div>
 
-        <div
-          class="point-unit"
-          style="color:${point.unitColor}"
-        >
-          Deg.C
-        </div>
+    <div class="point-value">
+      —
+    </div>
 
-        <div
-          class="color-bar ${point.colorClass}"
-        ></div>
+  </div>
 
-        <div class="point-value">
-          —
-        </div>
-
-      </div>
-
-    `
-
-  ).join("");
+`).join("");
 
 
 /*
@@ -925,9 +795,7 @@ LED
 ==================================================
 */
 
-function setLed(
-  state
-) {
+function setLed(state) {
 
   led.classList.remove(
     "good",
@@ -935,9 +803,7 @@ function setLed(
     "waiting"
   );
 
-  led.classList.add(
-    state
-  );
+  led.classList.add(state);
 
 }
 
@@ -948,58 +814,37 @@ LIVE VALUES
 ==================================================
 */
 
-function renderState(
-  state
-) {
+function renderState(state) {
 
   if (
     !state ||
     !state.ok ||
-    !Array.isArray(
-      state.results
-    )
+    !Array.isArray(state.results)
   ) {
 
-    setLed(
-      "bad"
-    );
+    setLed("bad");
 
     return;
 
   }
 
 
-  setLed(
-    "good"
-  );
+  setLed("good");
 
 
-  for (
-    const result
-    of state.results
-  ) {
+  for (const result of state.results) {
 
-    const valueElement =
-
+    const element =
       document.querySelector(
-
         `[data-id="${result.id}"] .point-value`
-
       );
 
 
-    if (
-      valueElement
-    ) {
+    if (element) {
 
-      valueElement.textContent =
-
-        Number(
-          result.value
-        ).toFixed(1)
-
+      element.textContent =
+        Number(result.value).toFixed(1)
         +
-
         " °C";
 
     }
@@ -1015,175 +860,152 @@ CHART
 ==================================================
 */
 
-const chart =
-  new Chart(
+const chart = new Chart(
 
-    canvas,
+  canvas,
 
-    {
+  {
 
-      type:
-        "line",
+    type: "line",
 
-      data: {
+    data: {
 
-        labels:
-          [],
+      labels: [],
 
-        datasets: [
+      datasets: [
 
-          {
-            label:
-              "Planks In",
-            data: [],
-            borderColor: "red",
-            backgroundColor: "red",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
-          },
+        {
+          label: "Planks In",
+          data: [],
+          borderColor: "red",
+          backgroundColor: "red",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        },
 
-          {
-            label:
-              "Planks Out",
-            data: [],
-            borderColor: "blue",
-            backgroundColor: "blue",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
-          },
+        {
+          label: "Planks Out",
+          data: [],
+          borderColor: "blue",
+          backgroundColor: "blue",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        },
 
-          {
-            label:
-              "Ambient",
-            data: [],
-            borderColor: "green",
-            backgroundColor: "green",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
-          },
+        {
+          label: "Ambient",
+          data: [],
+          borderColor: "green",
+          backgroundColor: "green",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        },
 
-          {
-            label:
-              "Planks Concrete",
-            data: [],
-            borderColor: "orange",
-            backgroundColor: "orange",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
-          },
+        {
+          label: "Planks Concrete",
+          data: [],
+          borderColor: "orange",
+          backgroundColor: "orange",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        },
 
-          {
-            label:
-              "Planks Tank",
-            data: [],
-            borderColor: "purple",
-            backgroundColor: "purple",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
-          },
+        {
+          label: "Planks Tank",
+          data: [],
+          borderColor: "purple",
+          backgroundColor: "purple",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        },
 
-          {
-            label:
-              "Ambient - Concrete Differential",
-            data: [],
-            borderColor: "black",
-            backgroundColor: "black",
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.05
+        {
+          label: "Ambient - Concrete Differential",
+          data: [],
+          borderColor: "black",
+          backgroundColor: "black",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.05
+        }
+
+      ]
+
+    },
+
+    options: {
+
+      responsive: true,
+
+      maintainAspectRatio: false,
+
+      animation: false,
+
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+
+      plugins: {
+
+        legend: {
+          display: false
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            label: context =>
+
+              context.dataset.label
+              +
+              ": "
+              +
+              Number(context.raw).toFixed(1)
+              +
+              " °C"
+
           }
 
-        ]
+        }
 
       },
 
-      options: {
+      scales: {
 
-        responsive:
-          true,
+        x: {
 
-        maintainAspectRatio:
-          false,
-
-        animation:
-          false,
-
-        interaction: {
-          mode: "index",
-          intersect: false
-        },
-
-        plugins: {
-
-          legend: {
-            display: false
+          grid: {
+            color: "#d9d9d9"
           },
 
-          tooltip: {
-
-            callbacks: {
-
-              label:
-                context =>
-
-                  context.dataset.label
-
-                  +
-
-                  ": "
-
-                  +
-
-                  Number(
-                    context.raw
-                  ).toFixed(1)
-
-                  +
-
-                  " °C"
-
-            }
-
+          ticks: {
+            maxTicksLimit: 8,
+            maxRotation: 0
           }
 
         },
 
-        scales: {
+        y: {
 
-          x: {
-
-            grid: {
-              color: "#d9d9d9"
-            },
-
-            ticks: {
-              maxTicksLimit: 8,
-              maxRotation: 0
-            }
-
+          grid: {
+            color: "#d9d9d9"
           },
 
-          y: {
+          ticks: {
+            color: "#d32f2f"
+          },
 
-            grid: {
-              color: "#d9d9d9"
-            },
-
-            ticks: {
-              color: "#d32f2f"
-            },
-
-            title: {
-              display: true,
-              text: "Deg.C",
-              color: "#d32f2f"
-            }
-
+          title: {
+            display: true,
+            text: "Deg.C",
+            color: "#d32f2f"
           }
 
         }
@@ -1192,20 +1014,28 @@ const chart =
 
     }
 
-  );
+  }
+
+);
 
 
 /*
 ==================================================
-GET ACTIVE DATA
+ACTIVE SAMPLES
 ==================================================
 */
 
 function getSourceSamples() {
 
-  return currentMode === "history"
-    ? historySamples
-    : liveSamples;
+  if (currentMode === "history") {
+
+    return filteredHistorySamples.length
+      ? filteredHistorySamples
+      : historySamples;
+
+  }
+
+  return liveSamples;
 
 }
 
@@ -1218,22 +1048,18 @@ VISIBLE SAMPLES
 
 function getVisibleSamples() {
 
-  const source =
+  let source =
     getSourceSamples();
 
 
-  if (
-    source.length === 0
-  ) {
+  if (!source.length) {
 
     return [];
 
   }
 
 
-  if (
-    currentMode === "history"
-  ) {
+  if (currentMode === "history") {
 
     return source;
 
@@ -1244,9 +1070,7 @@ function getVisibleSamples() {
     timeBase.value;
 
 
-  if (
-    selected === "custom"
-  ) {
+  if (selected === "custom") {
 
     return source;
 
@@ -1254,43 +1078,29 @@ function getVisibleSamples() {
 
 
   const minutes =
-    Number(
-      selected
-    );
+    Number(selected);
 
 
   const newestTime =
-
     new Date(
-
-      source[
-        source.length - 1
-      ].timestamp
-
+      source[source.length - 1].timestamp
     ).getTime();
 
 
   const windowMs =
-
-    minutes *
-    60 *
-    1000;
+    minutes * 60 * 1000;
 
 
   let visible =
+    source.filter(sample =>
 
-    source.filter(
+      new Date(
+        sample.timestamp
+      ).getTime()
 
-      sample =>
+      >=
 
-        new Date(
-          sample.timestamp
-        ).getTime()
-
-        >=
-
-        newestTime -
-        windowMs
+      newestTime - windowMs
 
     );
 
@@ -1301,25 +1111,16 @@ function getVisibleSamples() {
   ) {
 
     const wanted =
-
       Math.max(
-
         2,
-
         Math.floor(
-
-          visible.length /
-          zoomFactor
-
+          visible.length / zoomFactor
         )
-
       );
 
 
     visible =
-      visible.slice(
-        -wanted
-      );
+      visible.slice(-wanted);
 
   }
 
@@ -1331,7 +1132,7 @@ function getVisibleSamples() {
 
 /*
 ==================================================
-DRAW TREND
+DRAW GRAPH
 ==================================================
 */
 
@@ -1342,75 +1143,59 @@ function drawTrend() {
 
 
   chart.data.labels =
+    samples.map(sample =>
 
-    samples.map(
-
-      sample =>
-
-        new Date(
-
-          sample.timestamp
-
-        ).toLocaleString(
-
-          [],
-
-          {
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-          }
-
-        )
+      new Date(
+        sample.timestamp
+      ).toLocaleString(
+        [],
+        {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      )
 
     );
 
 
   chart.data.datasets[0].data =
-    samples.map(
-      sample => sample.in1
-    );
+    samples.map(s => s.in1);
 
   chart.data.datasets[1].data =
-    samples.map(
-      sample => sample.in2
-    );
+    samples.map(s => s.in2);
 
   chart.data.datasets[2].data =
-    samples.map(
-      sample => sample.in3
-    );
+    samples.map(s => s.in3);
 
   chart.data.datasets[3].data =
-    samples.map(
-      sample => sample.in4
-    );
+    samples.map(s => s.in4);
 
   chart.data.datasets[4].data =
-    samples.map(
-      sample => sample.in5
-    );
+    samples.map(s => s.in5);
 
   chart.data.datasets[5].data =
-    samples.map(
-      sample => sample.diff
-    );
+    samples.map(s => s.diff);
 
 
-  chart.update(
-    "none"
-  );
+  chart.update("none");
 
 
-  graphInfo.textContent =
+  if (currentMode === "history") {
 
-    currentMode === "history"
+    graphInfo.textContent =
+      `${samples.length} historical samples shown`;
 
-    ? `${samples.length} historical samples`
+  }
 
-    : `${samples.length} live samples shown`;
+  else {
+
+    graphInfo.textContent =
+      `${samples.length} live samples shown`;
+
+  }
 
 }
 
@@ -1423,9 +1208,7 @@ LOAD LIVE TREND
 
 async function loadTrend() {
 
-  if (
-    currentMode !== "live"
-  ) {
+  if (currentMode !== "live") {
 
     return;
 
@@ -1436,14 +1219,10 @@ async function loadTrend() {
 
     const response =
       await fetch(
-
         "/api/trend",
-
         {
-          cache:
-            "no-store"
+          cache: "no-store"
         }
-
       );
 
 
@@ -1464,20 +1243,14 @@ async function loadTrend() {
 
 
     liveSamples =
-
-      Array.isArray(
-        trend.samples
-      )
-
+      Array.isArray(trend.samples)
       ? trend.samples
-
       : [];
 
 
     drawTrend();
 
   }
-
 
   catch {
 
@@ -1491,22 +1264,17 @@ async function loadTrend() {
 
 /*
 ==================================================
-CSV PARSER
+CSV LINE PARSER
 ==================================================
 */
 
-function parseCsvLine(
-  line
-) {
+function parseCsvLine(line) {
 
-  const values =
-    [];
+  const values = [];
 
-  let current =
-    "";
+  let current = "";
 
-  let insideQuotes =
-    false;
+  let insideQuotes = false;
 
 
   for (
@@ -1519,9 +1287,7 @@ function parseCsvLine(
       line[i];
 
 
-    if (
-      char === '"'
-    ) {
+    if (char === '"') {
 
       if (
         insideQuotes &&
@@ -1529,6 +1295,7 @@ function parseCsvLine(
       ) {
 
         current += '"';
+
         i++;
 
       }
@@ -1547,31 +1314,120 @@ function parseCsvLine(
       !insideQuotes
     ) {
 
-      values.push(
-        current
-      );
+      values.push(current);
 
-      current =
-        "";
+      current = "";
 
     }
 
     else {
 
-      current +=
-        char;
+      current += char;
 
     }
 
   }
 
 
-  values.push(
-    current
-  );
-
+  values.push(current);
 
   return values;
+
+}
+
+
+/*
+==================================================
+DATE PARSER
+==================================================
+*/
+
+function parseHistoryDate(
+  dateText,
+  timeText
+) {
+
+  const combined =
+    `${dateText.trim()} ${timeText.trim()}`;
+
+
+  let date =
+    new Date(combined);
+
+
+  if (
+    !Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return date;
+
+  }
+
+
+  const parts =
+    dateText
+      .trim()
+      .split(/[\/\-]/);
+
+
+  if (parts.length === 3) {
+
+    const day =
+      Number(parts[0]);
+
+    const month =
+      Number(parts[1]);
+
+    const year =
+      Number(parts[2]);
+
+
+    const timeParts =
+      timeText
+        .trim()
+        .split(":");
+
+
+    const hour =
+      Number(timeParts[0] || 0);
+
+    const minute =
+      Number(timeParts[1] || 0);
+
+    const second =
+      Number(
+        String(timeParts[2] || "0")
+          .replace(/[^\d].*$/, "")
+      );
+
+
+    date =
+      new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute,
+        second
+      );
+
+
+    if (
+      !Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return date;
+
+    }
+
+  }
+
+
+  return null;
 
 }
 
@@ -1582,12 +1438,9 @@ PARSE HISTORY CSV
 ==================================================
 */
 
-function parseHistoryCsv(
-  text
-) {
+function parseHistoryCsv(text) {
 
   const lines =
-
     text
       .replace(/\r/g, "")
       .split("\n")
@@ -1597,19 +1450,16 @@ function parseHistoryCsv(
       );
 
 
-  if (
-    lines.length < 2
-  ) {
+  if (lines.length < 2) {
 
     throw new Error(
-      "The history file does not contain any trend data."
+      "The history file contains no trend data."
     );
 
   }
 
 
-  const rows =
-    [];
+  const rows = [];
 
 
   for (
@@ -1624,40 +1474,28 @@ function parseHistoryCsv(
       );
 
 
-    if (
-      columns.length < 8
-    ) {
+    if (columns.length < 8) {
 
       continue;
 
     }
-
-
-    const dateText =
-      columns[0].trim();
-
-    const timeText =
-      columns[1].trim();
 
 
     const timestamp =
-      new Date(
-        `${dateText} ${timeText}`
+      parseHistoryDate(
+        columns[0],
+        columns[1]
       );
 
 
-    if (
-      Number.isNaN(
-        timestamp.getTime()
-      )
-    ) {
+    if (!timestamp) {
 
       continue;
 
     }
 
 
-    rows.push({
+    const sample = {
 
       timestamp:
         timestamp.toISOString(),
@@ -1680,103 +1518,60 @@ function parseHistoryCsv(
       diff:
         Number(columns[7])
 
-    });
+    };
+
+
+    if (
+
+      [
+        sample.in1,
+        sample.in2,
+        sample.in3,
+        sample.in4,
+        sample.in5,
+        sample.diff
+      ].every(
+        value =>
+          Number.isFinite(value)
+      )
+
+    ) {
+
+      rows.push(sample);
+
+    }
 
   }
 
 
-  return rows.filter(
-
-    row =>
-
-      [
-        row.in1,
-        row.in2,
-        row.in3,
-        row.in4,
-        row.in5,
-        row.diff
-      ].every(
-        value =>
-          Number.isFinite(
-            value
-          )
-      )
-
-  );
+  return rows;
 
 }
 
 
 /*
 ==================================================
-SET DATE RANGE FROM FILE
+LOCAL DATETIME INPUT
 ==================================================
 */
 
-function setHistoryDateRange() {
+function toLocalInputValue(date) {
 
-  if (
-    historySamples.length === 0
-  ) {
-
-    return;
-
-  }
+  const offset =
+    date.getTimezoneOffset();
 
 
-  const first =
+  const local =
     new Date(
-      historySamples[0].timestamp
+      date.getTime()
+      -
+      offset * 60000
     );
 
 
-  const last =
-    new Date(
-      historySamples[
-        historySamples.length - 1
-      ].timestamp
-    );
-
-
-  function toLocalInputValue(
-    date
-  ) {
-
-    const offset =
-      date.getTimezoneOffset();
-
-    const local =
-
-      new Date(
-
-        date.getTime()
-
-        -
-
-        offset *
-        60000
-
-      );
-
-
-    return local
-      .toISOString()
-      .slice(0,16);
-
-  }
-
-
-  fromDate.value =
-    toLocalInputValue(
-      first
-    );
-
-
-  toDate.value =
-    toLocalInputValue(
-      last
-    );
+  return local
+    .toISOString()
+    .slice(0,16);
 
 }
 
@@ -1810,9 +1605,7 @@ historyFileInput.addEventListener(
       event.target.files[0];
 
 
-    if (
-      !file
-    ) {
+    if (!file) {
 
       return;
 
@@ -1826,72 +1619,72 @@ historyFileInput.addEventListener(
 
 
       const parsed =
-        parseHistoryCsv(
-          text
-        );
+        parseHistoryCsv(text);
 
 
-      if (
-        parsed.length === 0
-      ) {
+      if (!parsed.length) {
 
         throw new Error(
-          "No valid trend samples were found in this CSV."
+          "No valid trend samples were found in the file."
         );
 
       }
 
 
       historySamples =
-
         parsed.sort(
-
-          (
-            a,
-            b
-          ) =>
-
-            new Date(
-              a.timestamp
-            )
-
+          (a,b) =>
+            new Date(a.timestamp)
             -
-
-            new Date(
-              b.timestamp
-            )
-
+            new Date(b.timestamp)
         );
 
 
-      setHistoryDateRange();
+      filteredHistorySamples =
+        [...historySamples];
 
 
-      historyStatus.textContent =
+      const first =
+        new Date(
+          historySamples[0].timestamp
+        );
 
-        `${file.name} • ${historySamples.length} samples loaded`;
+
+      const last =
+        new Date(
+          historySamples[
+            historySamples.length - 1
+          ].timestamp
+        );
+
+
+      fromDate.value =
+        toLocalInputValue(first);
+
+
+      toDate.value =
+        toLocalInputValue(last);
 
 
       currentMode =
         "history";
 
 
+      historyStatus.textContent =
+        `${file.name} - ${historySamples.length} samples loaded`;
+
+
       drawTrend();
 
     }
 
-
-    catch (
-      error
-    ) {
+    catch (error) {
 
       historyStatus.textContent =
         "History file could not be loaded";
 
 
-      alert(
-        error.message
-      );
+      alert(error.message);
 
     }
 
@@ -1902,7 +1695,7 @@ historyFileInput.addEventListener(
 
 /*
 ==================================================
-APPLY CUSTOM DATE RANGE
+APPLY HISTORY DATE RANGE
 ==================================================
 */
 
@@ -1912,12 +1705,10 @@ applyHistoryButton.addEventListener(
 
   () => {
 
-    if (
-      historySamples.length === 0
-    ) {
+    if (!historySamples.length) {
 
       alert(
-        "Load a history CSV file first."
+        "Please load a history file first."
       );
 
       return;
@@ -1931,7 +1722,7 @@ applyHistoryButton.addEventListener(
     ) {
 
       alert(
-        "Choose both From and To dates."
+        "Please select both From and To."
       );
 
       return;
@@ -1951,12 +1742,10 @@ applyHistoryButton.addEventListener(
       ).getTime();
 
 
-    if (
-      from > to
-    ) {
+    if (from > to) {
 
       alert(
-        "The From date must be before the To date."
+        "From must be before To."
       );
 
       return;
@@ -1964,37 +1753,31 @@ applyHistoryButton.addEventListener(
     }
 
 
-    const filtered =
-
+    filteredHistorySamples =
       historySamples.filter(
-
         sample => {
 
-          const time =
-
+          const timestamp =
             new Date(
               sample.timestamp
             ).getTime();
 
 
           return (
-
-            time >= from &&
-            time <= to
-
+            timestamp >= from &&
+            timestamp <= to
           );
 
         }
-
       );
 
 
     if (
-      filtered.length === 0
+      !filteredHistorySamples.length
     ) {
 
       alert(
-        "There is no trend data in that selected period."
+        "No history data exists in that selected period."
       );
 
       return;
@@ -2006,24 +1789,231 @@ applyHistoryButton.addEventListener(
       "history";
 
 
-    const original =
-      historySamples;
-
-
-    historySamples =
-      filtered;
+    zoomFactor =
+      1;
 
 
     drawTrend();
 
+  }
 
-    historySamples =
-      original;
+);
 
 
-    graphInfo.textContent =
+/*
+==================================================
+TIME BASE
+==================================================
+*/
 
-      `${filtered.length} historical samples shown`;
+timeBase.addEventListener(
+
+  "change",
+
+  () => {
+
+    zoomFactor =
+      1;
+
+
+    if (
+      timeBase.value === "custom"
+    ) {
+
+      customHistory.classList.add(
+        "show"
+      );
+
+
+      graphInfo.textContent =
+        "Custom Define - load a history CSV file";
+
+    }
+
+    else {
+
+      customHistory.classList.remove(
+        "show"
+      );
+
+
+      currentMode =
+        "live";
+
+
+      filteredHistorySamples =
+        [];
+
+
+      drawTrend();
+
+    }
+
+  }
+
+);
+
+
+/*
+==================================================
+ZOOM
+==================================================
+*/
+
+zoomInButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    zoomFactor =
+      Math.min(
+        zoomFactor * 2,
+        16
+      );
+
+
+    drawTrend();
+
+  }
+
+);
+
+
+zoomOutButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    zoomFactor =
+      Math.max(
+        1,
+        zoomFactor / 2
+      );
+
+
+    drawTrend();
+
+  }
+
+);
+
+
+/*
+==================================================
+RESET
+==================================================
+*/
+
+resetButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    currentMode =
+      "live";
+
+
+    zoomFactor =
+      1;
+
+
+    filteredHistorySamples =
+      [];
+
+
+    timeBase.value =
+      "5";
+
+
+    customHistory.classList.remove(
+      "show"
+    );
+
+
+    loadTrend();
+
+  }
+
+);
+
+
+/*
+==================================================
+LIVE
+==================================================
+*/
+
+liveButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    currentMode =
+      "live";
+
+
+    zoomFactor =
+      1;
+
+
+    filteredHistorySamples =
+      [];
+
+
+    timeBase.value =
+      "5";
+
+
+    customHistory.classList.remove(
+      "show"
+    );
+
+
+    loadTrend();
+
+  }
+
+);
+
+
+/*
+==================================================
+LAST 5 MINUTES
+==================================================
+*/
+
+last5Button.addEventListener(
+
+  "click",
+
+  () => {
+
+    currentMode =
+      "live";
+
+
+    zoomFactor =
+      1;
+
+
+    filteredHistorySamples =
+      [];
+
+
+    timeBase.value =
+      "5";
+
+
+    customHistory.classList.remove(
+      "show"
+    );
+
+
+    loadTrend();
 
   }
 
@@ -2036,9 +2026,7 @@ BUILD CSV
 ==================================================
 */
 
-function buildCsv(
-  samples
-) {
+function buildCsv(samples) {
 
   const rows = [
 
@@ -2056,10 +2044,7 @@ function buildCsv(
   ];
 
 
-  for (
-    const sample
-    of samples
-  ) {
+  for (const sample of samples) {
 
     const timestamp =
       new Date(
@@ -2097,13 +2082,8 @@ function buildCsv(
       row.map(
 
         value =>
-
           `"${String(value)
-            .replace(
-              /"/g,
-              '""'
-            )}"`
-
+            .replace(/"/g,'""')}"`
       ).join(",")
 
   ).join("\r\n");
@@ -2113,240 +2093,9 @@ function buildCsv(
 
 /*
 ==================================================
-DOWNLOAD
+EXPORT
 ==================================================
 */
-
-function downloadBlob(
-  blob,
-  fileName
-) {
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    url;
-
-  link.download =
-    fileName;
-
-
-  document.body.appendChild(
-    link
-  );
-
-
-  link.click();
-
-
-  link.remove();
-
-
-  setTimeout(
-
-    () =>
-      URL.revokeObjectURL(
-        url
-      ),
-
-    1000
-
-  );
-
-}
-
-
-/*
-==================================================
-TOOLBAR EVENTS
-==================================================
-*/
-
-timeBase.addEventListener(
-
-  "change",
-
-  () => {
-
-    if (
-      timeBase.value ===
-      "custom"
-    ) {
-
-      customHistory.classList.add(
-        "show"
-      );
-
-    }
-
-    else {
-
-      customHistory.classList.remove(
-        "show"
-      );
-
-
-      currentMode =
-        "live";
-
-
-      zoomFactor =
-        1;
-
-
-      drawTrend();
-
-    }
-
-  }
-
-);
-
-
-zoomInButton.addEventListener(
-
-  "click",
-
-  () => {
-
-    zoomFactor =
-      Math.min(
-        zoomFactor * 2,
-        16
-      );
-
-    drawTrend();
-
-  }
-
-);
-
-
-zoomOutButton.addEventListener(
-
-  "click",
-
-  () => {
-
-    zoomFactor =
-      Math.max(
-        1,
-        zoomFactor / 2
-      );
-
-    drawTrend();
-
-  }
-
-);
-
-
-resetButton.addEventListener(
-
-  "click",
-
-  () => {
-
-    currentMode =
-      "live";
-
-
-    zoomFactor =
-      1;
-
-
-    timeBase.value =
-      "5";
-
-
-    customHistory.classList.remove(
-      "show"
-    );
-
-
-    drawTrend();
-
-  }
-
-);
-
-
-liveButton.addEventListener(
-
-  "click",
-
-  () => {
-
-    currentMode =
-      "live";
-
-
-    zoomFactor =
-      1;
-
-
-    if (
-      timeBase.value ===
-      "custom"
-    ) {
-
-      timeBase.value =
-        "5";
-
-    }
-
-
-    customHistory.classList.remove(
-      "show"
-    );
-
-
-    loadTrend();
-
-  }
-
-);
-
-
-last5Button.addEventListener(
-
-  "click",
-
-  () => {
-
-    currentMode =
-      "live";
-
-
-    timeBase.value =
-      "5";
-
-
-    zoomFactor =
-      1;
-
-
-    customHistory.classList.remove(
-      "show"
-    );
-
-
-    loadTrend();
-
-  }
-
-);
-
 
 exportButton.addEventListener(
 
@@ -2358,12 +2107,10 @@ exportButton.addEventListener(
       getVisibleSamples();
 
 
-    if (
-      samples.length === 0
-    ) {
+    if (!samples.length) {
 
       alert(
-        "No trend data available"
+        "No trend data available."
       );
 
       return;
@@ -2372,34 +2119,50 @@ exportButton.addEventListener(
 
 
     const csv =
-      buildCsv(
-        samples
-      );
+      buildCsv(samples);
 
 
     const blob =
       new Blob(
-
         [csv],
-
         {
           type:
             "text/csv;charset=utf-8"
         }
-
       );
 
 
-    downloadBlob(
+    const url =
+      URL.createObjectURL(blob);
 
-      blob,
 
+    const link =
+      document.createElement("a");
+
+
+    link.href =
+      url;
+
+
+    link.download =
       currentMode === "history"
 
       ? "Greenair_History_Export.csv"
 
-      : "Greenair_TrendLog.csv"
+      : "Greenair_TrendLog.csv";
 
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+
+    setTimeout(
+      () =>
+        URL.revokeObjectURL(url),
+      1000
     );
 
   }
@@ -2409,49 +2172,33 @@ exportButton.addEventListener(
 
 /*
 ==================================================
-INITIAL STATE
+INITIAL LIVE STATE
 ==================================================
 */
 
-setLed(
-  "waiting"
-);
+setLed("waiting");
 
 
 fetch(
-
   "/api/state",
-
   {
-    cache:
-      "no-store"
+    cache: "no-store"
   }
-
 )
 
 .then(
-
   response =>
     response.json()
-
 )
 
 .then(
-
   state =>
-    renderState(
-      state
-    )
-
+    renderState(state)
 )
 
 .catch(
-
   () =>
-    setLed(
-      "bad"
-    )
-
+    setLed("bad")
 );
 
 
@@ -2476,20 +2223,16 @@ stream.addEventListener(
     try {
 
       renderState(
-
         JSON.parse(
           event.data
         )
-
       );
 
     }
 
     catch {
 
-      setLed(
-        "bad"
-      );
+      setLed("bad");
 
     }
 
@@ -2499,12 +2242,9 @@ stream.addEventListener(
 
 
 stream.onerror =
-
   () => {
 
-    setLed(
-      "bad"
-    );
+    setLed("bad");
 
   };
 
@@ -2519,15 +2259,11 @@ loadTrend();
 
 
 setInterval(
-
   loadTrend,
-
   15000
-
 );
 
 </script>
 
 </body>
-
 </html>
