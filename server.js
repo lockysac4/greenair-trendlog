@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const net = require("net");
 const { Pool } = require("pg");
+const nodemailer = require("nodemailer");
 
 
 /*
@@ -19,8 +20,12 @@ Every 15 seconds
 PERMANENT POSTGRES HISTORY:
 Every 1 minute
 
-Permanent logging is SERVER SIDE.
-The webpage does NOT need to be open.
+EMAIL REPORT:
+Every 8 hours
+
+EMAIL CONTENT:
+Previous 8 hours of PostgreSQL history
+attached as CSV.
 
 ==================================================
 */
@@ -28,7 +33,7 @@ The webpage does NOT need to be open.
 
 /*
 ==================================================
-MODBUS CONNECTION
+BMS CONNECTION
 ==================================================
 */
 
@@ -99,6 +104,103 @@ if (
 
 /*
 ==================================================
+EMAIL CONFIGURATION
+==================================================
+*/
+
+const EMAIL_USER =
+  process.env.EMAIL_USER ||
+  "";
+
+
+const EMAIL_APP_PASSWORD =
+  process.env.EMAIL_APP_PASSWORD ||
+  "";
+
+
+const EMAIL_TO =
+  process.env.EMAIL_TO ||
+  "greenair.controls@gmail.com";
+
+
+const EMAIL_REPORT_HOURS =
+  8;
+
+
+const EMAIL_REPORT_MS =
+  EMAIL_REPORT_HOURS *
+  60 *
+  60 *
+  1000;
+
+
+let emailTransporter =
+  null;
+
+
+let emailConfigured =
+  false;
+
+
+let emailConnected =
+  false;
+
+
+let lastEmailAt =
+  null;
+
+
+let lastEmailError =
+  null;
+
+
+let nextEmailAt =
+  null;
+
+
+let emailTimer =
+  null;
+
+
+/*
+==================================================
+CREATE EMAIL TRANSPORTER
+==================================================
+*/
+
+if (
+  EMAIL_USER &&
+  EMAIL_APP_PASSWORD
+) {
+
+  emailTransporter =
+
+    nodemailer.createTransport({
+
+      service:
+        "gmail",
+
+      auth: {
+
+        user:
+          EMAIL_USER,
+
+        pass:
+          EMAIL_APP_PASSWORD
+
+      }
+
+    });
+
+
+  emailConfigured =
+    true;
+
+}
+
+
+/*
+==================================================
 TIMING
 ==================================================
 */
@@ -111,24 +213,9 @@ const LIVE_SAMPLE_MS =
   15000;
 
 
-/*
-Permanent history every 1 minute.
-*/
-
 const HISTORY_INTERVAL_MINUTES =
   1;
 
-
-const HISTORY_SAMPLE_MS =
-  HISTORY_INTERVAL_MINUTES *
-  60 *
-  1000;
-
-
-/*
-24 hours of 15-second
-live samples held in RAM.
-*/
 
 const MAX_LIVE_SAMPLES =
   5760;
@@ -326,13 +413,13 @@ async function initialiseDatabase() {
     !db
   ) {
 
+    databaseConnected =
+      false;
+
+
     console.error(
       "DATABASE_URL is not configured."
     );
-
-
-    databaseConnected =
-      false;
 
 
     return;
@@ -341,6 +428,10 @@ async function initialiseDatabase() {
 
 
   try {
+
+    /*
+    TREND HISTORY TABLE
+    */
 
     await db.query(`
 
@@ -378,16 +469,47 @@ async function initialiseDatabase() {
 
 
     /*
-    Recover most recent stored record
-    after Render restart/redeploy.
+    EMAIL REPORT LOG TABLE
+
+    Prevents the same 8-hour report
+    being emailed twice after a restart.
     */
 
-    const previous =
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS trend_email_reports (
+
+        id BIGSERIAL PRIMARY KEY,
+
+        report_key TEXT UNIQUE NOT NULL,
+
+        period_from TIMESTAMPTZ NOT NULL,
+
+        period_to TIMESTAMPTZ NOT NULL,
+
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        recipient TEXT NOT NULL,
+
+        row_count INTEGER NOT NULL DEFAULT 0
+
+      )
+
+    `);
+
+
+    /*
+    RECOVER LAST ARCHIVE
+    */
+
+    const previousArchive =
 
       await db.query(`
 
         SELECT
-          MAX(recorded_at) AS last_archive
+
+          MAX(recorded_at)
+          AS last_archive
 
         FROM trend_history
 
@@ -395,16 +517,63 @@ async function initialiseDatabase() {
 
 
     if (
-      previous.rows[0] &&
-      previous.rows[0].last_archive
+
+      previousArchive.rows[0]
+
+      &&
+
+      previousArchive.rows[0]
+        .last_archive
+
     ) {
 
       lastArchiveAt =
 
         new Date(
 
-          previous.rows[0]
+          previousArchive.rows[0]
             .last_archive
+
+        );
+
+    }
+
+
+    /*
+    RECOVER LAST EMAIL TIME
+    */
+
+    const previousEmail =
+
+      await db.query(`
+
+        SELECT
+
+          MAX(sent_at)
+          AS last_email
+
+        FROM trend_email_reports
+
+      `);
+
+
+    if (
+
+      previousEmail.rows[0]
+
+      &&
+
+      previousEmail.rows[0]
+        .last_email
+
+    ) {
+
+      lastEmailAt =
+
+        new Date(
+
+          previousEmail.rows[0]
+            .last_email
 
         );
 
@@ -422,21 +591,6 @@ async function initialiseDatabase() {
     console.log(
       "PostgreSQL history database ready."
     );
-
-
-    if (
-      lastArchiveAt
-    ) {
-
-      console.log(
-
-        "Last permanent archive:",
-
-        lastArchiveAt.toISOString()
-
-      );
-
-    }
 
   }
 
@@ -456,6 +610,81 @@ async function initialiseDatabase() {
     console.error(
 
       "Database setup failed:",
+
+      error.message
+
+    );
+
+  }
+
+}
+
+
+/*
+==================================================
+EMAIL CONNECTION TEST
+==================================================
+*/
+
+async function initialiseEmail() {
+
+  if (
+    !emailTransporter
+  ) {
+
+    emailConfigured =
+      false;
+
+
+    emailConnected =
+      false;
+
+
+    console.log(
+      "Email is not configured yet."
+    );
+
+
+    return;
+
+  }
+
+
+  try {
+
+    await emailTransporter.verify();
+
+
+    emailConnected =
+      true;
+
+
+    lastEmailError =
+      null;
+
+
+    console.log(
+      "Email SMTP connection ready."
+    );
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    emailConnected =
+      false;
+
+
+    lastEmailError =
+      error.message;
+
+
+    console.error(
+
+      "Email SMTP connection failed:",
 
       error.message
 
@@ -499,7 +728,7 @@ function nextTransactionId() {
 
 /*
 ==================================================
-BUILD MODBUS FC03 REQUEST
+MODBUS REQUEST
 ==================================================
 */
 
@@ -557,7 +786,7 @@ function buildReadRequest(
 
 /*
 ==================================================
-READ ONE MODBUS REGISTER
+READ MODBUS REGISTER
 ==================================================
 */
 
@@ -889,9 +1118,7 @@ function readRegister(
             return fail(
 
               new Error(
-
-                `Unit ID mismatch: expected ${UNIT_ID}, received ${responseUnit}`
-
+                "Unit ID mismatch"
               )
 
             );
@@ -931,17 +1158,19 @@ function readRegister(
 
 
           if (
+
             (
               functionCode &
               0x80
             ) !== 0
+
           ) {
 
             return fail(
 
               new Error(
 
-                `Modbus exception ${pdu[1]} Register ${register}`
+                `Modbus exception ${pdu[1]}`
 
               )
 
@@ -958,9 +1187,7 @@ function readRegister(
             return fail(
 
               new Error(
-
-                `Unexpected Modbus function ${functionCode}`
-
+                "Unexpected Modbus function"
               )
 
             );
@@ -969,10 +1196,15 @@ function readRegister(
 
 
           if (
+
             pdu.length !==
-            4 ||
+            4
+
+            ||
+
             pdu[1] !==
             2
+
           ) {
 
             return fail(
@@ -1036,9 +1268,7 @@ function readRegister(
             fail(
 
               new Error(
-
-                "Connection closed before complete Modbus response"
-
+                "Connection closed before complete response"
               )
 
             );
@@ -1093,7 +1323,7 @@ function signed16(
 
 /*
 ==================================================
-SCALE MODBUS VALUE
+SCALE VALUE
 ==================================================
 */
 
@@ -1273,7 +1503,7 @@ async function pollBms() {
 
 /*
 ==================================================
-GET CURRENT POINT VALUE
+LATEST POINT VALUE
 ==================================================
 */
 
@@ -1282,10 +1512,7 @@ function getLatestValue(
 ) {
 
   if (
-    !latest.ok ||
-    !Array.isArray(
-      latest.results
-    )
+    !latest.ok
   ) {
 
     return null;
@@ -1293,18 +1520,18 @@ function getLatestValue(
   }
 
 
-  const point =
+  const result =
 
     latest.results.find(
 
-      result =>
-        result.id === id
+      point =>
+        point.id === id
 
     );
 
 
   if (
-    !point
+    !result
   ) {
 
     return null;
@@ -1313,31 +1540,29 @@ function getLatestValue(
 
 
   const value =
-
     Number(
-      point.value
+      result.value
     );
 
 
-  if (
-    !Number.isFinite(
-      value
-    )
-  ) {
+  return Number.isFinite(
+    value
+  )
 
-    return null;
+  ?
 
-  }
+  value
 
+  :
 
-  return value;
+  null;
 
 }
 
 
 /*
 ==================================================
-LIVE 15 SECOND HISTORY
+LIVE 15 SECOND SAMPLE
 ==================================================
 */
 
@@ -1355,34 +1580,22 @@ function saveLiveSample() {
   const values = {
 
     in1:
-      getLatestValue(
-        "in1"
-      ),
+      getLatestValue("in1"),
 
     in2:
-      getLatestValue(
-        "in2"
-      ),
+      getLatestValue("in2"),
 
     in3:
-      getLatestValue(
-        "in3"
-      ),
+      getLatestValue("in3"),
 
     in4:
-      getLatestValue(
-        "in4"
-      ),
+      getLatestValue("in4"),
 
     in5:
-      getLatestValue(
-        "in5"
-      ),
+      getLatestValue("in5"),
 
     diff:
-      getLatestValue(
-        "diff"
-      )
+      getLatestValue("diff")
 
   };
 
@@ -1437,49 +1650,14 @@ function saveLiveSample() {
 
 /*
 ==================================================
-CURRENT ONE-MINUTE SLOT
-==================================================
-*/
-
-function getCurrentMinuteSlot() {
-
-  const now =
-    new Date();
-
-
-  const slot =
-    new Date(
-      now
-    );
-
-
-  slot.setSeconds(
-    0,
-    0
-  );
-
-
-  return slot;
-
-}
-
-
-/*
-==================================================
-NEXT ONE-MINUTE BOUNDARY
+NEXT MINUTE
 ==================================================
 */
 
 function getNextMinuteBoundary() {
 
-  const now =
-    new Date();
-
-
   const next =
-    new Date(
-      now
-    );
+    new Date();
 
 
   next.setSeconds(
@@ -1503,12 +1681,12 @@ function getNextMinuteBoundary() {
 
 /*
 ==================================================
-PERMANENT DATABASE ARCHIVE
+ARCHIVE ONE-MINUTE HISTORY
 ==================================================
 */
 
 async function archiveTrendSample(
-  recordedAt = null
+  recordedAt
 ) {
 
   if (
@@ -1517,10 +1695,6 @@ async function archiveTrendSample(
 
     lastArchiveError =
       "DATABASE_URL not configured";
-
-
-    databaseConnected =
-      false;
 
 
     return false;
@@ -1536,69 +1710,39 @@ async function archiveTrendSample(
       "BMS offline at archive time";
 
 
-    console.error(
-
-      "1-minute archive skipped: BMS offline."
-
-    );
-
-
     return false;
 
   }
 
 
-  const planksIn =
-    getLatestValue(
-      "in1"
-    );
+  const values = {
 
+    in1:
+      getLatestValue("in1"),
 
-  const planksOut =
-    getLatestValue(
-      "in2"
-    );
+    in2:
+      getLatestValue("in2"),
 
+    in3:
+      getLatestValue("in3"),
 
-  const ambient =
-    getLatestValue(
-      "in3"
-    );
+    in4:
+      getLatestValue("in4"),
 
+    in5:
+      getLatestValue("in5"),
 
-  const concrete =
-    getLatestValue(
-      "in4"
-    );
+    diff:
+      getLatestValue("diff")
 
-
-  const tank =
-    getLatestValue(
-      "in5"
-    );
-
-
-  const differential =
-    getLatestValue(
-      "diff"
-    );
-
-
-  const values = [
-
-    planksIn,
-    planksOut,
-    ambient,
-    concrete,
-    tank,
-    differential
-
-  ];
+  };
 
 
   if (
 
-    values.some(
+    Object.values(
+      values
+    ).some(
 
       value =>
         value === null
@@ -1608,14 +1752,7 @@ async function archiveTrendSample(
   ) {
 
     lastArchiveError =
-      "One or more BMS values unavailable";
-
-
-    console.error(
-
-      "1-minute archive skipped: BMS values unavailable."
-
-    );
+      "BMS values unavailable";
 
 
     return false;
@@ -1623,25 +1760,7 @@ async function archiveTrendSample(
   }
 
 
-  const archiveTime =
-
-    recordedAt instanceof Date
-
-    ?
-
-    recordedAt
-
-    :
-
-    getCurrentMinuteSlot();
-
-
   try {
-
-    /*
-    Avoid duplicate rows if Render
-    restarts around the same minute.
-    */
 
     const existing =
 
@@ -1660,98 +1779,74 @@ async function archiveTrendSample(
         `,
 
         [
-          archiveTime
+          recordedAt
         ]
 
       );
 
 
     if (
-      existing.rowCount >
+      existing.rowCount ===
       0
     ) {
 
-      databaseConnected =
-        true;
+      await db.query(
 
+        `
 
-      lastArchiveAt =
-        archiveTime;
+        INSERT INTO trend_history (
 
+          recorded_at,
 
-      lastArchiveError =
-        null;
+          planks_in,
 
+          planks_out,
 
-      console.log(
+          ambient,
 
-        "1-minute archive already exists:",
+          planks_concrete,
 
-        archiveTime.toISOString()
+          planks_tank,
+
+          ambient_concrete_diff
+
+        )
+
+        VALUES (
+
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7
+
+        )
+
+        `,
+
+        [
+
+          recordedAt,
+
+          values.in1,
+
+          values.in2,
+
+          values.in3,
+
+          values.in4,
+
+          values.in5,
+
+          values.diff
+
+        ]
 
       );
 
-
-      return true;
-
     }
-
-
-    await db.query(
-
-      `
-
-      INSERT INTO trend_history (
-
-        recorded_at,
-
-        planks_in,
-
-        planks_out,
-
-        ambient,
-
-        planks_concrete,
-
-        planks_tank,
-
-        ambient_concrete_diff
-
-      )
-
-      VALUES (
-
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7
-
-      )
-
-      `,
-
-      [
-
-        archiveTime,
-
-        planksIn,
-
-        planksOut,
-
-        ambient,
-
-        concrete,
-
-        tank,
-
-        differential
-
-      ]
-
-    );
 
 
     databaseConnected =
@@ -1759,7 +1854,7 @@ async function archiveTrendSample(
 
 
     lastArchiveAt =
-      archiveTime;
+      recordedAt;
 
 
     lastArchiveError =
@@ -1770,7 +1865,7 @@ async function archiveTrendSample(
 
       "1-minute trend history saved:",
 
-      archiveTime.toISOString()
+      recordedAt.toISOString()
 
     );
 
@@ -1794,7 +1889,7 @@ async function archiveTrendSample(
 
     console.error(
 
-      "Trend history database save failed:",
+      "History save failed:",
 
       error.message
 
@@ -1810,7 +1905,7 @@ async function archiveTrendSample(
 
 /*
 ==================================================
-SCHEDULE NEXT ONE-MINUTE ARCHIVE
+SCHEDULE 1-MINUTE LOGGER
 ==================================================
 */
 
@@ -1835,27 +1930,6 @@ function scheduleNextArchive() {
     next;
 
 
-  const delay =
-
-    Math.max(
-
-      1000,
-
-      next.getTime() -
-      Date.now()
-
-    );
-
-
-  console.log(
-
-    "Next permanent archive:",
-
-    next.toISOString()
-
-  );
-
-
   archiveTimer =
 
     setTimeout(
@@ -1867,16 +1941,18 @@ function scheduleNextArchive() {
         );
 
 
-        /*
-        Calculate next minute again
-        to avoid timer drift.
-        */
-
         scheduleNextArchive();
 
       },
 
-      delay
+      Math.max(
+
+        1000,
+
+        next.getTime() -
+        Date.now()
+
+      )
 
     );
 
@@ -1933,7 +2009,7 @@ async function queryHistory(
 
         recorded_at >= $1
 
-        AND
+      AND
 
         recorded_at <= $2
 
@@ -1951,65 +2027,722 @@ async function queryHistory(
     );
 
 
-  databaseConnected =
-    true;
+  return result.rows;
+
+}
 
 
-  return result.rows.map(
+/*
+==================================================
+FORMAT ADELAIDE DATE
+==================================================
+*/
 
-    row => ({
+function formatAdelaideDateTime(
+  date
+) {
 
-      timestamp:
+  return new Intl.DateTimeFormat(
 
-        new Date(
-          row.recorded_at
-        ).toISOString(),
+    "en-AU",
 
+    {
 
-      in1:
+      timeZone:
+        "Australia/Adelaide",
 
-        Number(
-          row.planks_in
-        ),
+      year:
+        "numeric",
 
+      month:
+        "2-digit",
 
-      in2:
+      day:
+        "2-digit",
 
-        Number(
-          row.planks_out
-        ),
+      hour:
+        "2-digit",
 
+      minute:
+        "2-digit",
 
-      in3:
+      second:
+        "2-digit",
 
-        Number(
-          row.ambient
-        ),
+      hour12:
+        false
 
+    }
 
-      in4:
+  ).format(
+    date
+  );
 
-        Number(
-          row.planks_concrete
-        ),
-
-
-      in5:
-
-        Number(
-          row.planks_tank
-        ),
+}
 
 
-      diff:
+/*
+==================================================
+CSV ESCAPE
+==================================================
+*/
 
-        Number(
-          row.ambient_concrete_diff
-        )
+function csvValue(
+  value
+) {
 
-    })
+  return (
+
+    '"'
+
+    +
+
+    String(
+      value ?? ""
+    )
+      .replace(
+        /"/g,
+        '""'
+      )
+
+    +
+
+    '"'
 
   );
+
+}
+
+
+/*
+==================================================
+BUILD 8-HOUR CSV
+==================================================
+*/
+
+function buildEmailCsv(
+  rows
+) {
+
+  const lines = [
+
+    [
+
+      "Date / Time",
+
+      "Planks In Deg.C",
+
+      "Planks Out Deg.C",
+
+      "Ambient Deg.C",
+
+      "Planks Concrete Deg.C",
+
+      "Planks Tank Deg.C",
+
+      "Ambient - Concrete Differential Deg.C"
+
+    ]
+      .map(
+        csvValue
+      )
+      .join(",")
+
+  ];
+
+
+  for (
+    const row
+    of rows
+  ) {
+
+    lines.push(
+
+      [
+
+        formatAdelaideDateTime(
+
+          new Date(
+            row.recorded_at
+          )
+
+        ),
+
+        row.planks_in,
+
+        row.planks_out,
+
+        row.ambient,
+
+        row.planks_concrete,
+
+        row.planks_tank,
+
+        row.ambient_concrete_diff
+
+      ]
+        .map(
+          csvValue
+        )
+        .join(",")
+
+    );
+
+  }
+
+
+  return lines.join(
+    "\r\n"
+  );
+
+}
+
+
+/*
+==================================================
+8-HOUR REPORT SLOT
+==================================================
+*/
+
+function getCompletedEightHourPeriod() {
+
+  const now =
+    Date.now();
+
+
+  const periodEndMs =
+
+    Math.floor(
+
+      now /
+      EMAIL_REPORT_MS
+
+    )
+
+    *
+
+    EMAIL_REPORT_MS;
+
+
+  const periodStartMs =
+
+    periodEndMs -
+    EMAIL_REPORT_MS;
+
+
+  return {
+
+    from:
+      new Date(
+        periodStartMs
+      ),
+
+    to:
+      new Date(
+        periodEndMs
+      )
+
+  };
+
+}
+
+
+/*
+==================================================
+REPORT KEY
+==================================================
+*/
+
+function makeReportKey(
+  from,
+  to
+) {
+
+  return (
+
+    from.toISOString()
+
+    +
+
+    "__"
+
+    +
+
+    to.toISOString()
+
+  );
+
+}
+
+
+/*
+==================================================
+CHECK IF REPORT ALREADY SENT
+==================================================
+*/
+
+async function reportAlreadySent(
+  reportKey
+) {
+
+  const result =
+
+    await db.query(
+
+      `
+
+      SELECT id
+
+      FROM trend_email_reports
+
+      WHERE report_key = $1
+
+      LIMIT 1
+
+      `,
+
+      [
+        reportKey
+      ]
+
+    );
+
+
+  return (
+    result.rowCount >
+    0
+  );
+
+}
+
+
+/*
+==================================================
+SAVE EMAIL REPORT LOG
+==================================================
+*/
+
+async function saveEmailReportLog(
+  reportKey,
+  from,
+  to,
+  count
+) {
+
+  await db.query(
+
+    `
+
+    INSERT INTO trend_email_reports (
+
+      report_key,
+
+      period_from,
+
+      period_to,
+
+      sent_at,
+
+      recipient,
+
+      row_count
+
+    )
+
+    VALUES (
+
+      $1,
+      $2,
+      $3,
+      NOW(),
+      $4,
+      $5
+
+    )
+
+    ON CONFLICT (report_key)
+    DO NOTHING
+
+    `,
+
+    [
+
+      reportKey,
+
+      from,
+
+      to,
+
+      EMAIL_TO,
+
+      count
+
+    ]
+
+  );
+
+}
+
+
+/*
+==================================================
+SEND 8-HOUR REPORT
+==================================================
+*/
+
+async function sendEightHourReport() {
+
+  if (
+    !emailTransporter
+  ) {
+
+    lastEmailError =
+      "Email is not configured";
+
+
+    return false;
+
+  }
+
+
+  if (
+    !db
+  ) {
+
+    lastEmailError =
+      "Database is not configured";
+
+
+    return false;
+
+  }
+
+
+  const period =
+
+    getCompletedEightHourPeriod();
+
+
+  const reportKey =
+
+    makeReportKey(
+
+      period.from,
+
+      period.to
+
+    );
+
+
+  try {
+
+    if (
+
+      await reportAlreadySent(
+        reportKey
+      )
+
+    ) {
+
+      console.log(
+
+        "8-hour email already sent:",
+
+        reportKey
+
+      );
+
+
+      return true;
+
+    }
+
+
+    const rows =
+
+      await queryHistory(
+
+        period.from,
+
+        period.to
+
+      );
+
+
+    const csv =
+
+      buildEmailCsv(
+        rows
+      );
+
+
+    const fromText =
+
+      formatAdelaideDateTime(
+        period.from
+      );
+
+
+    const toText =
+
+      formatAdelaideDateTime(
+        period.to
+      );
+
+
+    const fileDate =
+
+      period.to
+        .toISOString()
+        .replace(
+          /[:.]/g,
+          "-"
+        );
+
+
+    const subject =
+
+      `Greenair TrendLog - 8 Hour History - ${fromText} to ${toText}`;
+
+
+    const text =
+
+      `BIANCO PRECAST - GREENAIR TRENDLOG
+
+Automatic 8-hour TrendLog report.
+
+Period:
+${fromText}
+to
+${toText}
+
+History records:
+${rows.length}
+
+Logging interval:
+1 minute
+
+The stored TrendLog data is attached as a CSV file.
+
+Greenair Controls
+`;
+
+
+    await emailTransporter.sendMail({
+
+      from:
+        EMAIL_USER,
+
+      to:
+        EMAIL_TO,
+
+      subject,
+
+      text,
+
+      attachments: [
+
+        {
+
+          filename:
+
+            `Greenair_TrendLog_8Hour_${fileDate}.csv`,
+
+          content:
+            csv,
+
+          contentType:
+            "text/csv"
+
+        }
+
+      ]
+
+    });
+
+
+    await saveEmailReportLog(
+
+      reportKey,
+
+      period.from,
+
+      period.to,
+
+      rows.length
+
+    );
+
+
+    emailConnected =
+      true;
+
+
+    lastEmailAt =
+      new Date();
+
+
+    lastEmailError =
+      null;
+
+
+    console.log(
+
+      "8-hour TrendLog email sent to:",
+
+      EMAIL_TO
+
+    );
+
+
+    console.log(
+
+      "Rows emailed:",
+
+      rows.length
+
+    );
+
+
+    return true;
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    emailConnected =
+      false;
+
+
+    lastEmailError =
+      error.message;
+
+
+    console.error(
+
+      "8-hour email failed:",
+
+      error.message
+
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+/*
+==================================================
+NEXT 8-HOUR BOUNDARY
+==================================================
+*/
+
+function getNextEightHourBoundary() {
+
+  const now =
+    Date.now();
+
+
+  const next =
+
+    (
+
+      Math.floor(
+
+        now /
+        EMAIL_REPORT_MS
+
+      )
+
+      +
+
+      1
+
+    )
+
+    *
+
+    EMAIL_REPORT_MS;
+
+
+  return new Date(
+    next
+  );
+
+}
+
+
+/*
+==================================================
+SCHEDULE EMAIL
+==================================================
+*/
+
+function scheduleNextEmail() {
+
+  if (
+    emailTimer
+  ) {
+
+    clearTimeout(
+      emailTimer
+    );
+
+  }
+
+
+  const next =
+
+    getNextEightHourBoundary();
+
+
+  nextEmailAt =
+    next;
+
+
+  const delay =
+
+    Math.max(
+
+      1000,
+
+      next.getTime() -
+      Date.now()
+
+    );
+
+
+  console.log(
+
+    "Next 8-hour email:",
+
+    next.toISOString()
+
+  );
+
+
+  emailTimer =
+
+    setTimeout(
+
+      async () => {
+
+        await sendEightHourReport();
+
+
+        scheduleNextEmail();
+
+      },
+
+      delay
+
+    );
 
 }
 
@@ -2044,9 +2777,7 @@ async function getHistoryRange() {
 
   const result =
 
-    await db.query(
-
-      `
+    await db.query(`
 
       SELECT
 
@@ -2058,13 +2789,7 @@ async function getHistoryRange() {
 
       FROM trend_history
 
-      `
-
-    );
-
-
-  databaseConnected =
-    true;
+    `);
 
 
   const row =
@@ -2494,7 +3219,7 @@ const server =
 
 
       /*
-      PERMANENT HISTORY
+      HISTORY
       */
 
       if (
@@ -2593,39 +3318,66 @@ const server =
           }
 
 
-          if (
-            from >
-            to
-          ) {
-
-            return sendJson(
-
-              response,
-
-              {
-
-                ok:
-                  false,
-
-                error:
-                  "From must be before To"
-
-              },
-
-              400
-
-            );
-
-          }
-
-
-          const samples =
+          const rows =
 
             await queryHistory(
 
               from,
 
               to
+
+            );
+
+
+          const samples =
+
+            rows.map(
+
+              row => ({
+
+                timestamp:
+
+                  new Date(
+                    row.recorded_at
+                  ).toISOString(),
+
+                in1:
+
+                  Number(
+                    row.planks_in
+                  ),
+
+                in2:
+
+                  Number(
+                    row.planks_out
+                  ),
+
+                in3:
+
+                  Number(
+                    row.ambient
+                  ),
+
+                in4:
+
+                  Number(
+                    row.planks_concrete
+                  ),
+
+                in5:
+
+                  Number(
+                    row.planks_tank
+                  ),
+
+                diff:
+
+                  Number(
+                    row.ambient_concrete_diff
+                  )
+
+              })
 
             );
 
@@ -2641,12 +3393,6 @@ const server =
 
               count:
                 samples.length,
-
-              from:
-                from.toISOString(),
-
-              to:
-                to.toISOString(),
 
               samples
 
@@ -2795,7 +3541,43 @@ const server =
 
               null,
 
-            lastArchiveError
+            lastArchiveError,
+
+            emailConfigured,
+
+            emailConnected,
+
+            emailTo:
+              EMAIL_TO,
+
+            emailReportHours:
+              EMAIL_REPORT_HOURS,
+
+            lastEmailAt:
+
+              lastEmailAt
+
+              ?
+
+              lastEmailAt.toISOString()
+
+              :
+
+              null,
+
+            nextEmailAt:
+
+              nextEmailAt
+
+              ?
+
+              nextEmailAt.toISOString()
+
+              :
+
+              null,
+
+            lastEmailError
 
           }
 
@@ -2805,12 +3587,12 @@ const server =
 
 
       /*
-      HEALTH
+      EMAIL STATUS
       */
 
       if (
         url.pathname ===
-        "/api/health"
+        "/api/email/status"
       ) {
 
         return sendJson(
@@ -2822,46 +3604,43 @@ const server =
             ok:
               true,
 
-            service:
-              "greenair-trendlog",
+            configured:
+              emailConfigured,
 
-            bmsOnline:
-              latest.ok,
+            connected:
+              emailConnected,
 
-            databaseConfigured:
-              Boolean(db),
+            recipient:
+              EMAIL_TO,
 
-            databaseConnected,
+            everyHours:
+              EMAIL_REPORT_HOURS,
 
-            liveTrendSamples:
-              liveHistory.length,
+            lastEmailAt:
 
-            permanentIntervalMinutes:
-              HISTORY_INTERVAL_MINUTES,
-
-            lastArchiveAt:
-
-              lastArchiveAt
+              lastEmailAt
 
               ?
 
-              lastArchiveAt.toISOString()
+              lastEmailAt.toISOString()
 
               :
 
               null,
 
-            nextArchiveAt:
+            nextEmailAt:
 
-              nextArchiveAt
+              nextEmailAt
 
               ?
 
-              nextArchiveAt.toISOString()
+              nextEmailAt.toISOString()
 
               :
 
-              null
+              null,
+
+            lastEmailError
 
           }
 
@@ -2871,7 +3650,178 @@ const server =
 
 
       /*
-      LIVE STATE STREAM
+      MANUAL TEST EMAIL
+
+      Opens:
+      /api/email/test
+
+      This sends an immediate CSV
+      so we can verify the setup.
+      */
+
+      if (
+        url.pathname ===
+        "/api/email/test"
+      ) {
+
+        try {
+
+          if (
+            !emailTransporter
+          ) {
+
+            throw new Error(
+              "Email is not configured"
+            );
+
+          }
+
+
+          const to =
+            new Date();
+
+
+          const from =
+
+            new Date(
+
+              to.getTime()
+
+              -
+
+              EMAIL_REPORT_MS
+
+            );
+
+
+          const rows =
+
+            await queryHistory(
+
+              from,
+
+              to
+
+            );
+
+
+          const csv =
+
+            buildEmailCsv(
+              rows
+            );
+
+
+          await emailTransporter.sendMail({
+
+            from:
+              EMAIL_USER,
+
+            to:
+              EMAIL_TO,
+
+            subject:
+              "Greenair TrendLog - Test Email",
+
+            text:
+
+              `Greenair TrendLog test email.
+
+Stored records attached: ${rows.length}
+
+If you received this email, the automatic 8-hour reporting system is configured correctly.
+`,
+
+            attachments: [
+
+              {
+
+                filename:
+                  "Greenair_TrendLog_Test.csv",
+
+                content:
+                  csv,
+
+                contentType:
+                  "text/csv"
+
+              }
+
+            ]
+
+          });
+
+
+          emailConnected =
+            true;
+
+
+          lastEmailError =
+            null;
+
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                true,
+
+              message:
+                "Test email sent",
+
+              recipient:
+                EMAIL_TO,
+
+              rows:
+                rows.length
+
+            }
+
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          emailConnected =
+            false;
+
+
+          lastEmailError =
+            error.message;
+
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                false,
+
+              error:
+                error.message
+
+            },
+
+            500
+
+          );
+
+        }
+
+      }
+
+
+      /*
+      LIVE STREAM
       */
 
       if (
@@ -2967,7 +3917,7 @@ const server =
 
 
       /*
-      STATIC PAGE
+      STATIC FILE
       */
 
       serveStatic(
@@ -2991,16 +3941,11 @@ START SERVER
 
 async function startServer() {
 
-  /*
-  DATABASE
-  */
-
   await initialiseDatabase();
 
 
-  /*
-  HTTP SERVER
-  */
+  await initialiseEmail();
+
 
   server.listen(
 
@@ -3009,7 +3954,6 @@ async function startServer() {
     "0.0.0.0",
 
     () => {
-
 
       console.log(
         ""
@@ -3041,11 +3985,6 @@ async function startServer() {
 
 
       console.log(
-        "Function: FC03 / READ ONLY"
-      );
-
-
-      console.log(
         "Live BMS poll: 3 seconds"
       );
 
@@ -3056,15 +3995,20 @@ async function startServer() {
 
 
       console.log(
+        "Permanent database archive: 1 minute"
+      );
 
-        `Permanent archive: ${HISTORY_INTERVAL_MINUTES} minute`
+
+      console.log(
+
+        `8-hour email recipient: ${EMAIL_TO}`
 
       );
 
 
       console.log(
 
-        `Database configured: ${Boolean(db)}`
+        `Email configured: ${emailConfigured}`
 
       );
 
@@ -3079,7 +4023,7 @@ async function startServer() {
 
 
   /*
-  FIRST BMS POLL
+  INITIAL BMS POLL
   */
 
   await pollBms();
@@ -3095,7 +4039,7 @@ async function startServer() {
 
 
   /*
-  FIRST LIVE SAMPLE
+  LIVE TREND
   */
 
   setTimeout(
@@ -3107,10 +4051,6 @@ async function startServer() {
   );
 
 
-  /*
-  LIVE 15 SECOND LOGGER
-  */
-
   setInterval(
 
     saveLiveSample,
@@ -3121,18 +4061,17 @@ async function startServer() {
 
 
   /*
-  PERMANENT ONE-MINUTE LOGGER
-
-  :00
-  :01
-  :02
-  :03
-  ...
-  :58
-  :59
+  1-MINUTE PERMANENT HISTORY
   */
 
   scheduleNextArchive();
+
+
+  /*
+  8-HOUR EMAIL REPORT
+  */
+
+  scheduleNextEmail();
 
 }
 
@@ -3168,7 +4107,7 @@ startServer()
 
 /*
 ==================================================
-GRACEFUL SHUTDOWN
+SHUTDOWN
 ==================================================
 */
 
@@ -3188,6 +4127,32 @@ async function shutdown() {
     );
 
   }
+
+
+  if (
+    emailTimer
+  ) {
+
+    clearTimeout(
+      emailTimer
+    );
+
+  }
+
+
+  try {
+
+    if (
+      emailTransporter
+    ) {
+
+      emailTransporter.close();
+
+    }
+
+  }
+
+  catch {}
 
 
   try {
