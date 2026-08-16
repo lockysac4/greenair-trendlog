@@ -17,7 +17,7 @@ LIVE WEB TREND:
 Every 15 seconds
 
 PERMANENT POSTGRES HISTORY:
-Every 5 minutes
+Every 1 minute
 
 Permanent logging is SERVER SIDE.
 The webpage does NOT need to be open.
@@ -112,11 +112,11 @@ const LIVE_SAMPLE_MS =
 
 
 /*
-Permanent history every 5 minutes.
+Permanent history every 1 minute.
 */
 
 const HISTORY_INTERVAL_MINUTES =
-  5;
+  1;
 
 
 const HISTORY_SAMPLE_MS =
@@ -378,10 +378,8 @@ async function initialiseDatabase() {
 
 
     /*
-    Recover last archive time from PostgreSQL.
-
-    This fixes the old issue where lastArchiveAt
-    returned to null after every Render redeploy.
+    Recover most recent stored record
+    after Render restart/redeploy.
     */
 
     const previous =
@@ -514,19 +512,11 @@ function buildReadRequest(
     Buffer.alloc(12);
 
 
-  /*
-  Transaction ID
-  */
-
   request.writeUInt16BE(
     transaction,
     0
   );
 
-
-  /*
-  Protocol ID
-  */
 
   request.writeUInt16BE(
     0,
@@ -534,45 +524,25 @@ function buildReadRequest(
   );
 
 
-  /*
-  Remaining packet length
-  */
-
   request.writeUInt16BE(
     6,
     4
   );
 
 
-  /*
-  Unit ID
-  */
-
   request[6] =
     UNIT_ID;
 
 
-  /*
-  Function code 03
-  */
-
   request[7] =
     3;
 
-
-  /*
-  Starting register
-  */
 
   request.writeUInt16BE(
     register,
     8
   );
 
-
-  /*
-  Quantity
-  */
 
   request.writeUInt16BE(
     1,
@@ -713,10 +683,6 @@ function readRegister(
       }
 
 
-      /*
-      TCP connect timeout
-      */
-
       connectTimer =
 
         setTimeout(
@@ -744,10 +710,6 @@ function readRegister(
         true
       );
 
-
-      /*
-      CONNECTED
-      */
 
       socket.once(
 
@@ -800,10 +762,6 @@ function readRegister(
 
       );
 
-
-      /*
-      RECEIVE MODBUS RESPONSE
-      */
 
       socket.on(
 
@@ -972,10 +930,6 @@ function readRegister(
             pdu[0];
 
 
-          /*
-          Modbus exception
-          */
-
           if (
             (
               functionCode &
@@ -1139,7 +1093,7 @@ function signed16(
 
 /*
 ==================================================
-SCALE MODBUS VALUES
+SCALE MODBUS VALUE
 ==================================================
 */
 
@@ -1483,11 +1437,11 @@ function saveLiveSample() {
 
 /*
 ==================================================
-GET CURRENT 5 MINUTE SLOT
+CURRENT ONE-MINUTE SLOT
 ==================================================
 */
 
-function getCurrentFiveMinuteSlot() {
+function getCurrentMinuteSlot() {
 
   const now =
     new Date();
@@ -1505,25 +1459,6 @@ function getCurrentFiveMinuteSlot() {
   );
 
 
-  const minute =
-
-    Math.floor(
-
-      slot.getMinutes() /
-      HISTORY_INTERVAL_MINUTES
-
-    )
-
-    *
-
-    HISTORY_INTERVAL_MINUTES;
-
-
-  slot.setMinutes(
-    minute
-  );
-
-
   return slot;
 
 }
@@ -1531,11 +1466,11 @@ function getCurrentFiveMinuteSlot() {
 
 /*
 ==================================================
-GET NEXT 5 MINUTE BOUNDARY
+NEXT ONE-MINUTE BOUNDARY
 ==================================================
 */
 
-function getNextFiveMinuteBoundary() {
+function getNextMinuteBoundary() {
 
   const now =
     new Date();
@@ -1553,56 +1488,12 @@ function getNextFiveMinuteBoundary() {
   );
 
 
-  const currentMinute =
-    now.getMinutes();
+  next.setMinutes(
 
+    next.getMinutes() +
+    1
 
-  const nextMinute =
-
-    (
-      Math.floor(
-
-        currentMinute /
-        HISTORY_INTERVAL_MINUTES
-
-      )
-
-      +
-
-      1
-    )
-
-    *
-
-    HISTORY_INTERVAL_MINUTES;
-
-
-  if (
-    nextMinute >=
-    60
-  ) {
-
-    next.setHours(
-
-      next.getHours() +
-      1
-
-    );
-
-
-    next.setMinutes(
-      0
-    );
-
-  }
-
-  else {
-
-    next.setMinutes(
-      nextMinute
-    );
-
-  }
+  );
 
 
   return next;
@@ -1647,7 +1538,7 @@ async function archiveTrendSample(
 
     console.error(
 
-      "5-minute archive skipped: BMS offline."
+      "1-minute archive skipped: BMS offline."
 
     );
 
@@ -1722,7 +1613,7 @@ async function archiveTrendSample(
 
     console.error(
 
-      "5-minute archive skipped: BMS values unavailable."
+      "1-minute archive skipped: BMS values unavailable."
 
     );
 
@@ -1730,18 +1621,6 @@ async function archiveTrendSample(
     return false;
 
   }
-
-
-  /*
-  Archive timestamp is the exact
-  5 minute boundary.
-
-  Example:
-  20:00
-  20:05
-  20:10
-  20:15
-  */
 
 
   const archiveTime =
@@ -1754,16 +1633,14 @@ async function archiveTrendSample(
 
     :
 
-    getCurrentFiveMinuteSlot();
+    getCurrentMinuteSlot();
 
 
   try {
 
     /*
-    Prevent duplicate records for the exact same
-    5-minute timestamp.
-
-    Useful if Render restarts close to a boundary.
+    Avoid duplicate rows if Render
+    restarts around the same minute.
     */
 
     const existing =
@@ -1808,7 +1685,7 @@ async function archiveTrendSample(
 
       console.log(
 
-        "5-minute archive already exists:",
+        "1-minute archive already exists:",
 
         archiveTime.toISOString()
 
@@ -1891,7 +1768,7 @@ async function archiveTrendSample(
 
     console.log(
 
-      "5-minute trend history saved:",
+      "1-minute trend history saved:",
 
       archiveTime.toISOString()
 
@@ -1933,7 +1810,7 @@ async function archiveTrendSample(
 
 /*
 ==================================================
-SCHEDULE NEXT 5 MINUTE ARCHIVE
+SCHEDULE NEXT ONE-MINUTE ARCHIVE
 ==================================================
 */
 
@@ -1951,7 +1828,7 @@ function scheduleNextArchive() {
 
 
   const next =
-    getNextFiveMinuteBoundary();
+    getNextMinuteBoundary();
 
 
   nextArchiveAt =
@@ -1985,20 +1862,14 @@ function scheduleNextArchive() {
 
       async () => {
 
-        /*
-        Use the scheduled boundary,
-        not Date.now(), as the timestamp.
-        */
-
         await archiveTrendSample(
           next
         );
 
 
         /*
-        Calculate the next boundary again.
-
-        Recursive scheduling avoids interval drift.
+        Calculate next minute again
+        to avoid timer drift.
         */
 
         scheduleNextArchive();
@@ -2589,7 +2460,7 @@ const server =
 
 
       /*
-      LIVE 15 SECOND TREND
+      LIVE TREND
       */
 
       if (
@@ -2623,7 +2494,7 @@ const server =
 
 
       /*
-      PERMANENT POSTGRES HISTORY
+      PERMANENT HISTORY
       */
 
       if (
@@ -3186,7 +3057,7 @@ async function startServer() {
 
       console.log(
 
-        `Permanent archive: ${HISTORY_INTERVAL_MINUTES} minutes`
+        `Permanent archive: ${HISTORY_INTERVAL_MINUTES} minute`
 
       );
 
@@ -3208,7 +3079,7 @@ async function startServer() {
 
 
   /*
-  START MODBUS POLL
+  FIRST BMS POLL
   */
 
   await pollBms();
@@ -3250,21 +3121,15 @@ async function startServer() {
 
 
   /*
-  5 MINUTE PERMANENT LOGGER
+  PERMANENT ONE-MINUTE LOGGER
 
-  Records:
   :00
-  :05
-  :10
-  :15
-  :20
-  :25
-  :30
-  :35
-  :40
-  :45
-  :50
-  :55
+  :01
+  :02
+  :03
+  ...
+  :58
+  :59
   */
 
   scheduleNextArchive();
