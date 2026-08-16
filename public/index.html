@@ -77,7 +77,6 @@ HEADER
 .mode-badge {
   padding: 4px 9px;
   border-radius: 12px;
-
   font-size: 10px;
   font-weight: 900;
 }
@@ -133,7 +132,6 @@ TOOLBAR
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-
   gap: 6px;
 
   padding: 8px 10px;
@@ -150,7 +148,6 @@ TOOLBAR
 
 .toolbar select,
 .toolbar button {
-
   height: 32px;
 
   border: 1px solid #c7c7c7;
@@ -183,9 +180,7 @@ TOOLBAR
 
 .export-button {
   margin-left: auto;
-
   background: #263238 !important;
-
   color: white;
 }
 
@@ -198,7 +193,6 @@ CUSTOM HISTORY
   display: none;
   flex-wrap: wrap;
   align-items: center;
-
   gap: 8px;
 
   padding: 9px 10px;
@@ -227,7 +221,6 @@ CUSTOM HISTORY
 }
 
 .custom-history button {
-
   height: 32px;
 
   border: 0;
@@ -256,9 +249,7 @@ RANGE BAR
 ================================================== */
 
 .range-bar {
-
   display: flex;
-
   justify-content: space-between;
 
   padding: 5px 12px;
@@ -268,7 +259,6 @@ RANGE BAR
   border-bottom: 1px solid #ddd;
 
   font-size: 11px;
-
   color: #666;
 }
 
@@ -282,18 +272,11 @@ MAIN LAYOUT
 ================================================== */
 
 .main-layout {
-
   display: grid;
-
-  grid-template-columns:
-    290px 1fr;
-
+  grid-template-columns: 290px 1fr;
   gap: 8px;
-
   padding: 8px;
-
   height: calc(100vh - 137px);
-
   min-height: 620px;
 }
 
@@ -303,11 +286,9 @@ SIDEBAR
 ================================================== */
 
 .sidebar {
-
   background: white;
 
   border: 1px solid #d8d8d8;
-
   border-radius: 4px;
 
   padding: 8px;
@@ -316,23 +297,16 @@ SIDEBAR
 }
 
 .side-controls {
-
   display: grid;
-
-  grid-template-columns:
-    1fr 1fr;
-
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
-
   margin-bottom: 8px;
 }
 
 .side-controls button {
-
   height: 31px;
 
   border: 1px solid #ccc;
-
   border-radius: 4px;
 
   background: white;
@@ -343,22 +317,15 @@ SIDEBAR
 }
 
 .point-row {
-
   display: grid;
-
-  grid-template-columns:
-    28px 1fr auto;
-
+  grid-template-columns: 28px 1fr auto;
   align-items: center;
-
   gap: 7px;
 
   padding: 10px 8px;
-
   margin-bottom: 6px;
 
   border: 1px solid #e1e1e1;
-
   border-radius: 4px;
 
   background: #fafafa;
@@ -381,11 +348,8 @@ SIDEBAR
 }
 
 .point-state {
-
   font-size: 9px;
-
   font-weight: 900;
-
   color: #2e7d32;
 }
 
@@ -394,22 +358,18 @@ SIDEBAR
 }
 
 .point-value {
-
   grid-column: 2 / 4;
 
   font-size: 18px;
-
   font-weight: 900;
 
   color: #1b5e20;
 }
 
 .color-bar {
-
   grid-column: 1;
 
   width: 18px;
-
   height: 8px;
 
   border-radius: 5px;
@@ -421,13 +381,11 @@ GRAPH
 ================================================== */
 
 .graph-panel {
-
   position: relative;
 
   background: white;
 
   border: 1px solid #d8d8d8;
-
   border-radius: 4px;
 
   padding: 10px;
@@ -436,29 +394,22 @@ GRAPH
 }
 
 .graph-container {
-
   position: relative;
-
   width: 100%;
-
   height: 100%;
 }
 
 .graph-info {
-
   position: absolute;
 
   right: 18px;
-
   bottom: 12px;
 
   padding: 4px 7px;
 
-  background:
-    rgba(255,255,255,.9);
+  background: rgba(255,255,255,.9);
 
   font-size: 11px;
-
   color: #666;
 }
 
@@ -470,12 +421,8 @@ MOBILE
 @media (max-width: 850px) {
 
   .main-layout {
-
-    grid-template-columns:
-      1fr;
-
+    grid-template-columns: 1fr;
     height: auto;
-
     min-height: 0;
   }
 
@@ -486,6 +433,7 @@ MOBILE
   .export-button {
     margin-left: 0;
   }
+
 }
 
 </style>
@@ -548,7 +496,6 @@ MOBILE
 <label>
 Time Base:
 </label>
-
 
 <select id="timeBase">
 
@@ -614,7 +561,7 @@ Last 5 min
   id="printPngButton"
   class="png-button"
 >
-Print Full A3
+Print A3 Landscape
 </button>
 
 <button
@@ -675,7 +622,6 @@ Mode:
 Live
 </strong>
 </span>
-
 
 <span>
 Display Range:
@@ -775,8 +721,7 @@ const POINTS = [
 {
   id: "diff",
   number: 6,
-  name:
-    "Ambient - Concrete Differential",
+  name: "Ambient - Concrete Differential",
   colour: "black"
 }
 
@@ -2101,6 +2046,130 @@ drawTrend();
 
 
 /* ==================================================
+AUTO Y RANGE FOR EXPORT
+================================================== */
+
+function getExportYRange(
+samples
+) {
+
+const values =
+[];
+
+
+POINTS.forEach(
+
+point => {
+
+if (
+!visiblePoints[
+point.id
+]
+) {
+
+return;
+
+}
+
+
+samples.forEach(
+
+sample => {
+
+const value =
+
+Number(
+sample[
+point.id
+]
+);
+
+
+if (
+Number.isFinite(
+value
+)
+) {
+
+values.push(
+value
+);
+
+}
+
+});
+
+});
+
+
+if (
+!values.length
+) {
+
+return {
+min: 0,
+max: 20
+};
+
+}
+
+
+let min =
+Math.min(
+...values
+);
+
+
+let max =
+Math.max(
+...values
+);
+
+
+let span =
+max - min;
+
+
+if (
+span < 1
+) {
+
+span =
+1;
+
+}
+
+
+const padding =
+span * 0.12;
+
+
+min -=
+padding;
+
+
+max +=
+padding;
+
+
+return {
+
+min:
+Math.floor(
+min * 2
+) / 2,
+
+max:
+Math.ceil(
+max * 2
+) / 2
+
+};
+
+}
+
+
+/* ==================================================
 PNG NAME
 ================================================== */
 
@@ -2173,23 +2242,24 @@ now.getMinutes()
 
 
 /* ==================================================
-FULL PAGE A3 LANDSCAPE EXPORT
+DEDICATED A3 EXPORT
 ================================================== */
 
-async function createFullA3Png() {
+async function createA3Export() {
+
+const samples =
+visibleSamples();
 
 
-/*
-WORKING SIZE
+if (
+!samples.length
+) {
 
-1754 × 1240
+throw new Error(
+"No trend data available."
+);
 
-SCALE 2
-
-FINAL PNG
-
-3508 × 2480
-*/
+}
 
 
 const PAGE_WIDTH =
@@ -2230,90 +2300,100 @@ PAGE_HEIGHT +
 
 
 page.style.background =
-"#f7f7f7";
-
-
-page.style.padding =
-"6px";
+"#ffffff";
 
 
 page.style.fontFamily =
 "Arial, Helvetica, sans-serif";
 
 
+page.style.padding =
+"0";
+
+
 page.style.overflow =
 "hidden";
 
 
-/* TOP LINE */
+/* HEADER */
 
-const top =
+const header =
 
 document.createElement(
 "div"
 );
 
 
-top.style.height =
-"34px";
+header.style.height =
+"42px";
 
 
-top.style.display =
+header.style.display =
 "grid";
 
 
-top.style.gridTemplateColumns =
+header.style.gridTemplateColumns =
 "1fr 1fr 1fr";
 
 
-top.style.alignItems =
+header.style.alignItems =
 "center";
 
 
-top.style.fontSize =
+header.style.padding =
+"0 10px";
+
+
+header.style.borderBottom =
+"1px solid #d5d5d5";
+
+
+header.style.fontSize =
 "13px";
 
 
-const date =
+const dateBox =
+
 document.createElement(
 "div"
 );
 
 
-date.textContent =
+dateBox.textContent =
 new Date()
 .toLocaleString();
 
 
-const title =
+const titleBox =
+
 document.createElement(
 "div"
 );
 
 
-title.textContent =
+titleBox.textContent =
 "Trend Log";
 
 
-title.style.textAlign =
+titleBox.style.textAlign =
 "center";
 
 
-title.style.fontWeight =
+titleBox.style.fontWeight =
 "700";
 
 
-top.appendChild(
-date
+header.appendChild(
+dateBox
 );
 
 
-top.appendChild(
-title
+header.appendChild(
+titleBox
 );
 
 
-top.appendChild(
+header.appendChild(
 document.createElement(
 "div"
 )
@@ -2321,11 +2401,11 @@ document.createElement(
 
 
 page.appendChild(
-top
+header
 );
 
 
-/* TOOLBAR */
+/* COMPACT TOOLBAR */
 
 const bar =
 
@@ -2351,38 +2431,38 @@ bar.style.gap =
 
 
 bar.style.padding =
-"5px";
+"5px 8px";
 
 
 bar.style.background =
-"#f5f5f5";
+"#f6f6f6";
 
 
-bar.style.border =
-"1px solid #ccc";
+bar.style.borderBottom =
+"1px solid #d5d5d5";
 
 
 bar.style.fontSize =
 "12px";
 
 
-const label =
+const timeLabel =
 
 document.createElement(
 "strong"
 );
 
 
-label.textContent =
+timeLabel.textContent =
 "Time Base:";
 
 
 bar.appendChild(
-label
+timeLabel
 );
 
 
-function box(
+function addToolbarItem(
 text
 ) {
 
@@ -2398,11 +2478,11 @@ text;
 
 
 item.style.background =
-"white";
+"#ffffff";
 
 
 item.style.border =
-"1px solid #ccc";
+"1px solid #cfcfcf";
 
 
 item.style.padding =
@@ -2420,7 +2500,7 @@ item
 }
 
 
-box(
+addToolbarItem(
 
 timeBase.options[
 timeBase.selectedIndex
@@ -2429,48 +2509,41 @@ timeBase.selectedIndex
 );
 
 
-box(
+addToolbarItem(
 "Zoom In"
 );
 
 
-box(
+addToolbarItem(
 "Zoom Out"
 );
 
 
-box(
+addToolbarItem(
 "Reset"
 );
 
 
-box(
+addToolbarItem(
 
 currentMode ===
 "history"
-
 ?
-
 "History"
-
 :
-
-"Live - "
-
-+
-
+"Live - " +
 new Date()
 .toLocaleTimeString()
 
 );
 
 
-box(
+addToolbarItem(
 "Last 5 min"
 );
 
 
-box(
+addToolbarItem(
 "Export"
 );
 
@@ -2480,7 +2553,7 @@ bar
 );
 
 
-/* MAIN AREA */
+/* MAIN */
 
 const main =
 
@@ -2494,7 +2567,7 @@ main.style.display =
 
 
 main.style.gridTemplateColumns =
-"285px 1fr";
+"270px 1fr";
 
 
 main.style.gap =
@@ -2502,14 +2575,14 @@ main.style.gap =
 
 
 main.style.height =
-"1146px";
+"1150px";
 
 
-main.style.marginTop =
+main.style.padding =
 "6px";
 
 
-/* LEFT */
+/* SIDEBAR */
 
 const side =
 
@@ -2519,19 +2592,15 @@ document.createElement(
 
 
 side.style.background =
-"white";
+"#ffffff";
 
 
 side.style.border =
-"1px solid #ccc";
+"1px solid #cccccc";
 
 
 side.style.padding =
 "8px";
-
-
-side.style.overflow =
-"hidden";
 
 
 /* FILTERS */
@@ -2568,39 +2637,39 @@ filters.style.marginBottom =
 
 text => {
 
-const b =
+const item =
 
 document.createElement(
 "div"
 );
 
 
-b.textContent =
+item.textContent =
 text;
 
 
-b.style.padding =
-"8px 3px";
-
-
-b.style.textAlign =
+item.style.textAlign =
 "center";
 
 
-b.style.border =
-"1px solid #ccc";
+item.style.padding =
+"7px 2px";
 
 
-b.style.background =
+item.style.border =
+"1px solid #cccccc";
+
+
+item.style.background =
 "#fafafa";
 
 
-b.style.fontSize =
+item.style.fontSize =
 "11px";
 
 
 filters.appendChild(
-b
+item
 );
 
 }
@@ -2632,7 +2701,7 @@ row.style.display =
 
 
 row.style.gridTemplateColumns =
-"28px 1fr auto";
+"22px 1fr auto";
 
 
 row.style.alignItems =
@@ -2640,19 +2709,19 @@ row.style.alignItems =
 
 
 row.style.gap =
-"7px";
-
-
-row.style.padding =
-"11px 7px";
-
-
-row.style.marginBottom =
 "6px";
 
 
+row.style.padding =
+"9px 6px";
+
+
+row.style.marginBottom =
+"5px";
+
+
 row.style.border =
-"1px solid #ddd";
+"1px solid #dddddd";
 
 
 row.style.background =
@@ -2686,11 +2755,27 @@ num.style.color =
 "#888";
 
 
-const middle =
+num.style.fontSize =
+"11px";
+
+
+const mid =
 
 document.createElement(
 "div"
 );
+
+
+mid.style.display =
+"flex";
+
+
+mid.style.alignItems =
+"center";
+
+
+mid.style.gap =
+"7px";
 
 
 const colour =
@@ -2700,12 +2785,8 @@ document.createElement(
 );
 
 
-colour.style.display =
-"inline-block";
-
-
 colour.style.width =
-"18px";
+"17px";
 
 
 colour.style.height =
@@ -2713,11 +2794,7 @@ colour.style.height =
 
 
 colour.style.borderRadius =
-"10px";
-
-
-colour.style.marginRight =
-"7px";
+"8px";
 
 
 colour.style.background =
@@ -2739,12 +2816,12 @@ name.style.fontSize =
 "12px";
 
 
-middle.appendChild(
+mid.appendChild(
 colour
 );
 
 
-middle.appendChild(
+mid.appendChild(
 name
 );
 
@@ -2774,7 +2851,7 @@ num
 
 
 row.appendChild(
-middle
+mid
 );
 
 
@@ -2792,7 +2869,7 @@ row
 );
 
 
-/* GRAPH */
+/* GRAPH PANEL */
 
 const graphPanel =
 
@@ -2802,20 +2879,18 @@ document.createElement(
 
 
 graphPanel.style.background =
-"white";
+"#ffffff";
 
 
 graphPanel.style.border =
-"1px solid #bbb";
+"1px solid #bbbbbb";
 
 
 graphPanel.style.padding =
 "6px";
 
 
-graphPanel.style.overflow =
-"hidden";
-
+/* GRAPH CANVAS */
 
 const exportCanvas =
 
@@ -2829,7 +2904,7 @@ exportCanvas.width =
 
 
 exportCanvas.height =
-1130;
+1135;
 
 
 exportCanvas.style.width =
@@ -2865,11 +2940,15 @@ page
 );
 
 
-/* CREATE A PROPER LARGE CHART */
+/* AUTO SCALE */
 
-const samples =
-visibleSamples();
+const yRange =
+getExportYRange(
+samples
+);
 
+
+/* EXPORT CHART */
 
 const exportChart =
 
@@ -2938,7 +3017,7 @@ pointRadius:
 
 
 tension:
-0.05,
+0.03,
 
 
 hidden:
@@ -2977,19 +3056,40 @@ display: false
 },
 
 
+layout: {
+
+padding: {
+
+top:
+12,
+
+right:
+18,
+
+bottom:
+12,
+
+left:
+8
+
+}
+
+},
+
+
 scales: {
 
 x: {
 
 grid: {
-color: "#d6d6d6"
+color: "#d5d5d5"
 },
 
 
 ticks: {
 
 maxTicksLimit:
-8,
+7,
 
 
 maxRotation:
@@ -3007,15 +3107,23 @@ size: 12
 
 y: {
 
+min:
+yRange.min,
+
+
+max:
+yRange.max,
+
+
 grid: {
-color: "#d6d6d6"
+color: "#d5d5d5"
 },
 
 
 ticks: {
 
 font: {
-size: 13
+size: 12
 }
 
 },
@@ -3048,22 +3156,22 @@ size: 14
 );
 
 
-/* WAIT FOR CHART */
+/* WAIT */
 
 await new Promise(
 
 resolve =>
 setTimeout(
 resolve,
-150
+160
 )
 
 );
 
 
-/* CAPTURE A3 */
+/* CAPTURE */
 
-const result =
+const output =
 
 await html2canvas(
 
@@ -3105,13 +3213,13 @@ exportChart.destroy();
 page.remove();
 
 
-return result;
+return output;
 
 }
 
 
 /* ==================================================
-PRINT FULL A3
+PRINT A3
 ================================================== */
 
 printPngButton.addEventListener(
@@ -3122,16 +3230,14 @@ async () => {
 
 try {
 
-
 const output =
 
-await createFullA3Png();
+await createA3Export();
 
 
 output.toBlob(
 
 blob => {
-
 
 if (!blob) {
 
@@ -3199,7 +3305,6 @@ url
 
 );
 
-
 }
 
 catch (
@@ -3224,7 +3329,7 @@ error.message
 
 
 /* ==================================================
-CSV
+CSV EXPORT
 ================================================== */
 
 function buildCsv(
@@ -3277,7 +3382,6 @@ of samples
 ) {
 
 const date =
-
 new Date(
 sample.timestamp
 );
@@ -3395,13 +3499,9 @@ link.download =
 
 currentMode ===
 "history"
-
 ?
-
 "Greenair_History.csv"
-
 :
-
 "Greenair_TrendLog.csv";
 
 
@@ -3551,5 +3651,4 @@ loadLiveTrend,
 </script>
 
 </body>
-
 </html>
