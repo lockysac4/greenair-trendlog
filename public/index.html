@@ -624,7 +624,6 @@ MOBILE
 
 <div class="toolbar">
 
-
 <label>
 Time Base:
 </label>
@@ -812,10 +811,7 @@ Hide All
 </aside>
 
 
-<section
-  id="graphPanel"
-  class="graph-panel"
->
+<section class="graph-panel">
 
 <div class="graph-container">
 
@@ -2367,7 +2363,8 @@ new Date();
 
 const pad =
 value =>
-String(value).padStart(
+String(value)
+.padStart(
 2,
 "0"
 );
@@ -2434,15 +2431,39 @@ now.getSeconds()
 
 /*
 ==================================================
-PRINT / SAVE GRAPH TO PNG
+ACTIVE POINTS FOR PNG
 ==================================================
 */
 
-printPngButton.addEventListener(
+function getActivePoints() {
 
-"click",
+return POINTS.filter(
 
-() => {
+point =>
+
+visiblePoints[
+point.id
+]
+
+);
+
+}
+
+
+/*
+==================================================
+CREATE REPORT PNG
+==================================================
+*/
+
+function createReportPng() {
+
+return new Promise(
+
+(
+resolve,
+reject
+) => {
 
 
 chart.update(
@@ -2450,20 +2471,542 @@ chart.update(
 );
 
 
-canvas.toBlob(
+const activePoints =
+getActivePoints();
+
+
+const samples =
+visibleSamples();
+
+
+if (!samples.length) {
+
+reject(
+
+new Error(
+"No trend data available."
+)
+
+);
+
+return;
+
+}
+
+
+if (!activePoints.length) {
+
+reject(
+
+new Error(
+"No trend points are selected."
+)
+
+);
+
+return;
+
+}
+
+
+/*
+REPORT SIZE
+*/
+
+const graphWidth =
+Math.max(
+1200,
+canvas.width
+);
+
+
+const graphHeight =
+Math.max(
+600,
+canvas.height
+);
+
+
+const headerHeight =
+210;
+
+
+const padding =
+35;
+
+
+const reportCanvas =
+
+document.createElement(
+"canvas"
+);
+
+
+reportCanvas.width =
+graphWidth;
+
+
+reportCanvas.height =
+headerHeight
+
++
+
+graphHeight
+
++
+
+padding;
+
+
+const ctx =
+
+reportCanvas.getContext(
+"2d"
+);
+
+
+/*
+WHITE BACKGROUND
+*/
+
+ctx.fillStyle =
+"#ffffff";
+
+
+ctx.fillRect(
+
+0,
+0,
+
+reportCanvas.width,
+reportCanvas.height
+
+);
+
+
+/*
+BIANCO PRECAST
+*/
+
+ctx.fillStyle =
+"#f57c00";
+
+
+ctx.font =
+"bold 30px Arial";
+
+
+ctx.fillText(
+
+"BIANCO PRECAST",
+
+padding,
+
+45
+
+);
+
+
+/*
+GREENAIR TITLE
+*/
+
+ctx.fillStyle =
+"#1b5e20";
+
+
+ctx.font =
+"bold 23px Arial";
+
+
+ctx.fillText(
+
+"GREENAIR TRENDLOG",
+
+padding,
+
+78
+
+);
+
+
+/*
+REPORT TITLE
+*/
+
+ctx.fillStyle =
+"#222222";
+
+
+ctx.font =
+"bold 17px Arial";
+
+
+ctx.fillText(
+
+"Trend Report",
+
+padding,
+
+112
+
+);
+
+
+/*
+MODE
+*/
+
+ctx.font =
+"14px Arial";
+
+
+ctx.fillStyle =
+"#444444";
+
+
+ctx.fillText(
+
+"Mode: "
+
++
+
+(
+currentMode === "history"
+?
+"Historical"
+:
+"Live"
+),
+
+padding,
+
+140
+
+);
+
+
+/*
+DISPLAY RANGE
+*/
+
+const first =
+
+new Date(
+
+samples[0].timestamp
+
+);
+
+
+const last =
+
+new Date(
+
+samples[
+samples.length - 1
+].timestamp
+
+);
+
+
+ctx.fillText(
+
+"Display Range: "
+
++
+
+first.toLocaleString()
+
++
+
+"  →  "
+
++
+
+last.toLocaleString(),
+
+padding,
+
+164
+
+);
+
+
+/*
+GENERATED DATE
+*/
+
+ctx.fillText(
+
+"Generated: "
+
++
+
+new Date()
+.toLocaleString(),
+
+padding,
+
+188
+
+);
+
+
+/*
+ACTIVE TREND LEGEND
+*/
+
+let legendX =
+520;
+
+
+let legendY =
+42;
+
+
+ctx.font =
+"bold 13px Arial";
+
+
+ctx.fillStyle =
+"#333333";
+
+
+ctx.fillText(
+
+"Active Trends",
+
+legendX,
+
+legendY
+
+);
+
+
+legendY +=
+24;
+
+
+ctx.font =
+"13px Arial";
+
+
+for (
+const point
+of activePoints
+) {
+
+
+ctx.fillStyle =
+point.colour;
+
+
+ctx.fillRect(
+
+legendX,
+
+legendY - 10,
+
+18,
+
+5
+
+);
+
+
+ctx.fillStyle =
+"#222222";
+
+
+ctx.fillText(
+
+point.name,
+
+legendX + 28,
+
+legendY
+
+);
+
+
+legendY +=
+22;
+
+
+if (
+legendY > 190
+) {
+
+legendX +=
+300;
+
+legendY =
+66;
+
+}
+
+}
+
+
+/*
+HEADER SEPARATOR
+*/
+
+ctx.strokeStyle =
+"#cccccc";
+
+
+ctx.beginPath();
+
+
+ctx.moveTo(
+
+padding,
+
+headerHeight - 10
+
+);
+
+
+ctx.lineTo(
+
+reportCanvas.width -
+padding,
+
+headerHeight - 10
+
+);
+
+
+ctx.stroke();
+
+
+/*
+GRAPH WHITE BACKGROUND
+*/
+
+ctx.fillStyle =
+"#ffffff";
+
+
+ctx.fillRect(
+
+0,
+
+headerHeight,
+
+graphWidth,
+
+graphHeight
+
+);
+
+
+/*
+COPY CHART
+*/
+
+ctx.drawImage(
+
+canvas,
+
+0,
+0,
+canvas.width,
+canvas.height,
+
+0,
+headerHeight,
+
+graphWidth,
+graphHeight
+
+);
+
+
+/*
+BORDER
+*/
+
+ctx.strokeStyle =
+"#cccccc";
+
+
+ctx.strokeRect(
+
+1,
+1,
+
+reportCanvas.width - 2,
+
+reportCanvas.height - 2
+
+);
+
+
+/*
+CREATE PNG
+*/
+
+reportCanvas.toBlob(
 
 blob => {
 
 
 if (!blob) {
 
-alert(
+reject(
+
+new Error(
 "Unable to create PNG image."
+)
+
 );
 
 return;
 
 }
+
+
+resolve(
+blob
+);
+
+},
+
+"image/png",
+
+1.0
+
+);
+
+}
+
+);
+
+}
+
+
+/*
+==================================================
+PRINT PNG
+==================================================
+*/
+
+printPngButton.addEventListener(
+
+"click",
+
+async () => {
+
+
+try {
+
+
+const blob =
+
+await createReportPng();
 
 
 const url =
@@ -2513,13 +3056,18 @@ url
 
 );
 
-},
 
-"image/png",
+}
 
-1.0
+catch (
+error
+) {
 
+alert(
+error.message
 );
+
+}
 
 }
 
