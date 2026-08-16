@@ -196,6 +196,8 @@ TOOLBAR
   background: white;
 
   padding: 0 10px;
+
+  font-size: 12px;
 }
 
 .toolbar button {
@@ -208,6 +210,14 @@ TOOLBAR
 
 .live-button {
   color: #2e7d32;
+}
+
+.png-button {
+  background: #6a1b9a !important;
+
+  color: white;
+
+  border-color: #6a1b9a !important;
 }
 
 .export-button {
@@ -686,6 +696,14 @@ Last 5 min
 
 
 <button
+  id="printPngButton"
+  class="png-button"
+>
+Print PNG
+</button>
+
+
+<button
   id="exportButton"
   class="export-button"
 >
@@ -794,7 +812,10 @@ Hide All
 </aside>
 
 
-<section class="graph-panel">
+<section
+  id="graphPanel"
+  class="graph-panel"
+>
 
 <div class="graph-container">
 
@@ -943,6 +964,11 @@ document.getElementById(
 const canvas =
 document.getElementById(
 "trendChart"
+);
+
+const printPngButton =
+document.getElementById(
+"printPngButton"
 );
 
 
@@ -2321,6 +2347,179 @@ zoomFactor / 2
 
 
 drawTrend();
+
+}
+
+);
+
+
+/*
+==================================================
+PNG FILE NAME
+==================================================
+*/
+
+function makePngFileName() {
+
+const now =
+new Date();
+
+
+const pad =
+value =>
+String(value).padStart(
+2,
+"0"
+);
+
+
+return (
+
+"Greenair_TrendLog_"
+
++
+
+now.getFullYear()
+
++
+
+"-"
+
++
+
+pad(
+now.getMonth() + 1
+)
+
++
+
+"-"
+
++
+
+pad(
+now.getDate()
+)
+
++
+
+"_"
+
++
+
+pad(
+now.getHours()
+)
+
++
+
+pad(
+now.getMinutes()
+)
+
++
+
+pad(
+now.getSeconds()
+)
+
++
+
+".png"
+
+);
+
+}
+
+
+/*
+==================================================
+PRINT / SAVE GRAPH TO PNG
+==================================================
+*/
+
+printPngButton.addEventListener(
+
+"click",
+
+() => {
+
+
+chart.update(
+"none"
+);
+
+
+canvas.toBlob(
+
+blob => {
+
+
+if (!blob) {
+
+alert(
+"Unable to create PNG image."
+);
+
+return;
+
+}
+
+
+const url =
+
+URL.createObjectURL(
+blob
+);
+
+
+const link =
+
+document.createElement(
+"a"
+);
+
+
+link.href =
+url;
+
+
+link.download =
+makePngFileName();
+
+
+document.body.appendChild(
+link
+);
+
+
+link.click();
+
+
+link.remove();
+
+
+setTimeout(
+
+() => {
+
+URL.revokeObjectURL(
+url
+);
+
+},
+
+1000
+
+);
+
+},
+
+"image/png",
+
+1.0
+
+);
 
 }
 
