@@ -1,17 +1,13 @@
 {
   "name": "greenair-trendlog",
-  "version": "2.0.0",
-  "private": true,
-  "description": "Greenair Modbus TrendLog with PostgreSQL historical storage",
+  "version": "1.0.0",
+  "description": "Greenair TrendLog Modbus monitoring and PostgreSQL history logger",
   "main": "server.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=20"
-  },
   "dependencies": {
+    "nodemailer": "^7.0.0",
     "pg": "^8.16.0"
   }
 }
