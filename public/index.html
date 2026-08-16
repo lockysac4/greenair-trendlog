@@ -1,586 +1,10 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-
-<meta charset="utf-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1"
->
-
-<title>Bianco Precast - Greenair TrendLog</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-
-<style>
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f3f3f3;
-  color: #222;
-}
-
-
 /* ==================================================
-NORMAL PAGE
-================================================== */
-
-.top-header {
-  display: grid;
-
-  grid-template-columns:
-    1fr auto 1fr;
-
-  align-items: center;
-
-  padding: 8px 14px;
-
-  background: white;
-
-  border-bottom: 1px solid #d6d6d6;
-}
-
-
-.brand-left {
-  justify-self: start;
-}
-
-
-.bianco-title {
-  color: #f57c00;
-
-  font-size: 20px;
-
-  font-weight: 900;
-
-  letter-spacing: 1px;
-}
-
-
-.greenair-title {
-  color: #1b5e20;
-
-  font-size: 16px;
-
-  font-weight: 800;
-}
-
-
-.header-centre {
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-
-  gap: 3px;
-}
-
-
-.page-title {
-  font-size: 17px;
-
-  font-weight: 800;
-}
-
-
-.mode-badge {
-  padding: 3px 12px;
-
-  border-radius: 14px;
-
-  font-size: 11px;
-
-  font-weight: 900;
-}
-
-
-.mode-badge.live {
-  background: #dff6df;
-
-  color: #166c20;
-}
-
-
-.mode-badge.history {
-  background: #e3f2fd;
-
-  color: #0d47a1;
-}
-
-
-.connection-box {
-  justify-self: end;
-
-  display: flex;
-
-  align-items: center;
-
-  gap: 7px;
-}
-
-
-.connection-label {
-  font-size: 12px;
-
-  font-weight: 800;
-}
-
-
-.led {
-  width: 15px;
-
-  height: 15px;
-
-  border-radius: 50%;
-}
-
-
-.led.good {
-  background: #00b63d;
-
-  box-shadow:
-    0 0 7px rgba(0,182,61,.75);
-}
-
-
-.led.bad {
-  background: #d50000;
-
-  box-shadow:
-    0 0 7px rgba(213,0,0,.75);
-}
-
-
-.led.waiting {
-  background: #ffb300;
-
-  box-shadow:
-    0 0 7px rgba(255,179,0,.75);
-}
-
-
-/* ==================================================
-DATE
-================================================== */
-
-.date-row {
-  padding: 4px 12px;
-
-  background: white;
-
-  border-bottom: 1px solid #ddd;
-
-  font-size: 12px;
-
-  font-weight: 600;
-}
-
-
-/* ==================================================
-TOOLBAR
-================================================== */
-
-.toolbar {
-  display: flex;
-
-  flex-wrap: wrap;
-
-  align-items: center;
-
-  gap: 7px;
-
-  padding: 7px 10px;
-
-  background: #f7f7f7;
-
-  border-bottom: 1px solid #d6d6d6;
-}
-
-
-.toolbar label {
-  font-size: 12px;
-
-  font-weight: 800;
-}
-
-
-.toolbar select,
-.toolbar button {
-  height: 32px;
-
-  border: 1px solid #c7c7c7;
-
-  border-radius: 4px;
-
-  background: white;
-
-  padding: 0 11px;
-
-  font-size: 12px;
-}
-
-
-.toolbar button {
-  cursor: pointer;
-}
-
-
-.toolbar button:hover {
-  background: #eeeeee;
-}
-
-
-.live-button {
-  background: #e1f5e3 !important;
-
-  color: #146b20;
-
-  border-color: #a6dca9 !important;
-}
-
-
-.print-button {
-  background: #7b1fa2 !important;
-
-  color: white;
-
-  border-color: #7b1fa2 !important;
-}
-
-
-.export-button {
-  background: #263238 !important;
-
-  color: white;
-
-  border-color: #263238 !important;
-}
-
-
-/* ==================================================
-CUSTOM HISTORY
-================================================== */
-
-.custom-history {
-  display: none;
-
-  flex-wrap: wrap;
-
-  align-items: center;
-
-  gap: 8px;
-
-  padding: 8px 10px;
-
-  background: #fff8e1;
-
-  border-bottom: 1px solid #e4d6a4;
-}
-
-
-.custom-history.show {
-  display: flex;
-}
-
-
-.custom-history label {
-  font-size: 12px;
-
-  font-weight: 800;
-}
-
-
-.custom-history input {
-  height: 32px;
-
-  border: 1px solid #c7c7c7;
-
-  border-radius: 4px;
-
-  padding: 0 8px;
-}
-
-
-.custom-history button {
-  height: 32px;
-
-  border: 0;
-
-  border-radius: 4px;
-
-  padding: 0 14px;
-
-  background: #1565c0;
-
-  color: white;
-
-  font-weight: 800;
-
-  cursor: pointer;
-}
-
-
-.history-status {
-  font-size: 12px;
-
-  color: #666;
-}
-
-
-/* ==================================================
-RANGE
-================================================== */
-
-.range-bar {
-  display: flex;
-
-  justify-content: space-between;
-
-  gap: 10px;
-
-  padding: 4px 12px;
-
-  background: white;
-
-  border-bottom: 1px solid #ddd;
-
-  font-size: 11px;
-
-  color: #666;
-}
-
-
-.range-bar strong {
-  color: #222;
-}
-
-
-/* ==================================================
-MAIN
-================================================== */
-
-.main-layout {
-  display: grid;
-
-  grid-template-columns:
-    280px 1fr;
-
-  gap: 7px;
-
-  padding: 7px;
-
-  height: calc(100vh - 151px);
-
-  min-height: 620px;
-}
-
-
-/* ==================================================
-LEFT POINT LIST
-================================================== */
-
-.sidebar {
-  background: white;
-
-  border: 1px solid #d4d4d4;
-
-  padding: 8px;
-
-  overflow: auto;
-}
-
-
-.filter-row {
-  display: grid;
-
-  grid-template-columns:
-    1fr 1fr 1fr;
-
-  gap: 5px;
-
-  margin-bottom: 8px;
-}
-
-
-.filter-row button {
-  height: 32px;
-
-  background: white;
-
-  border: 1px solid #ccc;
-
-  border-radius: 3px;
-
-  cursor: pointer;
-}
-
-
-.point-row {
-  display: grid;
-
-  grid-template-columns:
-    26px 1fr auto;
-
-  align-items: center;
-
-  gap: 7px;
-
-  padding: 10px 7px;
-
-  margin-bottom: 5px;
-
-  border: 1px solid #dddddd;
-
-  border-radius: 3px;
-
-  background: #fafafa;
-
-  cursor: pointer;
-}
-
-
-.point-row.disabled {
-  opacity: .35;
-}
-
-
-.point-number {
-  font-size: 11px;
-
-  color: #777;
-}
-
-
-.point-middle {
-  display: flex;
-
-  align-items: center;
-
-  gap: 7px;
-}
-
-
-.point-colour {
-  width: 18px;
-
-  height: 8px;
-
-  border-radius: 8px;
-
-  flex-shrink: 0;
-}
-
-
-.point-name {
-  font-size: 12px;
-
-  font-weight: 800;
-}
-
-
-.point-unit {
-  font-size: 10px;
-
-  font-weight: 800;
-}
-
-
-.point-value {
-  grid-column: 2 / 4;
-
-  margin-top: 3px;
-
-  font-size: 16px;
-
-  font-weight: 900;
-
-  color: #1b5e20;
-}
-
-
-/* ==================================================
-GRAPH
-================================================== */
-
-.graph-panel {
-  position: relative;
-
-  min-width: 0;
-
-  background: white;
-
-  border: 1px solid #cfcfcf;
-
-  padding: 7px;
-}
-
-
-.graph-container {
-  width: 100%;
-
-  height: 100%;
-
-  position: relative;
-}
-
-
-.graph-info {
-  position: absolute;
-
-  right: 16px;
-
-  bottom: 10px;
-
-  padding: 3px 6px;
-
-  background: rgba(255,255,255,.88);
-
-  color: #777;
-
-  font-size: 10px;
-}
-
-
-/* ==================================================
-MOBILE
-================================================== */
-
-@media (max-width: 850px) {
-
-  .main-layout {
-    grid-template-columns: 1fr;
-
-    height: auto;
-  }
-
-
-  .graph-panel {
-    height: 520px;
-  }
-
-}
-
-
-/* ==================================================
-PRINT
+PRINT - FORCE ONE A3 LANDSCAPE PAGE
 ================================================== */
 
 @page {
   size: A3 landscape;
-  margin: 5mm;
+  margin: 3mm;
 }
 
 
@@ -588,110 +12,153 @@ PRINT
 
   html,
   body {
-    width: 100%;
+    width: 100% !important;
+    height: 100% !important;
 
-    height: auto;
+    margin: 0 !important;
+    padding: 0 !important;
 
-    margin: 0;
+    background: #ffffff !important;
 
-    padding: 0;
-
-    background: white;
-
-    overflow: visible;
+    overflow: hidden !important;
   }
 
 
   body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
 
+  /*
+  FORCE EVERYTHING ON ONE PAGE
+  */
+
+  body > * {
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+  }
+
+
+  /*
+  HEADER
+  */
+
   .top-header {
-    height: 22mm;
+    height: 18mm !important;
+
+    min-height: 18mm !important;
 
     padding:
-      2mm 5mm;
+      1mm 4mm !important;
+
+    margin: 0 !important;
   }
 
 
   .bianco-title {
-    font-size: 22pt;
+    font-size: 18pt !important;
+    line-height: 1 !important;
   }
 
 
   .greenair-title {
-    font-size: 14pt;
+    font-size: 11pt !important;
+    line-height: 1 !important;
+    margin-top: 1mm !important;
   }
 
 
   .page-title {
-    font-size: 18pt;
+    font-size: 15pt !important;
   }
 
 
   .mode-badge {
-    font-size: 10pt;
+    font-size: 8pt !important;
 
     padding:
-      1mm 5mm;
+      0.5mm 4mm !important;
   }
 
 
   .connection-label {
-    font-size: 12pt;
+    font-size: 10pt !important;
   }
 
 
   .led {
-    width: 5mm;
-
-    height: 5mm;
+    width: 4mm !important;
+    height: 4mm !important;
   }
 
+
+  /*
+  DATE
+  */
 
   .date-row {
-    height: 8mm;
+    height: 6mm !important;
+
+    min-height: 6mm !important;
 
     padding:
-      1mm 5mm;
+      0.5mm 4mm !important;
 
-    font-size: 10pt;
+    font-size: 8.5pt !important;
+
+    line-height: 5mm !important;
+
+    margin: 0 !important;
   }
 
 
+  /*
+  TOOLBAR
+  */
+
   .toolbar {
-    min-height: 12mm;
+    height: 10mm !important;
+
+    min-height: 10mm !important;
 
     padding:
-      1mm 5mm;
+      1mm 4mm !important;
 
-    gap: 2mm;
+    gap: 1.5mm !important;
 
-    flex-wrap: nowrap;
+    margin: 0 !important;
+
+    flex-wrap: nowrap !important;
+
+    overflow: hidden !important;
   }
 
 
   .toolbar label {
-    font-size: 9pt;
+    font-size: 8pt !important;
   }
 
 
   .toolbar select,
   .toolbar button {
-    height: 8mm;
+    height: 7mm !important;
+
+    min-height: 7mm !important;
 
     padding:
-      0 3mm;
+      0 2.5mm !important;
 
-    font-size: 8.5pt;
+    font-size: 7.5pt !important;
+
+    white-space: nowrap !important;
   }
 
 
   /*
-  HIDE PRINT BUTTON FROM
-  THE PRINTED PAGE
+  DON'T PRINT THE PRINT BUTTON
   */
 
   #printButton {
@@ -700,8 +167,7 @@ PRINT
 
 
   /*
-  CUSTOM HISTORY INPUTS
-  ARE NOT USEFUL ON PAPER
+  DON'T PRINT CUSTOM INPUT AREA
   */
 
   .custom-history {
@@ -709,2669 +175,251 @@ PRINT
   }
 
 
+  /*
+  RANGE BAR
+  */
+
   .range-bar {
-    min-height: 8mm;
+    height: 7mm !important;
+
+    min-height: 7mm !important;
 
     padding:
-      1mm 5mm;
+      0.5mm 4mm !important;
 
-    font-size: 8.5pt;
+    margin: 0 !important;
+
+    font-size: 7.5pt !important;
+
+    line-height: 5mm !important;
   }
 
+
+  /*
+  MAIN AREA
+
+  A3 landscape printable height is
+  roughly 291 mm with 3 mm margins.
+
+  Header + date + toolbar + range =
+  approximately 41 mm.
+
+  Main area fixed at 244 mm keeps
+  everything safely on ONE PAGE.
+  */
 
   .main-layout {
-    display: grid;
+    display: grid !important;
 
     grid-template-columns:
-      62mm 1fr;
+      58mm 1fr !important;
 
-    gap: 2mm;
+    gap: 2mm !important;
 
-    padding: 2mm 0 0 0;
+    width: 100% !important;
 
-    width: 100%;
+    height: 244mm !important;
 
-    height: 240mm;
+    min-height: 244mm !important;
 
-    min-height: 0;
+    max-height: 244mm !important;
 
-    break-inside: avoid;
+    padding:
+      2mm 0 0 0 !important;
 
-    page-break-inside: avoid;
+    margin: 0 !important;
+
+    overflow: hidden !important;
+
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
   }
 
 
-  .sidebar {
-    height: 100%;
+  /*
+  LEFT LIST
+  */
 
-    overflow: hidden;
+  .sidebar {
+    width: 58mm !important;
+
+    height: 242mm !important;
+
+    min-height: 242mm !important;
+
+    max-height: 242mm !important;
+
+    padding: 1.5mm !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
 
     border:
-      0.3mm solid #bbb;
+      0.25mm solid #bbbbbb !important;
 
-    padding: 2mm;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
 
   .filter-row {
-    gap: 1mm;
+    height: 8mm !important;
 
-    margin-bottom: 2mm;
+    gap: 1mm !important;
+
+    margin-bottom: 1.5mm !important;
   }
 
 
   .filter-row button {
-    height: 8mm;
+    height: 7mm !important;
 
-    font-size: 8pt;
+    min-height: 7mm !important;
+
+    padding: 0 !important;
+
+    font-size: 7pt !important;
   }
 
 
   .point-row {
+    min-height: 12mm !important;
+
     padding:
-      2.5mm 2mm;
+      1.5mm 1.5mm !important;
 
     margin-bottom:
-      1.5mm;
+      1mm !important;
 
     gap:
-      1.5mm;
+      1mm !important;
+
+    grid-template-columns:
+      6mm 1fr auto !important;
   }
 
 
   .point-number {
-    font-size: 8pt;
+    font-size: 7pt !important;
+  }
+
+
+  .point-middle {
+    gap: 1.5mm !important;
   }
 
 
   .point-name {
-    font-size: 9pt;
+    font-size: 8pt !important;
+
+    line-height: 1.1 !important;
   }
 
 
   .point-unit {
-    font-size: 7.5pt;
-  }
-
-
-  .point-value {
-    display: none;
+    font-size: 6.5pt !important;
   }
 
 
   .point-colour {
-    width: 5mm;
+    width: 4mm !important;
 
-    height: 2mm;
+    height: 1.8mm !important;
   }
 
 
+  /*
+  VALUES DON'T NEED TO PRINT
+  BECAUSE THE GRAPH IS THE REPORT
+  */
+
+  .point-value {
+    display: none !important;
+  }
+
+
+  /*
+  GRAPH
+  */
+
   .graph-panel {
-    height: 100%;
+    height: 242mm !important;
+
+    min-height: 242mm !important;
+
+    max-height: 242mm !important;
+
+    width: 100% !important;
+
+    padding: 1.5mm !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
 
     border:
-      0.3mm solid #aaa;
+      0.25mm solid #aaaaaa !important;
 
-    padding:
-      2mm;
-
-    overflow: hidden;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
 
   .graph-container {
-    width: 100%;
+    position: relative !important;
 
-    height: 100%;
+    width: 100% !important;
+
+    height: 238mm !important;
+
+    min-height: 238mm !important;
+
+    max-height: 238mm !important;
+
+    overflow: hidden !important;
   }
 
 
   #trendChart {
+    display: block !important;
+
     width: 100% !important;
 
-    height: 100% !important;
+    height: 238mm !important;
+
+    max-width: 100% !important;
+
+    max-height: 238mm !important;
   }
 
 
   .graph-info {
-    display: none;
+    display: none !important;
   }
-
-}
-
-</style>
-
-</head>
-
-
-<body>
-
-
-<!-- =================================================
-HEADER
-================================================= -->
-
-<div class="top-header">
-
-  <div class="brand-left">
-
-    <div class="bianco-title">
-      BIANCO PRECAST
-    </div>
-
-    <div class="greenair-title">
-      GREENAIR TRENDLOG
-    </div>
-
-  </div>
-
-
-  <div class="header-centre">
-
-    <div class="page-title">
-      Trend Log
-    </div>
-
-    <div
-      id="modeBadge"
-      class="mode-badge live"
-    >
-      ● LIVE
-    </div>
-
-  </div>
-
-
-  <div class="connection-box">
-
-    <span class="connection-label">
-      BMS
-    </span>
-
-    <div
-      id="connectionLed"
-      class="led waiting"
-    ></div>
-
-  </div>
-
-</div>
-
-
-<!-- =================================================
-DATE
-================================================= -->
-
-<div
-  id="currentDateRow"
-  class="date-row"
->
-—
-</div>
-
-
-<!-- =================================================
-TOOLBAR
-================================================= -->
-
-<div class="toolbar">
-
-  <label>
-    Time Base:
-  </label>
-
-
-  <select id="timeBase">
-
-    <option value="5">
-      5 minutes
-    </option>
-
-    <option value="15">
-      15 minutes
-    </option>
-
-    <option value="30">
-      30 minutes
-    </option>
-
-    <option value="60">
-      1 hour
-    </option>
-
-    <option value="360">
-      6 hours
-    </option>
-
-    <option value="720">
-      12 hours
-    </option>
-
-    <option value="1440">
-      24 hours
-    </option>
-
-    <option value="custom">
-      Custom Define
-    </option>
-
-  </select>
-
-
-  <button
-    id="zoomInButton"
-    type="button"
-  >
-    Zoom In
-  </button>
-
-
-  <button
-    id="zoomOutButton"
-    type="button"
-  >
-    Zoom Out
-  </button>
-
-
-  <button
-    id="resetButton"
-    type="button"
-  >
-    Reset
-  </button>
-
-
-  <button
-    id="liveButton"
-    class="live-button"
-    type="button"
-  >
-    Live
-  </button>
-
-
-  <button
-    id="last5Button"
-    type="button"
-  >
-    Last 5 min
-  </button>
-
-
-  <button
-    id="printButton"
-    class="print-button"
-    type="button"
-  >
-    Print
-  </button>
-
-
-  <button
-    id="exportButton"
-    class="export-button"
-    type="button"
-  >
-    Export
-  </button>
-
-</div>
-
-
-<!-- =================================================
-CUSTOM HISTORY
-================================================= -->
-
-<div
-  id="customHistory"
-  class="custom-history"
->
-
-  <label>
-    From:
-  </label>
-
-
-  <input
-    id="fromDate"
-    type="datetime-local"
-  >
-
-
-  <label>
-    To:
-  </label>
-
-
-  <input
-    id="toDate"
-    type="datetime-local"
-  >
-
-
-  <button
-    id="loadHistoryButton"
-    type="button"
-  >
-    Load History
-  </button>
-
-
-  <span
-    id="historyStatus"
-    class="history-status"
-  >
-    Select a date range
-  </span>
-
-</div>
-
-
-<!-- =================================================
-RANGE
-================================================= -->
-
-<div class="range-bar">
-
-  <span>
-    Mode:
-    <strong id="rangeMode">
-      Live
-    </strong>
-  </span>
-
-
-  <span>
-    Display Range:
-    <strong id="displayRange">
-      Waiting...
-    </strong>
-  </span>
-
-</div>
-
-
-<!-- =================================================
-MAIN
-================================================= -->
-
-<div class="main-layout">
-
-
-  <aside class="sidebar">
-
-
-    <div class="filter-row">
-
-      <button
-        id="showAllButton"
-        type="button"
-      >
-        All
-      </button>
-
-      <button
-        type="button"
-      >
-        By Type
-      </button>
-
-      <button
-        type="button"
-      >
-        By Unit
-      </button>
-
-    </div>
-
-
-    <div id="pointList"></div>
-
-
-  </aside>
-
-
-  <section class="graph-panel">
-
-    <div class="graph-container">
-
-      <canvas id="trendChart"></canvas>
-
-    </div>
-
-
-    <div
-      id="graphInfo"
-      class="graph-info"
-    >
-      Loading...
-    </div>
-
-  </section>
-
-
-</div>
-
-
-<script>
-
-
-/* ==================================================
-POINT DEFINITIONS
-================================================== */
-
-const POINTS = [
-
-  {
-    id: "in1",
-    number: 1,
-    name: "Planks In",
-    colour: "#ff0000"
-  },
-
-  {
-    id: "in2",
-    number: 2,
-    name: "Planks Out",
-    colour: "#0000ff"
-  },
-
-  {
-    id: "in3",
-    number: 3,
-    name: "Ambient",
-    colour: "#008000"
-  },
-
-  {
-    id: "in4",
-    number: 4,
-    name: "Planks Concrete",
-    colour: "#ff9800"
-  },
-
-  {
-    id: "in5",
-    number: 5,
-    name: "Planks Tank",
-    colour: "#9c149c"
-  },
-
-  {
-    id: "diff",
-    number: 6,
-    name:
-      "Ambient - Concrete Differential",
-    colour: "#000000"
-  }
-
-];
-
-
-/* ==================================================
-ELEMENTS
-================================================== */
-
-const led =
-  document.getElementById(
-    "connectionLed"
-  );
-
-
-const modeBadge =
-  document.getElementById(
-    "modeBadge"
-  );
-
-
-const rangeMode =
-  document.getElementById(
-    "rangeMode"
-  );
-
-
-const displayRange =
-  document.getElementById(
-    "displayRange"
-  );
-
-
-const currentDateRow =
-  document.getElementById(
-    "currentDateRow"
-  );
-
-
-const pointList =
-  document.getElementById(
-    "pointList"
-  );
-
-
-const timeBase =
-  document.getElementById(
-    "timeBase"
-  );
-
-
-const customHistory =
-  document.getElementById(
-    "customHistory"
-  );
-
-
-const fromDate =
-  document.getElementById(
-    "fromDate"
-  );
-
-
-const toDate =
-  document.getElementById(
-    "toDate"
-  );
-
-
-const loadHistoryButton =
-  document.getElementById(
-    "loadHistoryButton"
-  );
-
-
-const historyStatus =
-  document.getElementById(
-    "historyStatus"
-  );
-
-
-const graphInfo =
-  document.getElementById(
-    "graphInfo"
-  );
-
-
-const canvas =
-  document.getElementById(
-    "trendChart"
-  );
-
-
-const printButton =
-  document.getElementById(
-    "printButton"
-  );
-
-
-/* ==================================================
-STATE
-================================================== */
-
-let liveSamples =
-  [];
-
-
-let historySamples =
-  [];
-
-
-let currentMode =
-  "live";
-
-
-let zoomFactor =
-  1;
-
-
-const visiblePoints = {
-
-  in1: true,
-  in2: true,
-  in3: true,
-  in4: true,
-  in5: true,
-  diff: true
-
-};
-
-
-/* ==================================================
-DATE FORMAT
-================================================== */
-
-function formatDateTime(
-  date
-) {
-
-  return date.toLocaleString(
-    "en-AU",
-    {
-      day:
-        "2-digit",
-
-      month:
-        "2-digit",
-
-      year:
-        "numeric",
-
-      hour:
-        "2-digit",
-
-      minute:
-        "2-digit",
-
-      second:
-        "2-digit",
-
-      hour12:
-        false
-    }
-  );
-
-}
-
-
-function updateClock() {
-
-  currentDateRow.textContent =
-
-    formatDateTime(
-      new Date()
-    );
-
-}
-
-
-updateClock();
-
-
-setInterval(
-  updateClock,
-  1000
-);
-
-
-/* ==================================================
-POINT LIST
-================================================== */
-
-pointList.innerHTML =
-
-  POINTS.map(
-
-    point => `
-
-      <div
-        class="point-row"
-        data-id="${point.id}"
-      >
-
-        <div class="point-number">
-          ${point.number}
-        </div>
-
-
-        <div class="point-middle">
-
-          <span
-            class="point-colour"
-            style="background:${point.colour}"
-          ></span>
-
-          <span class="point-name">
-            ${point.name}
-          </span>
-
-        </div>
-
-
-        <div
-          class="point-unit"
-          style="color:${point.colour}"
-        >
-          Deg.C
-        </div>
-
-
-        <div class="point-value">
-          —
-        </div>
-
-      </div>
-
-    `
-
-  ).join("");
-
-
-/* ==================================================
-LED
-================================================== */
-
-function setLed(
-  state
-) {
-
-  led.classList.remove(
-    "good",
-    "bad",
-    "waiting"
-  );
-
-
-  led.classList.add(
-    state
-  );
-
-}
-
-
-/* ==================================================
-MODE
-================================================== */
-
-function updateMode() {
-
-  modeBadge.classList.remove(
-    "live",
-    "history"
-  );
-
-
-  if (
-    currentMode ===
-    "history"
-  ) {
-
-    modeBadge.classList.add(
-      "history"
-    );
-
-
-    modeBadge.textContent =
-      "HISTORY";
-
-
-    rangeMode.textContent =
-      "Historical";
-
-  }
-
-  else {
-
-    modeBadge.classList.add(
-      "live"
-    );
-
-
-    modeBadge.textContent =
-      "● LIVE";
-
-
-    rangeMode.textContent =
-      "Live";
-
-  }
-
-}
-
-
-/* ==================================================
-BMS STATE
-================================================== */
-
-function renderState(
-  state
-) {
-
-  if (
-    !state ||
-    !state.ok ||
-    !Array.isArray(
-      state.results
-    )
-  ) {
-
-    setLed(
-      "bad"
-    );
-
-
-    return;
-
-  }
-
-
-  setLed(
-    "good"
-  );
-
-
-  for (
-    const result
-    of state.results
-  ) {
-
-    const element =
-
-      document.querySelector(
-
-        `[data-id="${result.id}"] .point-value`
-
-      );
-
-
-    if (
-      element
-    ) {
-
-      element.textContent =
-
-        Number(
-          result.value
-        ).toFixed(1)
-
-        +
-
-        " °C";
-
-    }
-
-  }
-
-}
-
-
-/* ==================================================
-CHART
-================================================== */
-
-const chart =
-
-  new Chart(
-
-    canvas,
-
-    {
-
-      type:
-        "line",
-
-
-      data: {
-
-        datasets:
-
-          POINTS.map(
-
-            point => ({
-
-              id:
-                point.id,
-
-              label:
-                point.name,
-
-              data:
-                [],
-
-              borderColor:
-                point.colour,
-
-              backgroundColor:
-                point.colour,
-
-              borderWidth:
-                2,
-
-              pointRadius:
-                0,
-
-              tension:
-                0.03,
-
-              parsing:
-                false
-
-            })
-
-          )
-
-      },
-
-
-      options: {
-
-        responsive:
-          true,
-
-        maintainAspectRatio:
-          false,
-
-        animation:
-          false,
-
-
-        interaction: {
-
-          mode:
-            "nearest",
-
-          intersect:
-            false
-
-        },
-
-
-        plugins: {
-
-          legend: {
-            display: false
-          },
-
-
-          tooltip: {
-
-            callbacks: {
-
-              title:
-                contexts => {
-
-                  if (
-                    !contexts.length
-                  ) {
-
-                    return "";
-
-                  }
-
-
-                  return formatDateTime(
-
-                    new Date(
-                      contexts[0].parsed.x
-                    )
-
-                  );
-
-                },
-
-
-              label:
-                context =>
-
-                  context.dataset.label
-
-                  +
-
-                  ": "
-
-                  +
-
-                  Number(
-                    context.parsed.y
-                  ).toFixed(1)
-
-                  +
-
-                  " °C"
-
-            }
-
-          }
-
-        },
-
-
-        scales: {
-
-          x: {
-
-            type:
-              "linear",
-
-
-            grid: {
-
-              color:
-                "#dddddd"
-
-            },
-
-
-            ticks: {
-
-              maxTicksLimit:
-                8,
-
-
-              callback:
-                value => {
-
-                  const date =
-
-                    new Date(
-                      Number(value)
-                    );
-
-
-                  return date.toLocaleTimeString(
-                    "en-AU",
-                    {
-
-                      hour:
-                        "2-digit",
-
-                      minute:
-                        "2-digit",
-
-                      hour12:
-                        false
-
-                    }
-                  );
-
-                }
-
-            }
-
-          },
-
-
-          y: {
-
-            grid: {
-
-              color:
-                "#dddddd"
-
-            },
-
-
-            title: {
-
-              display:
-                true,
-
-              text:
-                "Deg.C"
-
-            }
-
-          }
-
-        }
-
-      }
-
-    }
-
-  );
-
-
-/* ==================================================
-POINT VISIBILITY
-================================================== */
-
-function updateVisibility() {
-
-  POINTS.forEach(
-
-    (
-      point,
-      index
-    ) => {
-
-      chart.setDatasetVisibility(
-
-        index,
-
-        visiblePoints[
-          point.id
-        ]
-
-      );
-
-
-      const row =
-
-        document.querySelector(
-
-          `.point-row[data-id="${point.id}"]`
-
-        );
-
-
-      row.classList.toggle(
-
-        "disabled",
-
-        !visiblePoints[
-          point.id
-        ]
-
-      );
-
-    }
-
-  );
-
-
-  chart.update(
-    "none"
-  );
-
-}
-
-
-pointList.addEventListener(
-
-  "click",
-
-  event => {
-
-    const row =
-
-      event.target.closest(
-        ".point-row"
-      );
-
-
-    if (
-      !row
-    ) {
-
-      return;
-
-    }
-
-
-    const id =
-      row.dataset.id;
-
-
-    visiblePoints[id] =
-      !visiblePoints[id];
-
-
-    updateVisibility();
-
-  }
-
-);
-
-
-document
-  .getElementById(
-    "showAllButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      POINTS.forEach(
-
-        point => {
-
-          visiblePoints[
-            point.id
-          ] = true;
-
-        }
-
-      );
-
-
-      updateVisibility();
-
-    }
-
-  );
-
-
-/* ==================================================
-SOURCE DATA
-================================================== */
-
-function sourceSamples() {
-
-  return currentMode ===
-    "history"
-
-    ?
-
-    historySamples
-
-    :
-
-    liveSamples;
-
-}
-
-
-/* ==================================================
-VISIBLE DATA
-================================================== */
-
-function visibleSamples() {
-
-  const source =
-    sourceSamples();
-
-
-  if (
-    !source.length
-  ) {
-
-    return [];
-
-  }
-
-
-  if (
-    currentMode ===
-    "history"
-  ) {
-
-    return source;
-
-  }
-
-
-  const minutes =
-
-    Number(
-      timeBase.value
-    );
-
-
-  if (
-    !Number.isFinite(
-      minutes
-    )
-  ) {
-
-    return source;
-
-  }
-
-
-  const newest =
-
-    new Date(
-
-      source[
-        source.length - 1
-      ].timestamp
-
-    ).getTime();
-
-
-  let samples =
-
-    source.filter(
-
-      sample =>
-
-        new Date(
-          sample.timestamp
-        ).getTime()
-
-        >=
-
-        newest
-
-        -
-
-        minutes *
-        60000
-
-    );
-
-
-  if (
-    zoomFactor > 1
-  ) {
-
-    samples =
-
-      samples.slice(
-
-        -Math.max(
-
-          2,
-
-          Math.floor(
-
-            samples.length /
-            zoomFactor
-
-          )
-
-        )
-
-      );
-
-  }
-
-
-  return samples;
-
-}
-
-
-/* ==================================================
-DRAW TREND
-================================================== */
-
-function drawTrend() {
-
-  const samples =
-    visibleSamples();
-
-
-  POINTS.forEach(
-
-    (
-      point,
-      index
-    ) => {
-
-      chart.data.datasets[
-        index
-      ].data =
-
-        samples.map(
-
-          sample => ({
-
-            x:
-
-              new Date(
-                sample.timestamp
-              ).getTime(),
-
-            y:
-
-              Number(
-                sample[
-                  point.id
-                ]
-              )
-
-          })
-
-        );
-
-    }
-
-  );
-
-
-  updateVisibility();
-
-
-  updateMode();
-
-
-  if (
-    samples.length
-  ) {
-
-    displayRange.textContent =
-
-      formatDateTime(
-
-        new Date(
-          samples[0].timestamp
-        )
-
-      )
-
-      +
-
-      " → "
-
-      +
-
-      formatDateTime(
-
-        new Date(
-
-          samples[
-            samples.length - 1
-          ].timestamp
-
-        )
-
-      );
-
-  }
-
-  else {
-
-    displayRange.textContent =
-      "No data";
-
-  }
-
-
-  graphInfo.textContent =
-
-    `${samples.length} ${
-
-      currentMode ===
-      "history"
-
-      ?
-
-      "historical"
-
-      :
-
-      "live"
-
-    } samples`;
-
-}
-
-
-/* ==================================================
-LIVE TREND
-================================================== */
-
-async function loadLiveTrend() {
-
-  if (
-    currentMode !==
-    "live"
-  ) {
-
-    return;
-
-  }
-
-
-  try {
-
-    const response =
-
-      await fetch(
-
-        "/api/trend",
-
-        {
-          cache:
-            "no-store"
-        }
-
-      );
-
-
-    const data =
-
-      await response.json();
-
-
-    liveSamples =
-
-      Array.isArray(
-        data.samples
-      )
-
-      ?
-
-      data.samples
-
-      :
-
-      [];
-
-
-    drawTrend();
-
-  }
-
-
-  catch {
-
-    graphInfo.textContent =
-      "Live trend unavailable";
-
-  }
-
-}
-
-
-/* ==================================================
-DATE INPUT
-================================================== */
-
-function toInputDate(
-  date
-) {
-
-  const offset =
-
-    date.getTimezoneOffset();
-
-
-  return new Date(
-
-    date.getTime()
-
-    -
-
-    offset *
-    60000
-
-  )
-    .toISOString()
-    .slice(
-      0,
-      16
-    );
-
-}
-
-
-/* ==================================================
-HISTORY RANGE
-================================================== */
-
-async function loadAvailableRange() {
-
-  try {
-
-    const response =
-
-      await fetch(
-
-        "/api/history/range",
-
-        {
-          cache:
-            "no-store"
-        }
-
-      );
-
-
-    const data =
-
-      await response.json();
-
-
-    if (
-      !data.ok ||
-      !data.first ||
-      !data.last
-    ) {
-
-      historyStatus.textContent =
-        "No permanent history saved yet";
-
-
-      return;
-
-    }
-
-
-    historyStatus.textContent =
-
-      `${data.count} records available`;
-
-
-    if (
-      !fromDate.value
-    ) {
-
-      fromDate.value =
-
-        toInputDate(
-
-          new Date(
-            data.first
-          )
-
-        );
-
-    }
-
-
-    if (
-      !toDate.value
-    ) {
-
-      toDate.value =
-
-        toInputDate(
-
-          new Date(
-            data.last
-          )
-
-        );
-
-    }
-
-  }
-
-
-  catch {
-
-    historyStatus.textContent =
-      "History database unavailable";
-
-  }
-
-}
-
-
-/* ==================================================
-LOAD HISTORY
-================================================== */
-
-async function loadHistory() {
-
-  if (
-    !fromDate.value ||
-    !toDate.value
-  ) {
-
-    alert(
-      "Select both From and To dates."
-    );
-
-
-    return;
-
-  }
-
-
-  const from =
-
-    new Date(
-      fromDate.value
-    );
-
-
-  const to =
-
-    new Date(
-      toDate.value
-    );
-
-
-  if (
-    from > to
-  ) {
-
-    alert(
-      "From must be before To."
-    );
-
-
-    return;
-
-  }
-
-
-  historyStatus.textContent =
-    "Loading history...";
-
-
-  try {
-
-    const url =
-
-      "/api/history"
-
-      +
-
-      "?from="
-
-      +
-
-      encodeURIComponent(
-        from.toISOString()
-      )
-
-      +
-
-      "&to="
-
-      +
-
-      encodeURIComponent(
-        to.toISOString()
-      );
-
-
-    const response =
-
-      await fetch(
-
-        url,
-
-        {
-          cache:
-            "no-store"
-        }
-
-      );
-
-
-    const data =
-
-      await response.json();
-
-
-    if (
-      !response.ok ||
-      !data.ok
-    ) {
-
-      throw new Error(
-
-        data.error ||
-        "History query failed"
-
-      );
-
-    }
-
-
-    historySamples =
-
-      data.samples ||
-      [];
-
-
-    currentMode =
-      "history";
-
-
-    zoomFactor =
-      1;
-
-
-    historyStatus.textContent =
-
-      `${historySamples.length} permanent records loaded`;
-
-
-    drawTrend();
-
-  }
-
-
-  catch (
-    error
-  ) {
-
-    historyStatus.textContent =
-      "History load failed";
-
-
-    alert(
-      error.message
-    );
-
-  }
-
-}
-
-
-/* ==================================================
-TIME BASE
-================================================== */
-
-timeBase.addEventListener(
-
-  "change",
-
-  () => {
-
-    zoomFactor =
-      1;
-
-
-    if (
-      timeBase.value ===
-      "custom"
-    ) {
-
-      customHistory.classList.add(
-        "show"
-      );
-
-
-      loadAvailableRange();
-
-    }
-
-    else {
-
-      customHistory.classList.remove(
-        "show"
-      );
-
-
-      currentMode =
-        "live";
-
-
-      loadLiveTrend();
-
-    }
-
-  }
-
-);
-
-
-loadHistoryButton.addEventListener(
-
-  "click",
-
-  loadHistory
-
-);
-
-
-/* ==================================================
-LIVE
-================================================== */
-
-document
-  .getElementById(
-    "liveButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      currentMode =
-        "live";
-
-
-      timeBase.value =
-        "5";
-
-
-      zoomFactor =
-        1;
-
-
-      customHistory.classList.remove(
-        "show"
-      );
-
-
-      loadLiveTrend();
-
-    }
-
-  );
-
-
-/* ==================================================
-LAST 5 MIN
-================================================== */
-
-document
-  .getElementById(
-    "last5Button"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      currentMode =
-        "live";
-
-
-      timeBase.value =
-        "5";
-
-
-      zoomFactor =
-        1;
-
-
-      customHistory.classList.remove(
-        "show"
-      );
-
-
-      loadLiveTrend();
-
-    }
-
-  );
-
-
-/* ==================================================
-RESET
-================================================== */
-
-document
-  .getElementById(
-    "resetButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      currentMode =
-        "live";
-
-
-      timeBase.value =
-        "5";
-
-
-      zoomFactor =
-        1;
-
-
-      customHistory.classList.remove(
-        "show"
-      );
-
-
-      POINTS.forEach(
-
-        point => {
-
-          visiblePoints[
-            point.id
-          ] = true;
-
-        }
-
-      );
-
-
-      loadLiveTrend();
-
-    }
-
-  );
-
-
-/* ==================================================
-ZOOM
-================================================== */
-
-document
-  .getElementById(
-    "zoomInButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      zoomFactor =
-
-        Math.min(
-
-          16,
-
-          zoomFactor * 2
-
-        );
-
-
-      drawTrend();
-
-    }
-
-  );
-
-
-document
-  .getElementById(
-    "zoomOutButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      zoomFactor =
-
-        Math.max(
-
-          1,
-
-          zoomFactor / 2
-
-        );
-
-
-      drawTrend();
-
-    }
-
-  );
-
-
-/* ==================================================
-PRINT
-================================================== */
-
-function preparePrintChart() {
-
-  const samples =
-    visibleSamples();
-
-
-  if (
-    !samples.length
-  ) {
-
-    return;
-
-  }
-
-
-  const first =
-
-    new Date(
-      samples[0].timestamp
-    );
-
-
-  const last =
-
-    new Date(
-
-      samples[
-        samples.length - 1
-      ].timestamp
-
-    );
 
 
   /*
-  IF THE DISPLAYED PERIOD IS
-  ONE HOUR OR LONGER, USE
-  HOURLY GRID MARKS.
+  ABSOLUTELY NO SECOND PAGE
   */
 
+  .main-layout,
+  .sidebar,
+  .graph-panel,
+  .graph-container,
+  canvas {
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
 
-  const duration =
-
-    last.getTime()
-
-    -
-
-    first.getTime();
-
-
-  if (
-    duration >=
-    60 * 60 * 1000
-  ) {
-
-    const minimum =
-
-      new Date(
-        first
-      );
-
-
-    minimum.setMinutes(
-      0,
-      0,
-      0
-    );
-
-
-    const maximum =
-
-      new Date(
-        last
-      );
-
-
-    maximum.setMinutes(
-      0,
-      0,
-      0
-    );
-
-
-    if (
-      maximum.getTime() <
-      last.getTime()
-    ) {
-
-      maximum.setHours(
-
-        maximum.getHours() +
-        1
-
-      );
-
-    }
-
-
-    chart.options.scales.x.min =
-      minimum.getTime();
-
-
-    chart.options.scales.x.max =
-      maximum.getTime();
-
-
-    chart.options.scales.x.ticks.stepSize =
-
-      60 *
-      60 *
-      1000;
-
-
-    chart.options.scales.x.ticks.autoSkip =
-      false;
-
-
-    chart.options.scales.x.ticks.callback =
-
-      value => {
-
-        const date =
-
-          new Date(
-            Number(value)
-          );
-
-
-        return date.toLocaleTimeString(
-          "en-AU",
-          {
-
-            hour:
-              "2-digit",
-
-            minute:
-              "2-digit",
-
-            hour12:
-              false
-
-          }
-
-        );
-
-      };
-
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
   }
-
-
-  chart.resize();
-
-
-  chart.update(
-    "none"
-  );
 
 }
-
-
-function restoreNormalChart() {
-
-  delete chart.options.scales.x.min;
-
-  delete chart.options.scales.x.max;
-
-  delete chart.options.scales.x.ticks.stepSize;
-
-
-  chart.options.scales.x.ticks.autoSkip =
-    true;
-
-
-  chart.options.scales.x.ticks.callback =
-
-    value => {
-
-      const date =
-
-        new Date(
-          Number(value)
-        );
-
-
-      return date.toLocaleTimeString(
-        "en-AU",
-        {
-
-          hour:
-            "2-digit",
-
-          minute:
-            "2-digit",
-
-          hour12:
-            false
-
-        }
-
-      );
-
-    };
-
-
-  chart.resize();
-
-
-  chart.update(
-    "none"
-  );
-
-}
-
-
-printButton.addEventListener(
-
-  "click",
-
-  () => {
-
-    preparePrintChart();
-
-
-    setTimeout(
-
-      () => {
-
-        window.print();
-
-      },
-
-      150
-
-    );
-
-  }
-
-);
-
-
-window.addEventListener(
-
-  "afterprint",
-
-  () => {
-
-    restoreNormalChart();
-
-  }
-
-);
-
-
-/* ==================================================
-CSV EXPORT
-================================================== */
-
-function buildCsv(
-  samples
-) {
-
-  const active =
-
-    POINTS.filter(
-
-      point =>
-
-        visiblePoints[
-          point.id
-        ]
-
-    );
-
-
-  if (
-    !active.length
-  ) {
-
-    throw new Error(
-      "No points selected."
-    );
-
-  }
-
-
-  const rows = [
-
-    [
-
-      "Date",
-
-      "Time",
-
-      ...active.map(
-
-        point =>
-
-          `${point.name} (C)`
-
-      )
-
-    ]
-
-  ];
-
-
-  for (
-    const sample
-    of samples
-  ) {
-
-    const date =
-
-      new Date(
-        sample.timestamp
-      );
-
-
-    rows.push(
-
-      [
-
-        date.toLocaleDateString(
-          "en-AU"
-        ),
-
-        date.toLocaleTimeString(
-          "en-AU"
-        ),
-
-        ...active.map(
-
-          point =>
-
-            sample[
-              point.id
-            ]
-
-        )
-
-      ]
-
-    );
-
-  }
-
-
-  return rows.map(
-
-    row =>
-
-      row.map(
-
-        value =>
-
-          `"${String(value)
-            .replace(
-              /"/g,
-              '""'
-            )}"`
-
-      ).join(",")
-
-  ).join("\r\n");
-
-}
-
-
-document
-  .getElementById(
-    "exportButton"
-  )
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      try {
-
-        const samples =
-          visibleSamples();
-
-
-        if (
-          !samples.length
-        ) {
-
-          throw new Error(
-            "No trend data available."
-          );
-
-        }
-
-
-        const csv =
-
-          buildCsv(
-            samples
-          );
-
-
-        const blob =
-
-          new Blob(
-
-            [csv],
-
-            {
-
-              type:
-                "text/csv;charset=utf-8"
-
-            }
-
-          );
-
-
-        const url =
-
-          URL.createObjectURL(
-            blob
-          );
-
-
-        const link =
-
-          document.createElement(
-            "a"
-          );
-
-
-        link.href =
-          url;
-
-
-        link.download =
-
-          currentMode ===
-          "history"
-
-          ?
-
-          "Greenair_History.csv"
-
-          :
-
-          "Greenair_TrendLog.csv";
-
-
-        document.body.appendChild(
-          link
-        );
-
-
-        link.click();
-
-
-        link.remove();
-
-
-        setTimeout(
-
-          () => {
-
-            URL.revokeObjectURL(
-              url
-            );
-
-          },
-
-          1000
-
-        );
-
-      }
-
-
-      catch (
-        error
-      ) {
-
-        alert(
-          error.message
-        );
-
-      }
-
-    }
-
-  );
-
-
-/* ==================================================
-START
-================================================== */
-
-setLed(
-  "waiting"
-);
-
-
-fetch(
-
-  "/api/state",
-
-  {
-    cache:
-      "no-store"
-  }
-
-)
-
-.then(
-
-  response =>
-    response.json()
-
-)
-
-.then(
-
-  renderState
-
-)
-
-.catch(
-
-  () =>
-
-    setLed(
-      "bad"
-    )
-
-);
-
-
-const stream =
-
-  new EventSource(
-    "/api/stream"
-  );
-
-
-stream.addEventListener(
-
-  "state",
-
-  event => {
-
-    try {
-
-      renderState(
-
-        JSON.parse(
-          event.data
-        )
-
-      );
-
-    }
-
-    catch {
-
-      setLed(
-        "bad"
-      );
-
-    }
-
-  }
-
-);
-
-
-stream.onerror =
-
-  () => {
-
-    setLed(
-      "bad"
-    );
-
-  };
-
-
-loadLiveTrend();
-
-
-setInterval(
-
-  loadLiveTrend,
-
-  15000
-
-);
-
-</script>
-
-</body>
-
-</html>
