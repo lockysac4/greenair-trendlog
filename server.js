@@ -2,6 +2,26 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const net = require("net");
+const { Pool } = require("pg");
+
+
+/*
+==================================================
+GREENAIR TRENDLOG
+==================================================
+
+LIVE:
+BMS polled every 3 seconds
+Live graph sample every 15 seconds
+
+PERMANENT HISTORY:
+PostgreSQL sample every 30 minutes
+
+The permanent logger runs on the SERVER.
+The web page does NOT need to be open.
+
+==================================================
+*/
 
 
 /*
@@ -35,23 +55,67 @@ const PORT =
 
 /*
 ==================================================
-SETTINGS
+DATABASE
+==================================================
+*/
+
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  "";
+
+
+let db = null;
+
+
+if (DATABASE_URL) {
+
+  db = new Pool({
+
+    connectionString:
+      DATABASE_URL,
+
+    max:
+      5,
+
+    idleTimeoutMillis:
+      30000,
+
+    connectionTimeoutMillis:
+      10000
+
+  });
+
+}
+
+
+/*
+==================================================
+TIMING
 ==================================================
 */
 
 const POLL_MS =
   3000;
 
-const TREND_SAMPLE_MS =
+const LIVE_SAMPLE_MS =
   15000;
 
-const MAX_TREND_SAMPLES =
+const HISTORY_SAMPLE_MS =
+  30 * 60 * 1000;
+
+
+/*
+24 hours of 15-second
+live samples in RAM
+*/
+
+const MAX_LIVE_SAMPLES =
   5760;
 
 
 /*
 ==================================================
-TREND POINTS
+MODBUS POINTS
 ==================================================
 */
 
@@ -114,10 +178,10 @@ let transactionId =
 let polling =
   false;
 
-let trendHistory =
+let liveHistory =
   [];
 
-const clients =
+const streamClients =
   new Set();
 
 
@@ -154,6 +218,104 @@ let latest = {
 
 /*
 ==================================================
+HISTORY LOGGER STATUS
+==================================================
+*/
+
+let databaseConnected =
+  false;
+
+let lastArchiveAt =
+  null;
+
+let lastArchiveError =
+  null;
+
+let nextArchiveAt =
+  null;
+
+
+/*
+==================================================
+DATABASE SETUP
+==================================================
+*/
+
+async function initialiseDatabase() {
+
+  if (!db) {
+
+    console.error(
+      "DATABASE_URL is not configured."
+    );
+
+    databaseConnected =
+      false;
+
+    return;
+
+  }
+
+
+  try {
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS trend_history (
+        id BIGSERIAL PRIMARY KEY,
+        recorded_at TIMESTAMPTZ NOT NULL,
+        planks_in DOUBLE PRECISION NOT NULL,
+        planks_out DOUBLE PRECISION NOT NULL,
+        ambient DOUBLE PRECISION NOT NULL,
+        planks_concrete DOUBLE PRECISION NOT NULL,
+        planks_tank DOUBLE PRECISION NOT NULL,
+        ambient_concrete_diff DOUBLE PRECISION NOT NULL
+      )
+    `);
+
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS
+      trend_history_recorded_at_idx
+      ON trend_history(recorded_at)
+    `);
+
+
+    databaseConnected =
+      true;
+
+
+    lastArchiveError =
+      null;
+
+
+    console.log(
+      "PostgreSQL history database ready."
+    );
+
+  }
+
+
+  catch (error) {
+
+    databaseConnected =
+      false;
+
+    lastArchiveError =
+      error.message;
+
+
+    console.error(
+      "Database setup failed:",
+      error.message
+    );
+
+  }
+
+}
+
+
+/*
+==================================================
 TRANSACTION ID
 ==================================================
 */
@@ -163,17 +325,19 @@ function nextTransactionId() {
   const current =
     transactionId;
 
+
   transactionId++;
 
+
   if (
-    transactionId >
-    65535
+    transactionId > 65535
   ) {
 
     transactionId =
       1;
 
   }
+
 
   return current;
 
@@ -182,7 +346,7 @@ function nextTransactionId() {
 
 /*
 ==================================================
-FC03 REQUEST
+BUILD MODBUS FC03 REQUEST
 ==================================================
 */
 
@@ -240,7 +404,7 @@ function buildReadRequest(
 
 /*
 ==================================================
-READ REGISTER
+READ ONE MODBUS REGISTER
 ==================================================
 */
 
@@ -284,12 +448,8 @@ function readRegister(
         error
       ) {
 
-        if (
-          completed
-        ) {
-
+        if (completed) {
           return;
-
         }
 
 
@@ -329,12 +489,8 @@ function readRegister(
         value
       ) {
 
-        if (
-          completed
-        ) {
-
+        if (completed) {
           return;
-
         }
 
 
@@ -412,7 +568,7 @@ function readRegister(
 
                   new Error(
 
-                    `Modbus response timeout at register ${register}`
+                    `Modbus response timeout Unit ${UNIT_ID} Register ${register}`
 
                   )
 
@@ -462,10 +618,7 @@ function readRegister(
 
 
           if (
-
-            responseBuffer.length <
-            7
-
+            responseBuffer.length < 7
           ) {
 
             return;
@@ -500,13 +653,8 @@ function readRegister(
 
 
           if (
-
-            length <
-            2 ||
-
-            length >
-            254
-
+            length < 2 ||
+            length > 254
           ) {
 
             return fail(
@@ -529,10 +677,8 @@ function readRegister(
 
 
           if (
-
             responseBuffer.length <
             completeLength
-
           ) {
 
             return;
@@ -541,10 +687,8 @@ function readRegister(
 
 
           if (
-
             responseTransaction !==
             transaction
-
           ) {
 
             return fail(
@@ -559,10 +703,7 @@ function readRegister(
 
 
           if (
-
-            protocolId !==
-            0
-
+            protocolId !== 0
           ) {
 
             return fail(
@@ -577,10 +718,7 @@ function readRegister(
 
 
           if (
-
-            responseUnit !==
-            UNIT_ID
-
+            responseUnit !== UNIT_ID
           ) {
 
             return fail(
@@ -608,10 +746,7 @@ function readRegister(
 
 
           if (
-
-            pdu.length <
-            2
-
+            pdu.length < 2
           ) {
 
             return fail(
@@ -630,20 +765,14 @@ function readRegister(
 
 
           if (
-
-            (
-              functionCode &
-              0x80
-            ) !==
-            0
-
+            (functionCode & 0x80) !== 0
           ) {
 
             return fail(
 
               new Error(
 
-                `Modbus exception ${pdu[1]} at register ${register}`
+                `Modbus exception ${pdu[1]} Register ${register}`
 
               )
 
@@ -653,17 +782,14 @@ function readRegister(
 
 
           if (
-
-            functionCode !==
-            3
-
+            functionCode !== 3
           ) {
 
             return fail(
 
               new Error(
 
-                `Unexpected function ${functionCode}`
+                `Unexpected Modbus function ${functionCode}`
 
               )
 
@@ -673,13 +799,8 @@ function readRegister(
 
 
           if (
-
-            pdu.length !==
-            4 ||
-
-            pdu[1] !==
-            2
-
+            pdu.length !== 4 ||
+            pdu[1] !== 2
           ) {
 
             return fail(
@@ -736,15 +857,13 @@ function readRegister(
 
         () => {
 
-          if (
-            !completed
-          ) {
+          if (!completed) {
 
             fail(
 
               new Error(
 
-                "Connection closed before complete response"
+                "Connection closed before complete Modbus response"
 
               )
 
@@ -774,7 +893,7 @@ function readRegister(
 
 /*
 ==================================================
-SIGNED 16 BIT
+SIGNED 16-BIT
 ==================================================
 */
 
@@ -783,8 +902,7 @@ function signed16(
 ) {
 
   if (
-    raw >=
-    32768
+    raw >= 32768
   ) {
 
     return raw -
@@ -800,7 +918,7 @@ function signed16(
 
 /*
 ==================================================
-SCALE VALUE
+SCALE MODBUS VALUE
 ==================================================
 */
 
@@ -842,9 +960,7 @@ POLL BMS
 
 async function pollBms() {
 
-  if (
-    polling
-  ) {
+  if (polling) {
 
     return;
 
@@ -863,10 +979,8 @@ async function pollBms() {
 
 
     for (
-
       const point
       of POINTS
-
     ) {
 
 
@@ -981,19 +1095,96 @@ async function pollBms() {
 
 /*
 ==================================================
-TREND LOGGER
+GET CURRENT POINT VALUE
 ==================================================
 */
 
-function saveTrendSample() {
+function getLatestValue(
+  id
+) {
 
   if (
-
     !latest.ok ||
-
     !Array.isArray(
       latest.results
     )
+  ) {
+
+    return null;
+
+  }
+
+
+  const point =
+
+    latest.results.find(
+
+      result =>
+        result.id === id
+
+    );
+
+
+  if (!point) {
+
+    return null;
+
+  }
+
+
+  return Number(
+    point.value
+  );
+
+}
+
+
+/*
+==================================================
+LIVE 15 SECOND TREND
+==================================================
+*/
+
+function saveLiveSample() {
+
+  if (!latest.ok) {
+
+    return;
+
+  }
+
+
+  const values = {
+
+    in1:
+      getLatestValue("in1"),
+
+    in2:
+      getLatestValue("in2"),
+
+    in3:
+      getLatestValue("in3"),
+
+    in4:
+      getLatestValue("in4"),
+
+    in5:
+      getLatestValue("in5"),
+
+    diff:
+      getLatestValue("diff")
+
+  };
+
+
+  if (
+
+    Object
+      .values(values)
+      .some(
+        value =>
+          value === null
+      )
 
   ) {
 
@@ -1002,70 +1193,504 @@ function saveTrendSample() {
   }
 
 
-  function value(
-    id
-  ) {
-
-    const point =
-      latest.results.find(
-
-        item =>
-          item.id === id
-
-      );
-
-
-    return point
-      ? point.value
-      : null;
-
-  }
-
-
-  trendHistory.push({
+  liveHistory.push({
 
     timestamp:
 
       new Date()
       .toISOString(),
 
-    in1:
-      value("in1"),
-
-    in2:
-      value("in2"),
-
-    in3:
-      value("in3"),
-
-    in4:
-      value("in4"),
-
-    in5:
-      value("in5"),
-
-    diff:
-      value("diff")
+    ...values
 
   });
 
 
   if (
-
-    trendHistory.length >
-    MAX_TREND_SAMPLES
-
+    liveHistory.length >
+    MAX_LIVE_SAMPLES
   ) {
 
-    trendHistory =
+    liveHistory =
 
-      trendHistory.slice(
+      liveHistory.slice(
 
-        -MAX_TREND_SAMPLES
+        -MAX_LIVE_SAMPLES
 
       );
 
   }
+
+}
+
+
+/*
+==================================================
+PERMANENT DATABASE ARCHIVE
+==================================================
+*/
+
+async function archiveTrendSample() {
+
+  nextArchiveAt =
+    null;
+
+
+  if (!db) {
+
+    lastArchiveError =
+      "DATABASE_URL not configured";
+
+    return;
+
+  }
+
+
+  if (!latest.ok) {
+
+    lastArchiveError =
+      "BMS offline at archive time";
+
+    console.error(
+      "30-minute archive skipped: BMS offline."
+    );
+
+    return;
+
+  }
+
+
+  const planksIn =
+    getLatestValue("in1");
+
+  const planksOut =
+    getLatestValue("in2");
+
+  const ambient =
+    getLatestValue("in3");
+
+  const concrete =
+    getLatestValue("in4");
+
+  const tank =
+    getLatestValue("in5");
+
+  const differential =
+    getLatestValue("diff");
+
+
+  const values = [
+
+    planksIn,
+    planksOut,
+    ambient,
+    concrete,
+    tank,
+    differential
+
+  ];
+
+
+  if (
+
+    values.some(
+      value =>
+        value === null
+    )
+
+  ) {
+
+    lastArchiveError =
+      "One or more BMS values unavailable";
+
+    return;
+
+  }
+
+
+  try {
+
+
+    const recordedAt =
+      new Date();
+
+
+    await db.query(
+
+      `
+      INSERT INTO trend_history (
+        recorded_at,
+        planks_in,
+        planks_out,
+        ambient,
+        planks_concrete,
+        planks_tank,
+        ambient_concrete_diff
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7
+      )
+      `,
+
+      [
+        recordedAt,
+        planksIn,
+        planksOut,
+        ambient,
+        concrete,
+        tank,
+        differential
+      ]
+
+    );
+
+
+    databaseConnected =
+      true;
+
+
+    lastArchiveAt =
+      recordedAt;
+
+
+    lastArchiveError =
+      null;
+
+
+    console.log(
+
+      "30-minute trend history saved:",
+
+      recordedAt.toISOString()
+
+    );
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+
+    databaseConnected =
+      false;
+
+
+    lastArchiveError =
+      error.message;
+
+
+    console.error(
+
+      "Trend history database save failed:",
+
+      error.message
+
+    );
+
+  }
+
+}
+
+
+/*
+==================================================
+ALIGN ARCHIVE TO :00 AND :30
+==================================================
+*/
+
+function millisecondsUntilNextHalfHour() {
+
+  const now =
+    new Date();
+
+
+  const next =
+    new Date(
+      now
+    );
+
+
+  next.setSeconds(
+    0,
+    0
+  );
+
+
+  if (
+    now.getMinutes() < 30
+  ) {
+
+    next.setMinutes(
+      30
+    );
+
+  }
+
+  else {
+
+    next.setHours(
+      next.getHours() + 1
+    );
+
+
+    next.setMinutes(
+      0
+    );
+
+  }
+
+
+  return Math.max(
+
+    1000,
+
+    next.getTime() -
+    now.getTime()
+
+  );
+
+}
+
+
+/*
+==================================================
+START PERMANENT LOGGER
+==================================================
+*/
+
+function schedulePermanentLogger() {
+
+  const wait =
+    millisecondsUntilNextHalfHour();
+
+
+  nextArchiveAt =
+
+    new Date(
+
+      Date.now() +
+      wait
+
+    );
+
+
+  console.log(
+
+    "Next permanent archive:",
+
+    nextArchiveAt.toISOString()
+
+  );
+
+
+  setTimeout(
+
+    async () => {
+
+
+      await archiveTrendSample();
+
+
+      setInterval(
+
+        archiveTrendSample,
+
+        HISTORY_SAMPLE_MS
+
+      );
+
+    },
+
+    wait
+
+  );
+
+}
+
+
+/*
+==================================================
+QUERY HISTORY
+==================================================
+*/
+
+async function queryHistory(
+  from,
+  to
+) {
+
+  if (!db) {
+
+    throw new Error(
+      "Database not configured"
+    );
+
+  }
+
+
+  const result =
+
+    await db.query(
+
+      `
+      SELECT
+        recorded_at,
+        planks_in,
+        planks_out,
+        ambient,
+        planks_concrete,
+        planks_tank,
+        ambient_concrete_diff
+
+      FROM trend_history
+
+      WHERE
+        recorded_at >= $1
+        AND
+        recorded_at <= $2
+
+      ORDER BY
+        recorded_at ASC
+      `,
+
+      [
+        from,
+        to
+      ]
+
+    );
+
+
+  databaseConnected =
+    true;
+
+
+  return result.rows.map(
+
+    row => ({
+
+      timestamp:
+        new Date(
+          row.recorded_at
+        ).toISOString(),
+
+      in1:
+        Number(
+          row.planks_in
+        ),
+
+      in2:
+        Number(
+          row.planks_out
+        ),
+
+      in3:
+        Number(
+          row.ambient
+        ),
+
+      in4:
+        Number(
+          row.planks_concrete
+        ),
+
+      in5:
+        Number(
+          row.planks_tank
+        ),
+
+      diff:
+        Number(
+          row.ambient_concrete_diff
+        )
+
+    })
+
+  );
+
+}
+
+
+/*
+==================================================
+HISTORY RANGE
+==================================================
+*/
+
+async function getHistoryRange() {
+
+  if (!db) {
+
+    return {
+
+      first:
+        null,
+
+      last:
+        null,
+
+      count:
+        0
+
+    };
+
+  }
+
+
+  const result =
+
+    await db.query(
+
+      `
+      SELECT
+        MIN(recorded_at) AS first,
+        MAX(recorded_at) AS last,
+        COUNT(*)::bigint AS count
+      FROM trend_history
+      `
+
+    );
+
+
+  const row =
+    result.rows[0];
+
+
+  return {
+
+    first:
+
+      row.first
+      ?
+      new Date(
+        row.first
+      ).toISOString()
+      :
+      null,
+
+    last:
+
+      row.last
+      ?
+      new Date(
+        row.last
+      ).toISOString()
+      :
+      null,
+
+    count:
+      Number(
+        row.count
+      )
+
+  };
 
 }
 
@@ -1091,7 +1716,7 @@ function broadcast(
 
   for (
     const response
-    of clients
+    of streamClients
   ) {
 
     try {
@@ -1104,7 +1729,7 @@ function broadcast(
 
     catch {
 
-      clients.delete(
+      streamClients.delete(
         response
       );
 
@@ -1252,9 +1877,7 @@ function serveStatic(
     ) => {
 
 
-      if (
-        error
-      ) {
+      if (error) {
 
         response.writeHead(
           404
@@ -1322,7 +1945,7 @@ const server =
 
   http.createServer(
 
-    (
+    async (
       request,
       response
     ) => {
@@ -1339,11 +1962,13 @@ const server =
         );
 
 
-      if (
+      /*
+      CURRENT BMS STATE
+      */
 
+      if (
         url.pathname ===
         "/api/state"
-
       ) {
 
         return sendJson(
@@ -1361,11 +1986,13 @@ const server =
       }
 
 
-      if (
+      /*
+      15 SECOND LIVE TREND
+      */
 
+      if (
         url.pathname ===
         "/api/trend"
-
       ) {
 
         return sendJson(
@@ -1378,13 +2005,13 @@ const server =
               true,
 
             sampleIntervalMs:
-              TREND_SAMPLE_MS,
+              LIVE_SAMPLE_MS,
 
             count:
-              trendHistory.length,
+              liveHistory.length,
 
             samples:
-              trendHistory
+              liveHistory
 
           }
 
@@ -1393,11 +2020,311 @@ const server =
       }
 
 
-      if (
+      /*
+      PERMANENT HISTORY
+      */
 
+      if (
+        url.pathname ===
+        "/api/history"
+      ) {
+
+        try {
+
+
+          const fromText =
+            url.searchParams.get(
+              "from"
+            );
+
+
+          const toText =
+            url.searchParams.get(
+              "to"
+            );
+
+
+          if (
+            !fromText ||
+            !toText
+          ) {
+
+            return sendJson(
+
+              response,
+
+              {
+
+                ok:
+                  false,
+
+                error:
+                  "from and to are required"
+
+              },
+
+              400
+
+            );
+
+          }
+
+
+          const from =
+            new Date(
+              fromText
+            );
+
+
+          const to =
+            new Date(
+              toText
+            );
+
+
+          if (
+
+            Number.isNaN(
+              from.getTime()
+            ) ||
+
+            Number.isNaN(
+              to.getTime()
+            )
+
+          ) {
+
+            return sendJson(
+
+              response,
+
+              {
+
+                ok:
+                  false,
+
+                error:
+                  "Invalid date range"
+
+              },
+
+              400
+
+            );
+
+          }
+
+
+          if (
+            from > to
+          ) {
+
+            return sendJson(
+
+              response,
+
+              {
+
+                ok:
+                  false,
+
+                error:
+                  "From must be before To"
+
+              },
+
+              400
+
+            );
+
+          }
+
+
+          const samples =
+
+            await queryHistory(
+
+              from,
+
+              to
+
+            );
+
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                true,
+
+              count:
+                samples.length,
+
+              from:
+                from.toISOString(),
+
+              to:
+                to.toISOString(),
+
+              samples
+
+            }
+
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                false,
+
+              error:
+                error.message
+
+            },
+
+            500
+
+          );
+
+        }
+
+      }
+
+
+      /*
+      HISTORY RANGE
+      */
+
+      if (
+        url.pathname ===
+        "/api/history/range"
+      ) {
+
+        try {
+
+
+          const range =
+
+            await getHistoryRange();
+
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                true,
+
+              ...range
+
+            }
+
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+
+            response,
+
+            {
+
+              ok:
+                false,
+
+              error:
+                error.message
+
+            },
+
+            500
+
+          );
+
+        }
+
+      }
+
+
+      /*
+      LOGGER STATUS
+      */
+
+      if (
+        url.pathname ===
+        "/api/logger/status"
+      ) {
+
+        return sendJson(
+
+          response,
+
+          {
+
+            ok:
+              true,
+
+            databaseConfigured:
+              Boolean(db),
+
+            databaseConnected,
+
+            archiveIntervalMinutes:
+              30,
+
+            lastArchiveAt:
+
+              lastArchiveAt
+              ?
+              lastArchiveAt.toISOString()
+              :
+              null,
+
+            nextArchiveAt:
+
+              nextArchiveAt
+              ?
+              nextArchiveAt.toISOString()
+              :
+              null,
+
+            lastArchiveError
+
+          }
+
+        );
+
+      }
+
+
+      /*
+      HEALTH
+      */
+
+      if (
         url.pathname ===
         "/api/health"
-
       ) {
 
         return sendJson(
@@ -1415,8 +2342,16 @@ const server =
             bmsOnline:
               latest.ok,
 
-            trendSamples:
-              trendHistory.length
+            databaseConfigured:
+              Boolean(db),
+
+            databaseConnected,
+
+            liveTrendSamples:
+              liveHistory.length,
+
+            permanentIntervalMinutes:
+              30
 
           }
 
@@ -1425,11 +2360,13 @@ const server =
       }
 
 
-      if (
+      /*
+      LIVE STATE STREAM
+      */
 
+      if (
         url.pathname ===
         "/api/stream"
-
       ) {
 
 
@@ -1467,7 +2404,7 @@ const server =
         );
 
 
-        clients.add(
+        streamClients.add(
           response
         );
 
@@ -1507,7 +2444,7 @@ const server =
             );
 
 
-            clients.delete(
+            streamClients.delete(
               response
             );
 
@@ -1520,6 +2457,10 @@ const server =
 
       }
 
+
+      /*
+      STATIC PAGE
+      */
 
       serveStatic(
 
@@ -1540,90 +2481,189 @@ START SERVER
 ==================================================
 */
 
-server.listen(
+async function startServer() {
 
-  PORT,
 
-  "0.0.0.0",
+  await initialiseDatabase();
 
-  () => {
 
-    console.log(
-      ""
-    );
+  server.listen(
 
-    console.log(
-      "GREENAIR TRENDLOG"
-    );
+    PORT,
 
-    console.log(
-      "------------------------------"
-    );
+    "0.0.0.0",
 
-    console.log(
+    () => {
 
-      `BMS ${BMS_HOST}:${BMS_PORT}`
 
-    );
+      console.log(
+        ""
+      );
 
-    console.log(
 
-      `Unit ID ${UNIT_ID}`
+      console.log(
+        "GREENAIR TRENDLOG"
+      );
 
-    );
 
-    console.log(
-      "FC03 / READ ONLY"
-    );
+      console.log(
+        "--------------------------------"
+      );
 
-    console.log(
-      "Trend interval: 15 seconds"
-    );
 
-    console.log(
-      "Trend history: 24 hours"
-    );
+      console.log(
 
-    console.log(
-      ""
-    );
+        `BMS: ${BMS_HOST}:${BMS_PORT}`
 
-  }
+      );
 
-);
+
+      console.log(
+
+        `Unit ID: ${UNIT_ID}`
+
+      );
+
+
+      console.log(
+        "Function: FC03 / READ ONLY"
+      );
+
+
+      console.log(
+        "Live trend: 15 seconds"
+      );
+
+
+      console.log(
+        "Permanent archive: 30 minutes"
+      );
+
+
+      console.log(
+
+        `Database configured: ${Boolean(db)}`
+
+      );
+
+
+      console.log(
+        ""
+      );
+
+    }
+
+  );
+
+
+  /*
+  MODBUS
+  */
+
+  pollBms();
+
+
+  setInterval(
+
+    pollBms,
+
+    POLL_MS
+
+  );
+
+
+  /*
+  LIVE 15 SECOND LOGGER
+  */
+
+  setTimeout(
+
+    saveLiveSample,
+
+    5000
+
+  );
+
+
+  setInterval(
+
+    saveLiveSample,
+
+    LIVE_SAMPLE_MS
+
+  );
+
+
+  /*
+  PERMANENT 30 MINUTE LOGGER
+  */
+
+  schedulePermanentLogger();
+
+}
 
 
 /*
 ==================================================
-START
+START APPLICATION
 ==================================================
 */
 
-pollBms();
+startServer()
+  .catch(
+
+    error => {
+
+      console.error(
+        "Server startup failed:",
+        error
+      );
+
+      process.exit(1);
+
+    }
+
+  );
 
 
-setInterval(
+/*
+==================================================
+GRACEFUL SHUTDOWN
+==================================================
+*/
 
-  pollBms,
+async function shutdown() {
 
-  POLL_MS
+  console.log(
+    "Greenair TrendLog shutting down."
+  );
 
+
+  try {
+
+    if (db) {
+
+      await db.end();
+
+    }
+
+  }
+
+  catch {}
+
+
+  process.exit(0);
+
+}
+
+
+process.on(
+  "SIGTERM",
+  shutdown
 );
 
 
-setTimeout(
-
-  saveTrendSample,
-
-  5000
-
-);
-
-
-setInterval(
-
-  saveTrendSample,
-
-  TREND_SAMPLE_MS
-
+process.on(
+  "SIGINT",
+  shutdown
 );
