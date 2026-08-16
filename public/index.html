@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+
 <meta charset="utf-8">
 
 <meta
@@ -11,7 +12,9 @@
 
 <title>Bianco Precast - Greenair TrendLog</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
+</script>
 
 <style>
 
@@ -31,15 +34,24 @@ body {
   color: #222;
 }
 
-/* HEADER */
+
+/*
+==================================================
+HEADER
+==================================================
+*/
 
 .top-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   padding: 8px 14px;
+
   background: white;
-  border-bottom: 1px solid #d6d6d6;
+
+  border-bottom:
+    1px solid #d6d6d6;
 }
 
 .brand-left {
@@ -49,27 +61,64 @@ body {
 
 .bianco-title {
   color: #f57c00;
+
   font-size: 20px;
   font-weight: 900;
+
   letter-spacing: 1px;
 }
 
 .greenair-title {
   color: #1b5e20;
+
   font-size: 16px;
   font-weight: 800;
+
   margin-top: 1px;
+}
+
+.header-centre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .page-title {
   font-size: 16px;
   font-weight: 700;
+
   color: #333;
+}
+
+.mode-badge {
+  padding: 4px 9px;
+
+  border-radius: 12px;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 0.5px;
+
+  background: #e0e0e0;
+
+  color: #444;
+}
+
+.mode-badge.live {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.mode-badge.history {
+  background: #e3f2fd;
+  color: #0d47a1;
 }
 
 .connection-box {
   display: flex;
   align-items: center;
+
   gap: 8px;
 }
 
@@ -81,49 +130,78 @@ body {
 .led {
   width: 14px;
   height: 14px;
+
   border-radius: 50%;
 }
 
 .led.good {
   background: #00c853;
-  box-shadow: 0 0 7px rgba(0,200,83,0.8);
+
+  box-shadow:
+    0 0 7px
+    rgba(0,200,83,0.8);
 }
 
 .led.bad {
   background: #d50000;
-  box-shadow: 0 0 7px rgba(213,0,0,0.8);
+
+  box-shadow:
+    0 0 7px
+    rgba(213,0,0,0.8);
 }
 
 .led.waiting {
   background: #ffb300;
-  box-shadow: 0 0 7px rgba(255,179,0,0.8);
+
+  box-shadow:
+    0 0 7px
+    rgba(255,179,0,0.8);
 }
 
-/* TOOLBAR */
+
+/*
+==================================================
+TOOLBAR
+==================================================
+*/
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
+
   align-items: center;
+
   gap: 6px;
+
   padding: 8px 10px;
+
   background: #f7f7f7;
-  border-bottom: 1px solid #d6d6d6;
+
+  border-bottom:
+    1px solid #d6d6d6;
 }
 
 .toolbar label {
   font-size: 12px;
+
   color: #444;
+
   font-weight: 700;
 }
 
 .toolbar select,
 .toolbar button {
   height: 32px;
-  border: 1px solid #c7c7c7;
+
+  border:
+    1px solid #c7c7c7;
+
   border-radius: 4px;
+
   background: white;
+
   padding: 0 10px;
+
   font-size: 12px;
 }
 
@@ -137,23 +215,44 @@ body {
 
 .live-button {
   color: #2e7d32;
-  border-color: #a5d6a7 !important;
+
+  border-color:
+    #a5d6a7 !important;
 }
 
 .export-button {
   margin-left: auto;
+
+  background: #263238 !important;
+
+  color: white;
+
+  border-color:
+    #263238 !important;
 }
 
-/* CUSTOM HISTORY BAR */
+
+/*
+==================================================
+CUSTOM HISTORY
+==================================================
+*/
 
 .custom-history {
   display: none;
+
   flex-wrap: wrap;
+
   align-items: center;
+
   gap: 7px;
+
   padding: 9px 10px;
+
   background: #fff8e1;
-  border-bottom: 1px solid #e4d6a4;
+
+  border-bottom:
+    1px solid #e4d6a4;
 }
 
 .custom-history.show {
@@ -167,163 +266,365 @@ body {
 
 .custom-history input[type="datetime-local"] {
   height: 32px;
-  border: 1px solid #c7c7c7;
+
+  border:
+    1px solid #c7c7c7;
+
   border-radius: 4px;
+
   background: white;
+
   padding: 0 8px;
 }
 
 .custom-history button {
   height: 32px;
-  border: 1px solid #c7c7c7;
+
+  border:
+    1px solid #c7c7c7;
+
   border-radius: 4px;
+
   background: white;
+
   padding: 0 12px;
+
   cursor: pointer;
+
   font-weight: 700;
 }
 
 .load-history-button {
-  background: #1565c0 !important;
+  background:
+    #1565c0 !important;
+
   color: white;
-  border-color: #1565c0 !important;
+
+  border-color:
+    #1565c0 !important;
 }
 
 .apply-button {
-  background: #2e7d32 !important;
+  background:
+    #2e7d32 !important;
+
   color: white;
-  border-color: #2e7d32 !important;
+
+  border-color:
+    #2e7d32 !important;
 }
 
 .history-status {
   font-size: 12px;
+
   color: #666;
 }
 
-/* MAIN LAYOUT */
+
+/*
+==================================================
+RANGE BAR
+==================================================
+*/
+
+.range-bar {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+  padding:
+    5px 12px;
+
+  background:
+    #ffffff;
+
+  border-bottom:
+    1px solid #dddddd;
+
+  font-size: 11px;
+
+  color: #666;
+}
+
+.range-bar strong {
+  color: #333;
+}
+
+
+/*
+==================================================
+MAIN LAYOUT
+==================================================
+*/
 
 .main-layout {
   display: grid;
-  grid-template-columns: 290px 1fr;
+
+  grid-template-columns:
+    290px 1fr;
+
   gap: 8px;
+
   padding: 8px;
-  height: calc(100vh - 104px);
+
+  height:
+    calc(100vh - 137px);
+
   min-height: 620px;
 }
 
-/* SIDEBAR */
+
+/*
+==================================================
+SIDEBAR
+==================================================
+*/
 
 .sidebar {
   background: white;
-  border: 1px solid #d8d8d8;
+
+  border:
+    1px solid #d8d8d8;
+
   border-radius: 4px;
+
   overflow: auto;
+
   padding: 8px;
 }
 
 .filter-row {
   display: grid;
-  grid-template-columns: repeat(3,1fr);
+
+  grid-template-columns:
+    1fr 1fr;
+
   gap: 6px;
-  margin-bottom: 10px;
+
+  margin-bottom: 8px;
 }
 
-.filter-row select {
-  width: 100%;
-  height: 32px;
-  border: 1px solid #ccc;
+.side-button {
+  height: 31px;
+
+  border:
+    1px solid #ccc;
+
   border-radius: 4px;
+
   background: white;
-  font-size: 12px;
+
+  cursor: pointer;
+
+  font-size: 11px;
+
+  font-weight: 700;
 }
+
+.side-button:hover {
+  background: #eeeeee;
+}
+
+
+/*
+==================================================
+POINT ROWS
+==================================================
+*/
 
 .point-row {
   display: grid;
-  grid-template-columns: 28px 1fr auto auto;
+
+  grid-template-columns:
+    28px 1fr auto auto;
+
   align-items: center;
+
   gap: 7px;
+
   padding: 10px 8px;
+
   margin-bottom: 6px;
-  border: 1px solid #e1e1e1;
+
+  border:
+    1px solid #e1e1e1;
+
   border-radius: 4px;
+
   background: #fafafa;
+
+  cursor: pointer;
+
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.point-row:hover {
+  background: #f0f0f0;
+}
+
+.point-row.disabled {
+  opacity: 0.42;
+
+  background: #eeeeee;
 }
 
 .point-number {
   color: #888;
+
   font-size: 11px;
+
   font-weight: 700;
 }
 
 .point-name {
   font-size: 13px;
+
   font-weight: 700;
 }
 
 .point-type {
   font-size: 10px;
+
   color: #999;
+
   background: #eee;
+
   border-radius: 10px;
+
   padding: 2px 6px;
 }
 
 .point-unit {
   font-size: 10px;
+
   font-weight: 800;
 }
 
 .point-value {
-  grid-column: 2 / 5;
+  grid-column: 2 / 4;
+
   font-size: 18px;
+
   font-weight: 900;
+
   color: #1b5e20;
+
   margin-top: 4px;
+}
+
+.point-state {
+  grid-column: 4;
+
+  font-size: 9px;
+
+  font-weight: 900;
+
+  text-align: right;
+
+  color: #2e7d32;
+}
+
+.point-row.disabled
+.point-state {
+  color: #c62828;
 }
 
 .color-bar {
   width: 18px;
+
   height: 8px;
+
   border-radius: 4px;
 }
 
-.color-red { background: red; }
-.color-blue { background: blue; }
-.color-green { background: green; }
-.color-orange { background: orange; }
-.color-purple { background: purple; }
-.color-black { background: black; }
+.color-red {
+  background: red;
+}
 
-/* GRAPH */
+.color-blue {
+  background: blue;
+}
+
+.color-green {
+  background: green;
+}
+
+.color-orange {
+  background: orange;
+}
+
+.color-purple {
+  background: purple;
+}
+
+.color-black {
+  background: black;
+}
+
+
+/*
+==================================================
+GRAPH
+==================================================
+*/
 
 .graph-panel {
   background: white;
-  border: 1px solid #d8d8d8;
+
+  border:
+    1px solid #d8d8d8;
+
   border-radius: 4px;
+
   padding: 10px;
+
   position: relative;
+
   min-width: 0;
 }
 
 .graph-container {
   position: relative;
+
   width: 100%;
+
   height: 100%;
 }
 
 .graph-info {
   position: absolute;
+
   right: 18px;
+
   bottom: 12px;
+
   z-index: 2;
+
   font-size: 11px;
+
   color: #666;
-  background: rgba(255,255,255,0.9);
+
+  background:
+    rgba(255,255,255,0.90);
+
   padding: 4px 7px;
+
   border-radius: 3px;
 }
 
-/* MOBILE */
+
+/*
+==================================================
+MOBILE
+==================================================
+*/
 
 @media (max-width: 850px) {
 
@@ -332,8 +633,11 @@ body {
   }
 
   .main-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
+
     height: auto;
+
     min-height: 0;
   }
 
@@ -344,16 +648,21 @@ body {
   .export-button {
     margin-left: 0;
   }
+
 }
 
 @media (max-width: 560px) {
 
-  .graph-panel {
-    height: 430px;
+  .top-header {
+    align-items: flex-start;
   }
 
-  .filter-row {
-    grid-template-columns: 1fr;
+  .header-centre {
+    display: none;
+  }
+
+  .graph-panel {
+    height: 430px;
   }
 
   .custom-history {
@@ -364,14 +673,28 @@ body {
   .custom-history button {
     width: 100%;
   }
+
+  .range-bar {
+    flex-direction: column;
+
+    align-items: flex-start;
+  }
+
 }
 
 </style>
+
 </head>
+
 
 <body>
 
-<!-- HEADER -->
+
+<!--
+==================================================
+HEADER
+==================================================
+-->
 
 <div class="top-header">
 
@@ -387,9 +710,22 @@ body {
 
   </div>
 
-  <div class="page-title">
-    Trend Log
+
+  <div class="header-centre">
+
+    <div class="page-title">
+      Trend Log
+    </div>
+
+    <div
+      id="modeBadge"
+      class="mode-badge live"
+    >
+      LIVE
+    </div>
+
   </div>
+
 
   <div class="connection-box">
 
@@ -408,13 +744,18 @@ body {
 </div>
 
 
-<!-- TOOLBAR -->
+<!--
+==================================================
+TOOLBAR
+==================================================
+-->
 
 <div class="toolbar">
 
   <label for="timeBase">
     Time Base:
   </label>
+
 
   <select id="timeBase">
 
@@ -460,6 +801,7 @@ body {
     Zoom In
   </button>
 
+
   <button
     id="zoomOutButton"
     type="button"
@@ -467,12 +809,14 @@ body {
     Zoom Out
   </button>
 
+
   <button
     id="resetButton"
     type="button"
   >
     Reset
   </button>
+
 
   <button
     id="liveButton"
@@ -482,12 +826,14 @@ body {
     Live
   </button>
 
+
   <button
     id="last5Button"
     type="button"
   >
     Last 5 min
   </button>
+
 
   <button
     id="exportButton"
@@ -500,7 +846,11 @@ body {
 </div>
 
 
-<!-- CUSTOM DEFINE HISTORY CONTROLS -->
+<!--
+==================================================
+CUSTOM DEFINE
+==================================================
+-->
 
 <div
   id="customHistory"
@@ -515,6 +865,7 @@ body {
     Load History File
   </button>
 
+
   <input
     id="historyFileInput"
     type="file"
@@ -522,23 +873,28 @@ body {
     hidden
   >
 
+
   <label for="fromDate">
     From:
   </label>
+
 
   <input
     id="fromDate"
     type="datetime-local"
   >
 
+
   <label for="toDate">
     To:
   </label>
+
 
   <input
     id="toDate"
     type="datetime-local"
   >
+
 
   <button
     id="applyHistoryButton"
@@ -547,6 +903,7 @@ body {
   >
     Apply
   </button>
+
 
   <span
     id="historyStatus"
@@ -558,40 +915,84 @@ body {
 </div>
 
 
-<!-- MAIN -->
+<!--
+==================================================
+CURRENT RANGE
+==================================================
+-->
+
+<div class="range-bar">
+
+  <span>
+    Mode:
+    <strong id="rangeMode">
+      Live
+    </strong>
+  </span>
+
+  <span>
+    Display Range:
+    <strong id="displayRange">
+      Waiting for data...
+    </strong>
+  </span>
+
+</div>
+
+
+<!--
+==================================================
+MAIN
+==================================================
+-->
 
 <div class="main-layout">
 
+
+  <!-- LEFT POINT LIST -->
+
   <aside class="sidebar">
+
 
     <div class="filter-row">
 
-      <select>
-        <option>All</option>
-      </select>
+      <button
+        id="showAllButton"
+        class="side-button"
+        type="button"
+      >
+        Show All
+      </button>
 
-      <select>
-        <option>By Type</option>
-      </select>
-
-      <select>
-        <option>By Unit</option>
-      </select>
+      <button
+        id="hideAllButton"
+        class="side-button"
+        type="button"
+      >
+        Hide All
+      </button>
 
     </div>
 
+
     <div id="pointList"></div>
+
 
   </aside>
 
+
+  <!-- GRAPH -->
 
   <section class="graph-panel">
 
     <div class="graph-container">
 
-      <canvas id="trendChart"></canvas>
+      <canvas
+        id="trendChart"
+      ></canvas>
 
     </div>
+
 
     <div
       id="graphInfo"
@@ -602,14 +1003,16 @@ body {
 
   </section>
 
+
 </div>
 
 
 <script>
 
+
 /*
 ==================================================
-POINTS
+POINT DEFINITIONS
 ==================================================
 */
 
@@ -673,120 +1076,221 @@ ELEMENTS
 */
 
 const pointList =
-  document.getElementById("pointList");
+  document.getElementById(
+    "pointList"
+  );
 
 const led =
-  document.getElementById("connectionLed");
+  document.getElementById(
+    "connectionLed"
+  );
+
+const modeBadge =
+  document.getElementById(
+    "modeBadge"
+  );
+
+const rangeMode =
+  document.getElementById(
+    "rangeMode"
+  );
+
+const displayRange =
+  document.getElementById(
+    "displayRange"
+  );
 
 const canvas =
-  document.getElementById("trendChart");
+  document.getElementById(
+    "trendChart"
+  );
 
 const graphInfo =
-  document.getElementById("graphInfo");
+  document.getElementById(
+    "graphInfo"
+  );
 
 const timeBase =
-  document.getElementById("timeBase");
+  document.getElementById(
+    "timeBase"
+  );
 
 const customHistory =
-  document.getElementById("customHistory");
+  document.getElementById(
+    "customHistory"
+  );
 
 const loadHistoryButton =
-  document.getElementById("loadHistoryButton");
+  document.getElementById(
+    "loadHistoryButton"
+  );
 
 const historyFileInput =
-  document.getElementById("historyFileInput");
+  document.getElementById(
+    "historyFileInput"
+  );
 
 const fromDate =
-  document.getElementById("fromDate");
+  document.getElementById(
+    "fromDate"
+  );
 
 const toDate =
-  document.getElementById("toDate");
+  document.getElementById(
+    "toDate"
+  );
 
 const applyHistoryButton =
-  document.getElementById("applyHistoryButton");
+  document.getElementById(
+    "applyHistoryButton"
+  );
 
 const historyStatus =
-  document.getElementById("historyStatus");
+  document.getElementById(
+    "historyStatus"
+  );
 
 const zoomInButton =
-  document.getElementById("zoomInButton");
+  document.getElementById(
+    "zoomInButton"
+  );
 
 const zoomOutButton =
-  document.getElementById("zoomOutButton");
+  document.getElementById(
+    "zoomOutButton"
+  );
 
 const resetButton =
-  document.getElementById("resetButton");
+  document.getElementById(
+    "resetButton"
+  );
 
 const liveButton =
-  document.getElementById("liveButton");
+  document.getElementById(
+    "liveButton"
+  );
 
 const last5Button =
-  document.getElementById("last5Button");
+  document.getElementById(
+    "last5Button"
+  );
 
 const exportButton =
-  document.getElementById("exportButton");
+  document.getElementById(
+    "exportButton"
+  );
+
+const showAllButton =
+  document.getElementById(
+    "showAllButton"
+  );
+
+const hideAllButton =
+  document.getElementById(
+    "hideAllButton"
+  );
 
 
 /*
 ==================================================
-DATA
+DATA STATE
 ==================================================
 */
 
-let liveSamples = [];
+let liveSamples =
+  [];
 
-let historySamples = [];
+let historySamples =
+  [];
 
-let filteredHistorySamples = [];
+let filteredHistorySamples =
+  [];
 
-let currentMode = "live";
+let currentMode =
+  "live";
 
-let zoomFactor = 1;
+let zoomFactor =
+  1;
 
 
 /*
 ==================================================
-POINT LIST
+VISIBLE POINT STATE
 ==================================================
 */
 
-pointList.innerHTML = POINTS.map(point => `
+const visiblePoints = {
 
-  <div
-    class="point-row"
-    data-id="${point.id}"
-  >
+  in1: true,
+  in2: true,
+  in3: true,
+  in4: true,
+  in5: true,
+  diff: true
 
-    <div class="point-number">
-      ${point.number}
-    </div>
+};
 
-    <div class="point-name">
-      ${point.name}
-    </div>
 
-    <div class="point-type">
-      IN
-    </div>
+/*
+==================================================
+BUILD POINT LIST
+==================================================
+*/
 
-    <div
-      class="point-unit"
-      style="color:${point.unitColor}"
-    >
-      Deg.C
-    </div>
+pointList.innerHTML =
 
-    <div
-      class="color-bar ${point.colorClass}"
-    ></div>
+  POINTS.map(
 
-    <div class="point-value">
-      —
-    </div>
+    point => `
 
-  </div>
+      <div
+        class="point-row"
+        data-id="${point.id}"
+        title="Click to show or hide this trend"
+      >
 
-`).join("");
+        <div class="point-number">
+          ${point.number}
+        </div>
+
+
+        <div class="point-name">
+          ${point.name}
+        </div>
+
+
+        <div class="point-type">
+          IN
+        </div>
+
+
+        <div
+          class="point-unit"
+          style="color:${point.unitColor}"
+        >
+          Deg.C
+        </div>
+
+
+        <div
+          class="color-bar ${point.colorClass}"
+        ></div>
+
+
+        <div class="point-value">
+          —
+        </div>
+
+
+        <div class="point-state">
+          ON
+        </div>
+
+      </div>
+
+    `
+
+  ).join("");
 
 
 /*
@@ -795,7 +1299,9 @@ LED
 ==================================================
 */
 
-function setLed(state) {
+function setLed(
+  state
+) {
 
   led.classList.remove(
     "good",
@@ -803,7 +1309,83 @@ function setLed(state) {
     "waiting"
   );
 
-  led.classList.add(state);
+  led.classList.add(
+    state
+  );
+
+
+  if (
+    state === "good"
+  ) {
+
+    led.title =
+      "Connection Good";
+
+  }
+
+  else if (
+    state === "bad"
+  ) {
+
+    led.title =
+      "Connection Bad";
+
+  }
+
+  else {
+
+    led.title =
+      "Connecting";
+
+  }
+
+}
+
+
+/*
+==================================================
+MODE DISPLAY
+==================================================
+*/
+
+function updateModeDisplay() {
+
+  modeBadge.classList.remove(
+    "live",
+    "history"
+  );
+
+
+  if (
+    currentMode ===
+    "history"
+  ) {
+
+    modeBadge.classList.add(
+      "history"
+    );
+
+    modeBadge.textContent =
+      "HISTORY";
+
+    rangeMode.textContent =
+      "Historical";
+
+  }
+
+  else {
+
+    modeBadge.classList.add(
+      "live"
+    );
+
+    modeBadge.textContent =
+      "LIVE";
+
+    rangeMode.textContent =
+      "Live";
+
+  }
 
 }
 
@@ -814,37 +1396,58 @@ LIVE VALUES
 ==================================================
 */
 
-function renderState(state) {
+function renderState(
+  state
+) {
 
   if (
     !state ||
     !state.ok ||
-    !Array.isArray(state.results)
+    !Array.isArray(
+      state.results
+    )
   ) {
 
-    setLed("bad");
+    setLed(
+      "bad"
+    );
 
     return;
 
   }
 
 
-  setLed("good");
+  setLed(
+    "good"
+  );
 
 
-  for (const result of state.results) {
+  for (
+    const result
+    of state.results
+  ) {
 
     const element =
+
       document.querySelector(
+
         `[data-id="${result.id}"] .point-value`
+
       );
 
 
-    if (element) {
+    if (
+      element
+    ) {
 
       element.textContent =
-        Number(result.value).toFixed(1)
+
+        Number(
+          result.value
+        ).toFixed(1)
+
         +
+
         " °C";
 
     }
@@ -860,152 +1463,182 @@ CHART
 ==================================================
 */
 
-const chart = new Chart(
+const chart =
 
-  canvas,
+  new Chart(
 
-  {
+    canvas,
 
-    type: "line",
+    {
 
-    data: {
+      type:
+        "line",
 
-      labels: [],
+      data: {
 
-      datasets: [
+        labels:
+          [],
 
-        {
-          label: "Planks In",
-          data: [],
-          borderColor: "red",
-          backgroundColor: "red",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        },
+        datasets: [
 
-        {
-          label: "Planks Out",
-          data: [],
-          borderColor: "blue",
-          backgroundColor: "blue",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        },
+          {
+            id: "in1",
+            label: "Planks In",
+            data: [],
+            borderColor: "red",
+            backgroundColor: "red",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
+          },
 
-        {
-          label: "Ambient",
-          data: [],
-          borderColor: "green",
-          backgroundColor: "green",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        },
+          {
+            id: "in2",
+            label: "Planks Out",
+            data: [],
+            borderColor: "blue",
+            backgroundColor: "blue",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
+          },
 
-        {
-          label: "Planks Concrete",
-          data: [],
-          borderColor: "orange",
-          backgroundColor: "orange",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        },
+          {
+            id: "in3",
+            label: "Ambient",
+            data: [],
+            borderColor: "green",
+            backgroundColor: "green",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
+          },
 
-        {
-          label: "Planks Tank",
-          data: [],
-          borderColor: "purple",
-          backgroundColor: "purple",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        },
+          {
+            id: "in4",
+            label: "Planks Concrete",
+            data: [],
+            borderColor: "orange",
+            backgroundColor: "orange",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
+          },
 
-        {
-          label: "Ambient - Concrete Differential",
-          data: [],
-          borderColor: "black",
-          backgroundColor: "black",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.05
-        }
+          {
+            id: "in5",
+            label: "Planks Tank",
+            data: [],
+            borderColor: "purple",
+            backgroundColor: "purple",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
+          },
 
-      ]
-
-    },
-
-    options: {
-
-      responsive: true,
-
-      maintainAspectRatio: false,
-
-      animation: false,
-
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-
-      plugins: {
-
-        legend: {
-          display: false
-        },
-
-        tooltip: {
-
-          callbacks: {
-
-            label: context =>
-
-              context.dataset.label
-              +
-              ": "
-              +
-              Number(context.raw).toFixed(1)
-              +
-              " °C"
-
+          {
+            id: "diff",
+            label:
+              "Ambient - Concrete Differential",
+            data: [],
+            borderColor: "black",
+            backgroundColor: "black",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           }
 
-        }
+        ]
 
       },
 
-      scales: {
 
-        x: {
+      options: {
 
-          grid: {
-            color: "#d9d9d9"
+        responsive:
+          true,
+
+        maintainAspectRatio:
+          false,
+
+        animation:
+          false,
+
+        interaction: {
+          mode: "index",
+          intersect: false
+        },
+
+
+        plugins: {
+
+          legend: {
+            display: false
           },
 
-          ticks: {
-            maxTicksLimit: 8,
-            maxRotation: 0
+
+          tooltip: {
+
+            callbacks: {
+
+              label:
+                context =>
+
+                  context.dataset.label
+
+                  +
+
+                  ": "
+
+                  +
+
+                  Number(
+                    context.raw
+                  ).toFixed(1)
+
+                  +
+
+                  " °C"
+
+            }
+
           }
 
         },
 
-        y: {
 
-          grid: {
-            color: "#d9d9d9"
+        scales: {
+
+          x: {
+
+            grid: {
+              color: "#d9d9d9"
+            },
+
+            ticks: {
+              maxTicksLimit: 8,
+              maxRotation: 0
+            }
+
           },
 
-          ticks: {
-            color: "#d32f2f"
-          },
 
-          title: {
-            display: true,
-            text: "Deg.C",
-            color: "#d32f2f"
+          y: {
+
+            grid: {
+              color: "#d9d9d9"
+            },
+
+            ticks: {
+              color: "#d32f2f"
+            },
+
+            title: {
+              display: true,
+              text: "Deg.C",
+              color: "#d32f2f"
+            }
+
           }
 
         }
@@ -1014,6 +1647,115 @@ const chart = new Chart(
 
     }
 
+  );
+
+
+/*
+==================================================
+POINT VISIBILITY
+==================================================
+*/
+
+function updatePointVisibility() {
+
+  POINTS.forEach(
+
+    (
+      point,
+      index
+    ) => {
+
+
+      const row =
+
+        document.querySelector(
+
+          `.point-row[data-id="${point.id}"]`
+
+        );
+
+
+      const stateText =
+
+        row.querySelector(
+          ".point-state"
+        );
+
+
+      const visible =
+        visiblePoints[
+          point.id
+        ];
+
+
+      chart.setDatasetVisibility(
+        index,
+        visible
+      );
+
+
+      row.classList.toggle(
+        "disabled",
+        !visible
+      );
+
+
+      stateText.textContent =
+        visible
+        ? "ON"
+        : "OFF";
+
+    }
+
+  );
+
+
+  chart.update(
+    "none"
+  );
+
+}
+
+
+/*
+==================================================
+CLICK POINT TO TOGGLE
+==================================================
+*/
+
+pointList.addEventListener(
+
+  "click",
+
+  event => {
+
+
+    const row =
+
+      event.target.closest(
+        ".point-row"
+      );
+
+
+    if (
+      !row
+    ) {
+
+      return;
+
+    }
+
+
+    const id =
+      row.dataset.id;
+
+
+    visiblePoints[id] =
+      !visiblePoints[id];
+
+
+    updatePointVisibility();
+
   }
 
 );
@@ -1021,19 +1763,91 @@ const chart = new Chart(
 
 /*
 ==================================================
-ACTIVE SAMPLES
+SHOW ALL
+==================================================
+*/
+
+showAllButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    POINTS.forEach(
+
+      point => {
+
+        visiblePoints[
+          point.id
+        ] = true;
+
+      }
+
+    );
+
+
+    updatePointVisibility();
+
+  }
+
+);
+
+
+/*
+==================================================
+HIDE ALL
+==================================================
+*/
+
+hideAllButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    POINTS.forEach(
+
+      point => {
+
+        visiblePoints[
+          point.id
+        ] = false;
+
+      }
+
+    );
+
+
+    updatePointVisibility();
+
+  }
+
+);
+
+
+/*
+==================================================
+SOURCE SAMPLES
 ==================================================
 */
 
 function getSourceSamples() {
 
-  if (currentMode === "history") {
+  if (
+    currentMode ===
+    "history"
+  ) {
 
-    return filteredHistorySamples.length
-      ? filteredHistorySamples
-      : historySamples;
+    return (
+      filteredHistorySamples.length
+      ?
+      filteredHistorySamples
+      :
+      historySamples
+    );
 
   }
+
 
   return liveSamples;
 
@@ -1052,14 +1866,19 @@ function getVisibleSamples() {
     getSourceSamples();
 
 
-  if (!source.length) {
+  if (
+    !source.length
+  ) {
 
     return [];
 
   }
 
 
-  if (currentMode === "history") {
+  if (
+    currentMode ===
+    "history"
+  ) {
 
     return source;
 
@@ -1070,7 +1889,10 @@ function getVisibleSamples() {
     timeBase.value;
 
 
-  if (selected === "custom") {
+  if (
+    selected ===
+    "custom"
+  ) {
 
     return source;
 
@@ -1078,29 +1900,43 @@ function getVisibleSamples() {
 
 
   const minutes =
-    Number(selected);
+    Number(
+      selected
+    );
 
 
   const newestTime =
+
     new Date(
-      source[source.length - 1].timestamp
+
+      source[
+        source.length - 1
+      ].timestamp
+
     ).getTime();
 
 
   const windowMs =
-    minutes * 60 * 1000;
+
+    minutes *
+    60 *
+    1000;
 
 
   let visible =
-    source.filter(sample =>
 
-      new Date(
-        sample.timestamp
-      ).getTime()
+    source.filter(
 
-      >=
+      sample =>
 
-      newestTime - windowMs
+        new Date(
+          sample.timestamp
+        ).getTime()
+
+        >=
+
+        newestTime -
+        windowMs
 
     );
 
@@ -1111,16 +1947,25 @@ function getVisibleSamples() {
   ) {
 
     const wanted =
+
       Math.max(
+
         2,
+
         Math.floor(
-          visible.length / zoomFactor
+
+          visible.length /
+          zoomFactor
+
         )
+
       );
 
 
     visible =
-      visible.slice(-wanted);
+      visible.slice(
+        -wanted
+      );
 
   }
 
@@ -1132,7 +1977,60 @@ function getVisibleSamples() {
 
 /*
 ==================================================
-DRAW GRAPH
+DISPLAY RANGE
+==================================================
+*/
+
+function updateRangeDisplay(
+  samples
+) {
+
+  if (
+    !samples.length
+  ) {
+
+    displayRange.textContent =
+      "No data";
+
+    return;
+
+  }
+
+
+  const first =
+    new Date(
+      samples[0].timestamp
+    );
+
+
+  const last =
+    new Date(
+
+      samples[
+        samples.length - 1
+      ].timestamp
+
+    );
+
+
+  displayRange.textContent =
+
+    first.toLocaleString()
+
+    +
+
+    "  →  "
+
+    +
+
+    last.toLocaleString();
+
+}
+
+
+/*
+==================================================
+DRAW TREND
 ==================================================
 */
 
@@ -1143,59 +2041,98 @@ function drawTrend() {
 
 
   chart.data.labels =
-    samples.map(sample =>
 
-      new Date(
-        sample.timestamp
-      ).toLocaleString(
-        [],
-        {
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        }
-      )
+    samples.map(
+
+      sample =>
+
+        new Date(
+
+          sample.timestamp
+
+        ).toLocaleString(
+
+          [],
+
+          {
+
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+
+          }
+
+        )
 
     );
 
 
   chart.data.datasets[0].data =
-    samples.map(s => s.in1);
+    samples.map(
+      sample =>
+        sample.in1
+    );
+
 
   chart.data.datasets[1].data =
-    samples.map(s => s.in2);
+    samples.map(
+      sample =>
+        sample.in2
+    );
+
 
   chart.data.datasets[2].data =
-    samples.map(s => s.in3);
+    samples.map(
+      sample =>
+        sample.in3
+    );
+
 
   chart.data.datasets[3].data =
-    samples.map(s => s.in4);
+    samples.map(
+      sample =>
+        sample.in4
+    );
+
 
   chart.data.datasets[4].data =
-    samples.map(s => s.in5);
+    samples.map(
+      sample =>
+        sample.in5
+    );
+
 
   chart.data.datasets[5].data =
-    samples.map(s => s.diff);
+    samples.map(
+      sample =>
+        sample.diff
+    );
 
 
-  chart.update("none");
+  updatePointVisibility();
 
 
-  if (currentMode === "history") {
+  updateModeDisplay();
 
-    graphInfo.textContent =
-      `${samples.length} historical samples shown`;
 
-  }
+  updateRangeDisplay(
+    samples
+  );
 
-  else {
 
-    graphInfo.textContent =
-      `${samples.length} live samples shown`;
+  graphInfo.textContent =
 
-  }
+    currentMode === "history"
+
+    ?
+
+    `${samples.length} historical samples shown`
+
+    :
+
+    `${samples.length} live samples shown`;
 
 }
 
@@ -1208,7 +2145,10 @@ LOAD LIVE TREND
 
 async function loadTrend() {
 
-  if (currentMode !== "live") {
+  if (
+    currentMode !==
+    "live"
+  ) {
 
     return;
 
@@ -1218,15 +2158,21 @@ async function loadTrend() {
   try {
 
     const response =
+
       await fetch(
+
         "/api/trend",
+
         {
-          cache: "no-store"
+          cache:
+            "no-store"
         }
+
       );
 
 
     const trend =
+
       await response.json();
 
 
@@ -1243,14 +2189,24 @@ async function loadTrend() {
 
 
     liveSamples =
-      Array.isArray(trend.samples)
-      ? trend.samples
-      : [];
+
+      Array.isArray(
+        trend.samples
+      )
+
+      ?
+
+      trend.samples
+
+      :
+
+      [];
 
 
     drawTrend();
 
   }
+
 
   catch {
 
@@ -1268,13 +2224,20 @@ CSV LINE PARSER
 ==================================================
 */
 
-function parseCsvLine(line) {
+function parseCsvLine(
+  line
+) {
 
-  const values = [];
+  const values =
+    [];
 
-  let current = "";
 
-  let insideQuotes = false;
+  let current =
+    "";
+
+
+  let insideQuotes =
+    false;
 
 
   for (
@@ -1283,15 +2246,24 @@ function parseCsvLine(line) {
     i++
   ) {
 
+
     const char =
       line[i];
 
 
-    if (char === '"') {
+    if (
+      char === '"'
+    ) {
+
 
       if (
+
         insideQuotes &&
-        line[i + 1] === '"'
+
+        line[
+          i + 1
+        ] === '"'
+
       ) {
 
         current += '"';
@@ -1299,6 +2271,7 @@ function parseCsvLine(line) {
         i++;
 
       }
+
 
       else {
 
@@ -1309,27 +2282,39 @@ function parseCsvLine(line) {
 
     }
 
+
     else if (
+
       char === "," &&
+
       !insideQuotes
+
     ) {
 
-      values.push(current);
+      values.push(
+        current
+      );
 
-      current = "";
+      current =
+        "";
 
     }
 
+
     else {
 
-      current += char;
+      current +=
+        char;
 
     }
 
   }
 
 
-  values.push(current);
+  values.push(
+    current
+  );
+
 
   return values;
 
@@ -1347,12 +2332,16 @@ function parseHistoryDate(
   timeText
 ) {
 
+
   const combined =
+
     `${dateText.trim()} ${timeText.trim()}`;
 
 
   let date =
-    new Date(combined);
+    new Date(
+      combined
+    );
 
 
   if (
@@ -1367,50 +2356,86 @@ function parseHistoryDate(
 
 
   const parts =
+
     dateText
       .trim()
-      .split(/[\/\-]/);
+      .split(
+        /[\/\-]/
+      );
 
 
-  if (parts.length === 3) {
+  if (
+    parts.length === 3
+  ) {
+
 
     const day =
-      Number(parts[0]);
+      Number(
+        parts[0]
+      );
+
 
     const month =
-      Number(parts[1]);
+      Number(
+        parts[1]
+      );
+
 
     const year =
-      Number(parts[2]);
+      Number(
+        parts[2]
+      );
 
 
     const timeParts =
+
       timeText
         .trim()
         .split(":");
 
 
     const hour =
-      Number(timeParts[0] || 0);
+      Number(
+        timeParts[0] || 0
+      );
+
 
     const minute =
-      Number(timeParts[1] || 0);
+      Number(
+        timeParts[1] || 0
+      );
+
 
     const second =
       Number(
-        String(timeParts[2] || "0")
-          .replace(/[^\d].*$/, "")
+
+        String(
+
+          timeParts[2] ||
+          "0"
+
+        ).replace(
+
+          /[^\d].*$/,
+
+          ""
+
+        )
+
       );
 
 
     date =
+
       new Date(
+
         year,
         month - 1,
         day,
         hour,
         minute,
         second
+
       );
 
 
@@ -1438,28 +2463,42 @@ PARSE HISTORY CSV
 ==================================================
 */
 
-function parseHistoryCsv(text) {
+function parseHistoryCsv(
+  text
+) {
+
 
   const lines =
+
     text
-      .replace(/\r/g, "")
+      .replace(
+        /\r/g,
+        ""
+      )
       .split("\n")
       .filter(
+
         line =>
           line.trim() !== ""
+
       );
 
 
-  if (lines.length < 2) {
+  if (
+    lines.length < 2
+  ) {
 
     throw new Error(
+
       "The history file contains no trend data."
+
     );
 
   }
 
 
-  const rows = [];
+  const rows =
+    [];
 
 
   for (
@@ -1468,13 +2507,17 @@ function parseHistoryCsv(text) {
     i++
   ) {
 
+
     const columns =
+
       parseCsvLine(
         lines[i]
       );
 
 
-    if (columns.length < 8) {
+    if (
+      columns.length < 8
+    ) {
 
       continue;
 
@@ -1482,13 +2525,18 @@ function parseHistoryCsv(text) {
 
 
     const timestamp =
+
       parseHistoryDate(
+
         columns[0],
         columns[1]
+
       );
 
 
-    if (!timestamp) {
+    if (
+      !timestamp
+    ) {
 
       continue;
 
@@ -1501,22 +2549,34 @@ function parseHistoryCsv(text) {
         timestamp.toISOString(),
 
       in1:
-        Number(columns[2]),
+        Number(
+          columns[2]
+        ),
 
       in2:
-        Number(columns[3]),
+        Number(
+          columns[3]
+        ),
 
       in3:
-        Number(columns[4]),
+        Number(
+          columns[4]
+        ),
 
       in4:
-        Number(columns[5]),
+        Number(
+          columns[5]
+        ),
 
       in5:
-        Number(columns[6]),
+        Number(
+          columns[6]
+        ),
 
       diff:
-        Number(columns[7])
+        Number(
+          columns[7]
+        )
 
     };
 
@@ -1524,20 +2584,28 @@ function parseHistoryCsv(text) {
     if (
 
       [
+
         sample.in1,
         sample.in2,
         sample.in3,
         sample.in4,
         sample.in5,
         sample.diff
+
       ].every(
+
         value =>
-          Number.isFinite(value)
+          Number.isFinite(
+            value
+          )
+
       )
 
     ) {
 
-      rows.push(sample);
+      rows.push(
+        sample
+      );
 
     }
 
@@ -1551,27 +2619,38 @@ function parseHistoryCsv(text) {
 
 /*
 ==================================================
-LOCAL DATETIME INPUT
+DATETIME INPUT FORMAT
 ==================================================
 */
 
-function toLocalInputValue(date) {
+function toLocalInputValue(
+  date
+) {
 
   const offset =
     date.getTimezoneOffset();
 
 
   const local =
+
     new Date(
+
       date.getTime()
+
       -
-      offset * 60000
+
+      offset *
+      60000
+
     );
 
 
   return local
     .toISOString()
-    .slice(0,16);
+    .slice(
+      0,
+      16
+    );
 
 }
 
@@ -1601,11 +2680,14 @@ historyFileInput.addEventListener(
 
   async event => {
 
+
     const file =
       event.target.files[0];
 
 
-    if (!file) {
+    if (
+      !file
+    ) {
 
       return;
 
@@ -1614,56 +2696,93 @@ historyFileInput.addEventListener(
 
     try {
 
+
       const text =
         await file.text();
 
 
       const parsed =
-        parseHistoryCsv(text);
+
+        parseHistoryCsv(
+          text
+        );
 
 
-      if (!parsed.length) {
+      if (
+        !parsed.length
+      ) {
 
         throw new Error(
+
           "No valid trend samples were found in the file."
+
         );
 
       }
 
 
       historySamples =
+
         parsed.sort(
-          (a,b) =>
-            new Date(a.timestamp)
+
+          (
+            a,
+            b
+          ) =>
+
+            new Date(
+              a.timestamp
+            )
+
             -
-            new Date(b.timestamp)
+
+            new Date(
+              b.timestamp
+            )
+
         );
 
 
       filteredHistorySamples =
-        [...historySamples];
+
+        [
+          ...historySamples
+        ];
 
 
       const first =
+
         new Date(
-          historySamples[0].timestamp
+
+          historySamples[0]
+            .timestamp
+
         );
 
 
       const last =
+
         new Date(
+
           historySamples[
             historySamples.length - 1
           ].timestamp
+
         );
 
 
       fromDate.value =
-        toLocalInputValue(first);
+
+        toLocalInputValue(
+          first
+        );
 
 
       toDate.value =
-        toLocalInputValue(last);
+
+        toLocalInputValue(
+          last
+        );
 
 
       currentMode =
@@ -1671,6 +2790,7 @@ historyFileInput.addEventListener(
 
 
       historyStatus.textContent =
+
         `${file.name} - ${historySamples.length} samples loaded`;
 
 
@@ -1678,13 +2798,20 @@ historyFileInput.addEventListener(
 
     }
 
-    catch (error) {
+
+    catch (
+      error
+    ) {
+
 
       historyStatus.textContent =
+
         "History file could not be loaded";
 
 
-      alert(error.message);
+      alert(
+        error.message
+      );
 
     }
 
@@ -1695,7 +2822,7 @@ historyFileInput.addEventListener(
 
 /*
 ==================================================
-APPLY HISTORY DATE RANGE
+APPLY CUSTOM RANGE
 ==================================================
 */
 
@@ -1705,10 +2832,15 @@ applyHistoryButton.addEventListener(
 
   () => {
 
-    if (!historySamples.length) {
+
+    if (
+      !historySamples.length
+    ) {
 
       alert(
+
         "Please load a history file first."
+
       );
 
       return;
@@ -1717,12 +2849,17 @@ applyHistoryButton.addEventListener(
 
 
     if (
+
       !fromDate.value ||
+
       !toDate.value
+
     ) {
 
       alert(
+
         "Please select both From and To."
+
       );
 
       return;
@@ -1731,21 +2868,27 @@ applyHistoryButton.addEventListener(
 
 
     const from =
+
       new Date(
         fromDate.value
       ).getTime();
 
 
     const to =
+
       new Date(
         toDate.value
       ).getTime();
 
 
-    if (from > to) {
+    if (
+      from > to
+    ) {
 
       alert(
+
         "From must be before To."
+
       );
 
       return;
@@ -1754,21 +2897,31 @@ applyHistoryButton.addEventListener(
 
 
     filteredHistorySamples =
+
       historySamples.filter(
+
         sample => {
 
+
           const timestamp =
+
             new Date(
+
               sample.timestamp
+
             ).getTime();
 
 
           return (
+
             timestamp >= from &&
+
             timestamp <= to
+
           );
 
         }
+
       );
 
 
@@ -1777,7 +2930,9 @@ applyHistoryButton.addEventListener(
     ) {
 
       alert(
+
         "No history data exists in that selected period."
+
       );
 
       return;
@@ -1812,12 +2967,16 @@ timeBase.addEventListener(
 
   () => {
 
+
     zoomFactor =
       1;
 
 
     if (
-      timeBase.value === "custom"
+
+      timeBase.value ===
+      "custom"
+
     ) {
 
       customHistory.classList.add(
@@ -1826,11 +2985,14 @@ timeBase.addEventListener(
 
 
       graphInfo.textContent =
+
         "Custom Define - load a history CSV file";
 
     }
 
+
     else {
+
 
       customHistory.classList.remove(
         "show"
@@ -1866,10 +3028,15 @@ zoomInButton.addEventListener(
 
   () => {
 
+
     zoomFactor =
+
       Math.min(
+
         zoomFactor * 2,
+
         16
+
       );
 
 
@@ -1886,10 +3053,15 @@ zoomOutButton.addEventListener(
 
   () => {
 
+
     zoomFactor =
+
       Math.max(
+
         1,
+
         zoomFactor / 2
+
       );
 
 
@@ -1912,6 +3084,7 @@ resetButton.addEventListener(
 
   () => {
 
+
     currentMode =
       "live";
 
@@ -1933,6 +3106,19 @@ resetButton.addEventListener(
     );
 
 
+    POINTS.forEach(
+
+      point => {
+
+        visiblePoints[
+          point.id
+        ] = true;
+
+      }
+
+    );
+
+
     loadTrend();
 
   }
@@ -1951,6 +3137,7 @@ liveButton.addEventListener(
   "click",
 
   () => {
+
 
     currentMode =
       "live";
@@ -1992,6 +3179,7 @@ last5Button.addEventListener(
 
   () => {
 
+
     currentMode =
       "live";
 
@@ -2022,55 +3210,105 @@ last5Button.addEventListener(
 
 /*
 ==================================================
-BUILD CSV
+CSV EXPORT
 ==================================================
 */
 
-function buildCsv(samples) {
+function buildCsv(
+  samples
+) {
 
-  const rows = [
+
+  const activePoints =
+
+    POINTS.filter(
+
+      point =>
+        visiblePoints[
+          point.id
+        ]
+
+    );
+
+
+  if (
+    !activePoints.length
+  ) {
+
+    throw new Error(
+
+      "No trend points are currently visible."
+
+    );
+
+  }
+
+
+  const header =
 
     [
       "Date",
       "Time",
-      "Planks In (C)",
-      "Planks Out (C)",
-      "Ambient (C)",
-      "Planks Concrete (C)",
-      "Planks Tank (C)",
-      "Ambient Concrete Differential (C)"
-    ]
 
-  ];
+      ...activePoints.map(
+
+        point =>
+          `${point.name} (C)`
+
+      )
+
+    ];
 
 
-  for (const sample of samples) {
+  const rows =
+    [
+      header
+    ];
+
+
+  for (
+    const sample
+    of samples
+  ) {
+
 
     const timestamp =
+
       new Date(
         sample.timestamp
       );
 
 
-    rows.push([
+    const row = [
 
-      timestamp.toLocaleDateString(),
+      timestamp
+        .toLocaleDateString(),
 
-      timestamp.toLocaleTimeString(),
+      timestamp
+        .toLocaleTimeString()
 
-      sample.in1,
+    ];
 
-      sample.in2,
 
-      sample.in3,
+    for (
+      const point
+      of activePoints
+    ) {
 
-      sample.in4,
+      row.push(
 
-      sample.in5,
+        sample[
+          point.id
+        ]
 
-      sample.diff
+      );
 
-    ]);
+    }
+
+
+    rows.push(
+      row
+    );
 
   }
 
@@ -2082,8 +3320,13 @@ function buildCsv(samples) {
       row.map(
 
         value =>
+
           `"${String(value)
-            .replace(/"/g,'""')}"`
+            .replace(
+              /"/g,
+              '""'
+            )}"`
+
       ).join(",")
 
   ).join("\r\n");
@@ -2093,7 +3336,7 @@ function buildCsv(samples) {
 
 /*
 ==================================================
-EXPORT
+EXPORT BUTTON
 ==================================================
 */
 
@@ -2103,67 +3346,119 @@ exportButton.addEventListener(
 
   () => {
 
-    const samples =
-      getVisibleSamples();
+
+    try {
 
 
-    if (!samples.length) {
+      const samples =
+        getVisibleSamples();
 
-      alert(
-        "No trend data available."
+
+      if (
+        !samples.length
+      ) {
+
+        throw new Error(
+
+          "No trend data available."
+
+        );
+
+      }
+
+
+      const csv =
+
+        buildCsv(
+          samples
+        );
+
+
+      const blob =
+
+        new Blob(
+
+          [csv],
+
+          {
+
+            type:
+              "text/csv;charset=utf-8"
+
+          }
+
+        );
+
+
+      const url =
+
+        URL.createObjectURL(
+          blob
+        );
+
+
+      const link =
+
+        document.createElement(
+          "a"
+        );
+
+
+      link.href =
+        url;
+
+
+      link.download =
+
+        currentMode ===
+        "history"
+
+        ?
+
+        "Greenair_History_Export.csv"
+
+        :
+
+        "Greenair_TrendLog.csv";
+
+
+      document.body.appendChild(
+        link
       );
 
-      return;
+
+      link.click();
+
+
+      link.remove();
+
+
+      setTimeout(
+
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+        },
+
+        1000
+
+      );
 
     }
 
 
-    const csv =
-      buildCsv(samples);
+    catch (
+      error
+    ) {
 
-
-    const blob =
-      new Blob(
-        [csv],
-        {
-          type:
-            "text/csv;charset=utf-8"
-        }
+      alert(
+        error.message
       );
 
-
-    const url =
-      URL.createObjectURL(blob);
-
-
-    const link =
-      document.createElement("a");
-
-
-    link.href =
-      url;
-
-
-    link.download =
-      currentMode === "history"
-
-      ? "Greenair_History_Export.csv"
-
-      : "Greenair_TrendLog.csv";
-
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    link.remove();
-
-
-    setTimeout(
-      () =>
-        URL.revokeObjectURL(url),
-      1000
-    );
+    }
 
   }
 
@@ -2172,43 +3467,63 @@ exportButton.addEventListener(
 
 /*
 ==================================================
-INITIAL LIVE STATE
+INITIAL STATE
 ==================================================
 */
 
-setLed("waiting");
+setLed(
+  "waiting"
+);
+
+
+updateModeDisplay();
 
 
 fetch(
+
   "/api/state",
+
   {
-    cache: "no-store"
+    cache:
+      "no-store"
   }
+
 )
 
 .then(
+
   response =>
     response.json()
+
 )
 
 .then(
+
   state =>
-    renderState(state)
+    renderState(
+      state
+    )
+
 )
 
 .catch(
+
   () =>
-    setLed("bad")
+    setLed(
+      "bad"
+    )
+
 );
 
 
 /*
 ==================================================
-LIVE STREAM
+LIVE EVENT STREAM
 ==================================================
 */
 
 const stream =
+
   new EventSource(
     "/api/stream"
   );
@@ -2223,16 +3538,20 @@ stream.addEventListener(
     try {
 
       renderState(
+
         JSON.parse(
           event.data
         )
+
       );
 
     }
 
     catch {
 
-      setLed("bad");
+      setLed(
+        "bad"
+      );
 
     }
 
@@ -2242,9 +3561,12 @@ stream.addEventListener(
 
 
 stream.onerror =
+
   () => {
 
-    setLed("bad");
+    setLed(
+      "bad"
+    );
 
   };
 
@@ -2259,11 +3581,16 @@ loadTrend();
 
 
 setInterval(
+
   loadTrend,
+
   15000
+
 );
 
 </script>
 
+
 </body>
+
 </html>
