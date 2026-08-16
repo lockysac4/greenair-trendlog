@@ -131,13 +131,17 @@ TOOLBAR
 }
 
 .toolbar select,
-.toolbar button {
+.toolbar button,
+.toolbar input {
   height: 32px;
   border: 1px solid #c7c7c7;
   border-radius: 4px;
   background: white;
   padding: 0 10px;
   font-size: 12px;
+}
+
+.toolbar button {
   cursor: pointer;
 }
 
@@ -158,6 +162,59 @@ TOOLBAR
 
 .export-button {
   margin-left: auto;
+}
+
+
+/*
+==================================================
+CUSTOM HISTORY BAR
+==================================================
+*/
+
+.custom-history {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #fff8e1;
+  border-bottom: 1px solid #e4d6a4;
+}
+
+.custom-history.show {
+  display: flex;
+}
+
+.custom-history label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-history input[type="datetime-local"] {
+  height: 32px;
+  border: 1px solid #c7c7c7;
+  border-radius: 4px;
+  padding: 0 8px;
+}
+
+.custom-history button {
+  height: 32px;
+  border: 1px solid #c7c7c7;
+  border-radius: 4px;
+  padding: 0 12px;
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.custom-history button:hover {
+  background: #f1f1f1;
+}
+
+.history-status {
+  font-size: 12px;
+  color: #666;
+  margin-left: 4px;
 }
 
 
@@ -284,7 +341,7 @@ LEFT SIDEBAR
 
 /*
 ==================================================
-GRAPH AREA
+GRAPH
 ==================================================
 */
 
@@ -373,6 +430,15 @@ MOBILE
     height: 430px;
   }
 
+  .custom-history {
+    align-items: stretch;
+  }
+
+  .custom-history input,
+  .custom-history button {
+    width: 100%;
+  }
+
 }
 
 </style>
@@ -382,11 +448,7 @@ MOBILE
 <body>
 
 
-<!--
-==================================================
-TOP HEADER
-==================================================
--->
+<!-- HEADER -->
 
 <div class="top-header">
 
@@ -402,11 +464,9 @@ TOP HEADER
 
   </div>
 
-
   <div class="page-title">
     Trend Log
   </div>
-
 
   <div class="connection-box">
 
@@ -425,11 +485,7 @@ TOP HEADER
 </div>
 
 
-<!--
-==================================================
-TOP TOOLBAR
-==================================================
--->
+<!-- TOOLBAR -->
 
 <div class="toolbar">
 
@@ -467,6 +523,10 @@ TOP TOOLBAR
       24 hours
     </option>
 
+    <option value="custom">
+      Custom Define
+    </option>
+
   </select>
 
 
@@ -477,7 +537,6 @@ TOP TOOLBAR
     Zoom In
   </button>
 
-
   <button
     id="zoomOutButton"
     type="button"
@@ -485,14 +544,12 @@ TOP TOOLBAR
     Zoom Out
   </button>
 
-
   <button
     id="resetButton"
     type="button"
   >
     Reset
   </button>
-
 
   <button
     id="liveButton"
@@ -502,14 +559,12 @@ TOP TOOLBAR
     Live
   </button>
 
-
   <button
     id="last5Button"
     type="button"
   >
     Last 5 min
   </button>
-
 
   <button
     id="exportButton"
@@ -522,16 +577,66 @@ TOP TOOLBAR
 </div>
 
 
-<!--
-==================================================
-MAIN SCREEN
-==================================================
--->
+<!-- CUSTOM HISTORY -->
+
+<div
+  id="customHistory"
+  class="custom-history"
+>
+
+  <button
+    id="loadHistoryButton"
+    type="button"
+  >
+    Load History File
+  </button>
+
+  <input
+    id="historyFileInput"
+    type="file"
+    accept=".csv,text/csv"
+    hidden
+  >
+
+  <label for="fromDate">
+    From:
+  </label>
+
+  <input
+    id="fromDate"
+    type="datetime-local"
+  >
+
+  <label for="toDate">
+    To:
+  </label>
+
+  <input
+    id="toDate"
+    type="datetime-local"
+  >
+
+  <button
+    id="applyHistoryButton"
+    type="button"
+  >
+    Apply
+  </button>
+
+  <span
+    id="historyStatus"
+    class="history-status"
+  >
+    No history file loaded
+  </span>
+
+</div>
+
+
+<!-- MAIN -->
 
 <div class="main-layout">
 
-
-  <!-- LEFT SIDE -->
 
   <aside class="sidebar">
 
@@ -557,15 +662,10 @@ MAIN SCREEN
 
     </div>
 
-
-    <div
-      id="pointList"
-    ></div>
+    <div id="pointList"></div>
 
   </aside>
 
-
-  <!-- GRAPH -->
 
   <section class="graph-panel">
 
@@ -595,7 +695,7 @@ MAIN SCREEN
 
 /*
 ==================================================
-POINT DEFINITIONS
+POINTS
 ==================================================
 */
 
@@ -654,7 +754,7 @@ const POINTS = [
 
 /*
 ==================================================
-PAGE ELEMENTS
+ELEMENTS
 ==================================================
 */
 
@@ -712,6 +812,60 @@ const exportButton =
   document.getElementById(
     "exportButton"
   );
+
+const customHistory =
+  document.getElementById(
+    "customHistory"
+  );
+
+const loadHistoryButton =
+  document.getElementById(
+    "loadHistoryButton"
+  );
+
+const historyFileInput =
+  document.getElementById(
+    "historyFileInput"
+  );
+
+const fromDate =
+  document.getElementById(
+    "fromDate"
+  );
+
+const toDate =
+  document.getElementById(
+    "toDate"
+  );
+
+const applyHistoryButton =
+  document.getElementById(
+    "applyHistoryButton"
+  );
+
+const historyStatus =
+  document.getElementById(
+    "historyStatus"
+  );
+
+
+/*
+==================================================
+DATA STATE
+==================================================
+*/
+
+let liveSamples =
+  [];
+
+let historySamples =
+  [];
+
+let currentMode =
+  "live";
+
+let zoomFactor =
+  1;
 
 
 /*
@@ -781,36 +935,9 @@ function setLed(
     "waiting"
   );
 
-
   led.classList.add(
     state
   );
-
-
-  if (
-    state === "good"
-  ) {
-
-    led.title =
-      "Connection Good";
-
-  }
-
-  else if (
-    state === "bad"
-  ) {
-
-    led.title =
-      "Connection Bad";
-
-  }
-
-  else {
-
-    led.title =
-      "Connecting";
-
-  }
 
 }
 
@@ -908,145 +1035,72 @@ const chart =
           {
             label:
               "Planks In",
-
-            data:
-              [],
-
-            borderColor:
-              "red",
-
-            backgroundColor:
-              "red",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "red",
+            backgroundColor: "red",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           },
 
           {
             label:
               "Planks Out",
-
-            data:
-              [],
-
-            borderColor:
-              "blue",
-
-            backgroundColor:
-              "blue",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "blue",
+            backgroundColor: "blue",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           },
 
           {
             label:
               "Ambient",
-
-            data:
-              [],
-
-            borderColor:
-              "green",
-
-            backgroundColor:
-              "green",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "green",
+            backgroundColor: "green",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           },
 
           {
             label:
               "Planks Concrete",
-
-            data:
-              [],
-
-            borderColor:
-              "orange",
-
-            backgroundColor:
-              "orange",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "orange",
+            backgroundColor: "orange",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           },
 
           {
             label:
               "Planks Tank",
-
-            data:
-              [],
-
-            borderColor:
-              "purple",
-
-            backgroundColor:
-              "purple",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "purple",
+            backgroundColor: "purple",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           },
 
           {
             label:
               "Ambient - Concrete Differential",
-
-            data:
-              [],
-
-            borderColor:
-              "black",
-
-            backgroundColor:
-              "black",
-
-            borderWidth:
-              2,
-
-            pointRadius:
-              0,
-
-            tension:
-              0.05
+            data: [],
+            borderColor: "black",
+            backgroundColor: "black",
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.05
           }
 
         ]
 
       },
-
 
       options: {
 
@@ -1060,13 +1114,8 @@ const chart =
           false,
 
         interaction: {
-
-          mode:
-            "index",
-
-          intersect:
-            false
-
+          mode: "index",
+          intersect: false
         },
 
         plugins: {
@@ -1080,29 +1129,23 @@ const chart =
             callbacks: {
 
               label:
-                context => {
+                context =>
 
-                  return (
+                  context.dataset.label
 
-                    context.dataset.label
+                  +
 
-                    +
+                  ": "
 
-                    ": "
+                  +
 
-                    +
+                  Number(
+                    context.raw
+                  ).toFixed(1)
 
-                    Number(
-                      context.raw
-                    ).toFixed(1)
+                  +
 
-                    +
-
-                    " °C"
-
-                  );
-
-                }
+                  " °C"
 
             }
 
@@ -1115,18 +1158,12 @@ const chart =
           x: {
 
             grid: {
-              color:
-                "#d9d9d9"
+              color: "#d9d9d9"
             },
 
             ticks: {
-
-              maxTicksLimit:
-                8,
-
-              maxRotation:
-                0
-
+              maxTicksLimit: 8,
+              maxRotation: 0
             }
 
           },
@@ -1134,28 +1171,17 @@ const chart =
           y: {
 
             grid: {
-              color:
-                "#d9d9d9"
+              color: "#d9d9d9"
             },
 
             ticks: {
-
-              color:
-                "#d32f2f"
-
+              color: "#d32f2f"
             },
 
             title: {
-
-              display:
-                true,
-
-              text:
-                "Deg.C",
-
-              color:
-                "#d32f2f"
-
+              display: true,
+              text: "Deg.C",
+              color: "#d32f2f"
             }
 
           }
@@ -1171,27 +1197,33 @@ const chart =
 
 /*
 ==================================================
-TREND FILTER
+GET ACTIVE DATA
 ==================================================
 */
 
-let allSamples =
-  [];
+function getSourceSamples() {
 
-let zoomFactor =
-  1;
+  return currentMode === "history"
+    ? historySamples
+    : liveSamples;
 
+}
+
+
+/*
+==================================================
+VISIBLE SAMPLES
+==================================================
+*/
 
 function getVisibleSamples() {
 
-  const minutes =
-    Number(
-      timeBase.value
-    );
+  const source =
+    getSourceSamples();
 
 
   if (
-    allSamples.length === 0
+    source.length === 0
   ) {
 
     return [];
@@ -1199,12 +1231,40 @@ function getVisibleSamples() {
   }
 
 
+  if (
+    currentMode === "history"
+  ) {
+
+    return source;
+
+  }
+
+
+  const selected =
+    timeBase.value;
+
+
+  if (
+    selected === "custom"
+  ) {
+
+    return source;
+
+  }
+
+
+  const minutes =
+    Number(
+      selected
+    );
+
+
   const newestTime =
 
     new Date(
 
-      allSamples[
-        allSamples.length - 1
+      source[
+        source.length - 1
       ].timestamp
 
     ).getTime();
@@ -1219,7 +1279,7 @@ function getVisibleSamples() {
 
   let visible =
 
-    allSamples.filter(
+    source.filter(
 
       sample =>
 
@@ -1236,10 +1296,8 @@ function getVisibleSamples() {
 
 
   if (
-    zoomFactor >
-    1 &&
-    visible.length >
-    2
+    zoomFactor > 1 &&
+    visible.length > 2
   ) {
 
     const wanted =
@@ -1293,21 +1351,16 @@ function drawTrend() {
 
           sample.timestamp
 
-        ).toLocaleTimeString(
+        ).toLocaleString(
 
           [],
 
           {
-
-            hour:
-              "2-digit",
-
-            minute:
-              "2-digit",
-
-            second:
-              "2-digit"
-
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
           }
 
         )
@@ -1320,30 +1373,25 @@ function drawTrend() {
       sample => sample.in1
     );
 
-
   chart.data.datasets[1].data =
     samples.map(
       sample => sample.in2
     );
-
 
   chart.data.datasets[2].data =
     samples.map(
       sample => sample.in3
     );
 
-
   chart.data.datasets[3].data =
     samples.map(
       sample => sample.in4
     );
 
-
   chart.data.datasets[4].data =
     samples.map(
       sample => sample.in5
     );
-
 
   chart.data.datasets[5].data =
     samples.map(
@@ -1358,22 +1406,31 @@ function drawTrend() {
 
   graphInfo.textContent =
 
-    samples.length
+    currentMode === "history"
 
-    +
+    ? `${samples.length} historical samples`
 
-    " samples shown";
+    : `${samples.length} live samples shown`;
 
 }
 
 
 /*
 ==================================================
-LOAD TREND DATA
+LOAD LIVE TREND
 ==================================================
 */
 
 async function loadTrend() {
+
+  if (
+    currentMode !== "live"
+  ) {
+
+    return;
+
+  }
+
 
   try {
 
@@ -1406,7 +1463,7 @@ async function loadTrend() {
     }
 
 
-    allSamples =
+    liveSamples =
 
       Array.isArray(
         trend.samples
@@ -1422,9 +1479,7 @@ async function loadTrend() {
   }
 
 
-  catch (
-    error
-  ) {
+  catch {
 
     graphInfo.textContent =
       "Trend unavailable";
@@ -1436,7 +1491,548 @@ async function loadTrend() {
 
 /*
 ==================================================
-CSV EXPORT
+CSV PARSER
+==================================================
+*/
+
+function parseCsvLine(
+  line
+) {
+
+  const values =
+    [];
+
+  let current =
+    "";
+
+  let insideQuotes =
+    false;
+
+
+  for (
+    let i = 0;
+    i < line.length;
+    i++
+  ) {
+
+    const char =
+      line[i];
+
+
+    if (
+      char === '"'
+    ) {
+
+      if (
+        insideQuotes &&
+        line[i + 1] === '"'
+      ) {
+
+        current += '"';
+        i++;
+
+      }
+
+      else {
+
+        insideQuotes =
+          !insideQuotes;
+
+      }
+
+    }
+
+    else if (
+      char === "," &&
+      !insideQuotes
+    ) {
+
+      values.push(
+        current
+      );
+
+      current =
+        "";
+
+    }
+
+    else {
+
+      current +=
+        char;
+
+    }
+
+  }
+
+
+  values.push(
+    current
+  );
+
+
+  return values;
+
+}
+
+
+/*
+==================================================
+PARSE HISTORY CSV
+==================================================
+*/
+
+function parseHistoryCsv(
+  text
+) {
+
+  const lines =
+
+    text
+      .replace(/\r/g, "")
+      .split("\n")
+      .filter(
+        line =>
+          line.trim() !== ""
+      );
+
+
+  if (
+    lines.length < 2
+  ) {
+
+    throw new Error(
+      "The history file does not contain any trend data."
+    );
+
+  }
+
+
+  const rows =
+    [];
+
+
+  for (
+    let i = 1;
+    i < lines.length;
+    i++
+  ) {
+
+    const columns =
+      parseCsvLine(
+        lines[i]
+      );
+
+
+    if (
+      columns.length < 8
+    ) {
+
+      continue;
+
+    }
+
+
+    const dateText =
+      columns[0].trim();
+
+    const timeText =
+      columns[1].trim();
+
+
+    const timestamp =
+      new Date(
+        `${dateText} ${timeText}`
+      );
+
+
+    if (
+      Number.isNaN(
+        timestamp.getTime()
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    rows.push({
+
+      timestamp:
+        timestamp.toISOString(),
+
+      in1:
+        Number(columns[2]),
+
+      in2:
+        Number(columns[3]),
+
+      in3:
+        Number(columns[4]),
+
+      in4:
+        Number(columns[5]),
+
+      in5:
+        Number(columns[6]),
+
+      diff:
+        Number(columns[7])
+
+    });
+
+  }
+
+
+  return rows.filter(
+
+    row =>
+
+      [
+        row.in1,
+        row.in2,
+        row.in3,
+        row.in4,
+        row.in5,
+        row.diff
+      ].every(
+        value =>
+          Number.isFinite(
+            value
+          )
+      )
+
+  );
+
+}
+
+
+/*
+==================================================
+SET DATE RANGE FROM FILE
+==================================================
+*/
+
+function setHistoryDateRange() {
+
+  if (
+    historySamples.length === 0
+  ) {
+
+    return;
+
+  }
+
+
+  const first =
+    new Date(
+      historySamples[0].timestamp
+    );
+
+
+  const last =
+    new Date(
+      historySamples[
+        historySamples.length - 1
+      ].timestamp
+    );
+
+
+  function toLocalInputValue(
+    date
+  ) {
+
+    const offset =
+      date.getTimezoneOffset();
+
+    const local =
+
+      new Date(
+
+        date.getTime()
+
+        -
+
+        offset *
+        60000
+
+      );
+
+
+    return local
+      .toISOString()
+      .slice(0,16);
+
+  }
+
+
+  fromDate.value =
+    toLocalInputValue(
+      first
+    );
+
+
+  toDate.value =
+    toLocalInputValue(
+      last
+    );
+
+}
+
+
+/*
+==================================================
+LOAD HISTORY FILE
+==================================================
+*/
+
+loadHistoryButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    historyFileInput.click();
+
+  }
+
+);
+
+
+historyFileInput.addEventListener(
+
+  "change",
+
+  async event => {
+
+    const file =
+      event.target.files[0];
+
+
+    if (
+      !file
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      const text =
+        await file.text();
+
+
+      const parsed =
+        parseHistoryCsv(
+          text
+        );
+
+
+      if (
+        parsed.length === 0
+      ) {
+
+        throw new Error(
+          "No valid trend samples were found in this CSV."
+        );
+
+      }
+
+
+      historySamples =
+
+        parsed.sort(
+
+          (
+            a,
+            b
+          ) =>
+
+            new Date(
+              a.timestamp
+            )
+
+            -
+
+            new Date(
+              b.timestamp
+            )
+
+        );
+
+
+      setHistoryDateRange();
+
+
+      historyStatus.textContent =
+
+        `${file.name} • ${historySamples.length} samples loaded`;
+
+
+      currentMode =
+        "history";
+
+
+      drawTrend();
+
+    }
+
+
+    catch (
+      error
+    ) {
+
+      historyStatus.textContent =
+        "History file could not be loaded";
+
+
+      alert(
+        error.message
+      );
+
+    }
+
+  }
+
+);
+
+
+/*
+==================================================
+APPLY CUSTOM DATE RANGE
+==================================================
+*/
+
+applyHistoryButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    if (
+      historySamples.length === 0
+    ) {
+
+      alert(
+        "Load a history CSV file first."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      !fromDate.value ||
+      !toDate.value
+    ) {
+
+      alert(
+        "Choose both From and To dates."
+      );
+
+      return;
+
+    }
+
+
+    const from =
+      new Date(
+        fromDate.value
+      ).getTime();
+
+
+    const to =
+      new Date(
+        toDate.value
+      ).getTime();
+
+
+    if (
+      from > to
+    ) {
+
+      alert(
+        "The From date must be before the To date."
+      );
+
+      return;
+
+    }
+
+
+    const filtered =
+
+      historySamples.filter(
+
+        sample => {
+
+          const time =
+
+            new Date(
+              sample.timestamp
+            ).getTime();
+
+
+          return (
+
+            time >= from &&
+            time <= to
+
+          );
+
+        }
+
+      );
+
+
+    if (
+      filtered.length === 0
+    ) {
+
+      alert(
+        "There is no trend data in that selected period."
+      );
+
+      return;
+
+    }
+
+
+    currentMode =
+      "history";
+
+
+    const original =
+      historySamples;
+
+
+    historySamples =
+      filtered;
+
+
+    drawTrend();
+
+
+    historySamples =
+      original;
+
+
+    graphInfo.textContent =
+
+      `${filtered.length} historical samples shown`;
+
+  }
+
+);
+
+
+/*
+==================================================
+BUILD CSV
 ==================================================
 */
 
@@ -1473,11 +2069,9 @@ function buildCsv(
 
     rows.push([
 
-      timestamp
-        .toLocaleDateString(),
+      timestamp.toLocaleDateString(),
 
-      timestamp
-        .toLocaleTimeString(),
+      timestamp.toLocaleTimeString(),
 
       sample.in1,
 
@@ -1543,7 +2137,6 @@ function downloadBlob(
   link.href =
     url;
 
-
   link.download =
     fileName;
 
@@ -1561,13 +2154,10 @@ function downloadBlob(
 
   setTimeout(
 
-    () => {
-
+    () =>
       URL.revokeObjectURL(
         url
-      );
-
-    },
+      ),
 
     1000
 
@@ -1588,10 +2178,35 @@ timeBase.addEventListener(
 
   () => {
 
-    zoomFactor =
-      1;
+    if (
+      timeBase.value ===
+      "custom"
+    ) {
 
-    drawTrend();
+      customHistory.classList.add(
+        "show"
+      );
+
+    }
+
+    else {
+
+      customHistory.classList.remove(
+        "show"
+      );
+
+
+      currentMode =
+        "live";
+
+
+      zoomFactor =
+        1;
+
+
+      drawTrend();
+
+    }
 
   }
 
@@ -1642,11 +2257,22 @@ resetButton.addEventListener(
 
   () => {
 
+    currentMode =
+      "live";
+
+
     zoomFactor =
       1;
 
+
     timeBase.value =
       "5";
+
+
+    customHistory.classList.remove(
+      "show"
+    );
+
 
     drawTrend();
 
@@ -1661,10 +2287,31 @@ liveButton.addEventListener(
 
   () => {
 
+    currentMode =
+      "live";
+
+
     zoomFactor =
       1;
 
-    drawTrend();
+
+    if (
+      timeBase.value ===
+      "custom"
+    ) {
+
+      timeBase.value =
+        "5";
+
+    }
+
+
+    customHistory.classList.remove(
+      "show"
+    );
+
+
+    loadTrend();
 
   }
 
@@ -1677,13 +2324,24 @@ last5Button.addEventListener(
 
   () => {
 
+    currentMode =
+      "live";
+
+
     timeBase.value =
       "5";
+
 
     zoomFactor =
       1;
 
-    drawTrend();
+
+    customHistory.classList.remove(
+      "show"
+    );
+
+
+    loadTrend();
 
   }
 
@@ -1736,7 +2394,11 @@ exportButton.addEventListener(
 
       blob,
 
-      "Greenair_TrendLog.csv"
+      currentMode === "history"
+
+      ? "Greenair_History_Export.csv"
+
+      : "Greenair_TrendLog.csv"
 
     );
 
@@ -1747,7 +2409,7 @@ exportButton.addEventListener(
 
 /*
 ==================================================
-INITIAL LIVE STATE
+INITIAL STATE
 ==================================================
 */
 
@@ -1849,7 +2511,7 @@ stream.onerror =
 
 /*
 ==================================================
-START TREND
+START
 ==================================================
 */
 
