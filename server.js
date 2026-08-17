@@ -6114,6 +6114,17 @@ const server =
         }
 
 
+        return redirect(
+
+          response,
+
+          "/login"
+
+        );
+
+      }
+
+
       /*
       ================================================
       DROPBOX CONNECT
@@ -6498,17 +6509,6 @@ h1{color:#1b5e20;margin-top:0}
           return;
 
         }
-
-      }
-
-
-        return redirect(
-
-          response,
-
-          "/login"
-
-        );
 
       }
 
