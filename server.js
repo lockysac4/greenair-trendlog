@@ -184,6 +184,38 @@ const DROPBOX_REDIRECT_URI =
   "https://greenair-trendlog.onrender.com/dropbox/callback";
 
 
+const DROPBOX_REFRESH_TOKEN =
+  process.env.DROPBOX_REFRESH_TOKEN ||
+  "";
+
+
+const DROPBOX_BACKUP_HOURS =
+  8;
+
+
+const DROPBOX_BACKUP_MS =
+  DROPBOX_BACKUP_HOURS *
+  60 *
+  60 *
+  1000;
+
+
+let dropboxBackupTimer =
+  null;
+
+
+let nextDropboxBackupAt =
+  null;
+
+
+let lastDropboxBackupAt =
+  null;
+
+
+let lastDropboxBackupError =
+  null;
+
+
 const dropboxOAuthStates =
   new Map();
 
@@ -3513,6 +3545,1097 @@ Greenair Controls
 
 /*
 ==================================================
+DROPBOX ACCESS TOKEN
+==================================================
+*/
+
+async function getDropboxAccessToken() {
+
+  if (
+    !DROPBOX_APP_KEY
+    ||
+    !DROPBOX_APP_SECRET
+    ||
+    !DROPBOX_REFRESH_TOKEN
+  ) {
+
+    throw new Error(
+      "Dropbox backup credentials are not fully configured"
+    );
+
+  }
+
+
+  const body =
+    new URLSearchParams();
+
+
+  body.set(
+    "grant_type",
+    "refresh_token"
+  );
+
+
+  body.set(
+    "refresh_token",
+    DROPBOX_REFRESH_TOKEN
+  );
+
+
+  body.set(
+    "client_id",
+    DROPBOX_APP_KEY
+  );
+
+
+  body.set(
+    "client_secret",
+    DROPBOX_APP_SECRET
+  );
+
+
+  const response =
+    await fetch(
+      "https://api.dropboxapi.com/oauth2/token",
+      {
+        method:
+          "POST",
+
+        headers:
+          {
+            "Content-Type":
+              "application/x-www-form-urlencoded"
+          },
+
+        body:
+          body.toString()
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (
+    !response.ok
+    ||
+    !data.access_token
+  ) {
+
+    throw new Error(
+      data.error_description
+      ||
+      data.error
+      ||
+      "Dropbox access-token refresh failed"
+    );
+
+  }
+
+
+  return data.access_token;
+
+}
+
+
+/*
+==================================================
+DROPBOX API
+==================================================
+*/
+
+async function dropboxApi(
+  accessToken,
+  endpoint,
+  body
+) {
+
+  const response =
+    await fetch(
+      `https://api.dropboxapi.com/2/${endpoint}`,
+      {
+        method:
+          "POST",
+
+        headers:
+          {
+            "Authorization":
+              `Bearer ${accessToken}`,
+
+            "Content-Type":
+              "application/json"
+          },
+
+        body:
+          JSON.stringify(
+            body
+          )
+      }
+    );
+
+
+  const text =
+    await response.text();
+
+
+  let data =
+    {};
+
+
+  if (
+    text
+  ) {
+
+    try {
+
+      data =
+        JSON.parse(
+          text
+        );
+
+    }
+
+    catch {
+
+      data =
+        {
+          raw:
+            text
+        };
+
+    }
+
+  }
+
+
+  if (
+    !response.ok
+  ) {
+
+    const summary =
+      data.error_summary
+      ||
+      data.error_description
+      ||
+      data.error
+      ||
+      text
+      ||
+      `Dropbox API error ${response.status}`;
+
+
+    throw new Error(
+      typeof summary === "string"
+      ?
+      summary
+      :
+      JSON.stringify(summary)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+/*
+==================================================
+ENSURE DROPBOX FOLDER
+==================================================
+*/
+
+async function ensureDropboxFolder(
+  accessToken,
+  folderPath
+) {
+
+  try {
+
+    await dropboxApi(
+      accessToken,
+      "files/create_folder_v2",
+      {
+        path:
+          folderPath,
+
+        autorename:
+          false
+      }
+    );
+
+  }
+
+  catch (
+    error
+  ) {
+
+    if (
+      !String(
+        error.message
+      ).includes(
+        "path/conflict/folder"
+      )
+    ) {
+
+      throw error;
+
+    }
+
+  }
+
+}
+
+
+/*
+==================================================
+UPLOAD DROPBOX FILE
+==================================================
+*/
+
+async function uploadDropboxFile(
+  accessToken,
+  dropboxPath,
+  content,
+  contentType = "application/octet-stream"
+) {
+
+  const response =
+    await fetch(
+      "https://content.dropboxapi.com/2/files/upload",
+      {
+        method:
+          "POST",
+
+        headers:
+          {
+            "Authorization":
+              `Bearer ${accessToken}`,
+
+            "Dropbox-API-Arg":
+              JSON.stringify(
+                {
+                  path:
+                    dropboxPath,
+
+                  mode:
+                    "overwrite",
+
+                  autorename:
+                    false,
+
+                  mute:
+                    true
+                }
+              ),
+
+            "Content-Type":
+              contentType
+          },
+
+        body:
+          content
+      }
+    );
+
+
+  const text =
+    await response.text();
+
+
+  if (
+    !response.ok
+  ) {
+
+    let message =
+      text;
+
+
+    try {
+
+      const data =
+        JSON.parse(
+          text
+        );
+
+
+      message =
+        data.error_summary
+        ||
+        data.error
+        ||
+        text;
+
+    }
+
+    catch {}
+
+
+    throw new Error(
+      typeof message === "string"
+      ?
+      message
+      :
+      JSON.stringify(message)
+    );
+
+  }
+
+
+  return text
+    ?
+    JSON.parse(
+      text
+    )
+    :
+    {};
+
+}
+
+
+/*
+==================================================
+BUILD TREND GRAPH SVG
+==================================================
+*/
+
+function buildTrendGraphSvg(
+  rows,
+  from,
+  to
+) {
+
+  const width =
+    1400;
+
+  const height =
+    820;
+
+  const left =
+    90;
+
+  const right =
+    40;
+
+  const top =
+    100;
+
+  const bottom =
+    90;
+
+  const plotWidth =
+    width -
+    left -
+    right;
+
+  const plotHeight =
+    height -
+    top -
+    bottom;
+
+
+  const series = [
+
+    {
+      key:
+        "planks_in",
+
+      label:
+        "Planks In"
+    },
+
+    {
+      key:
+        "planks_out",
+
+      label:
+        "Planks Out"
+    },
+
+    {
+      key:
+        "ambient",
+
+      label:
+        "Ambient"
+    },
+
+    {
+      key:
+        "planks_concrete",
+
+      label:
+        "Planks Concrete"
+    },
+
+    {
+      key:
+        "planks_tank",
+
+      label:
+        "Planks Tank"
+    },
+
+    {
+      key:
+        "ambient_concrete_diff",
+
+      label:
+        "Ambient - Concrete Differential"
+    }
+
+  ];
+
+
+  const colours = [
+    "#1565c0",
+    "#2e7d32",
+    "#ef6c00",
+    "#6a1b9a",
+    "#00838f",
+    "#c62828"
+  ];
+
+
+  const values =
+    [];
+
+
+  for (
+    const row
+    of rows
+  ) {
+
+    for (
+      const item
+      of series
+    ) {
+
+      const value =
+        Number(
+          row[item.key]
+        );
+
+
+      if (
+        Number.isFinite(
+          value
+        )
+      ) {
+
+        values.push(
+          value
+        );
+
+      }
+
+    }
+
+  }
+
+
+  let minValue =
+    values.length
+    ?
+    Math.min(
+      ...values
+    )
+    :
+    0;
+
+
+  let maxValue =
+    values.length
+    ?
+    Math.max(
+      ...values
+    )
+    :
+    1;
+
+
+  if (
+    minValue ===
+    maxValue
+  ) {
+
+    minValue -=
+      1;
+
+    maxValue +=
+      1;
+
+  }
+
+
+  const padding =
+    Math.max(
+      0.5,
+      (
+        maxValue -
+        minValue
+      )
+      *
+      0.08
+    );
+
+
+  minValue -=
+    padding;
+
+  maxValue +=
+    padding;
+
+
+  const xFor =
+    index =>
+
+      left
+
+      +
+
+      (
+        rows.length <= 1
+        ?
+        0
+        :
+        index /
+        (
+          rows.length -
+          1
+        )
+      )
+
+      *
+      plotWidth;
+
+
+  const yFor =
+    value =>
+
+      top
+
+      +
+
+      (
+        maxValue -
+        value
+      )
+
+      /
+      (
+        maxValue -
+        minValue
+      )
+
+      *
+      plotHeight;
+
+
+  const escapeXml =
+    value =>
+
+      String(
+        value
+      )
+        .replaceAll(
+          "&",
+          "&amp;"
+        )
+        .replaceAll(
+          "<",
+          "&lt;"
+        )
+        .replaceAll(
+          ">",
+          "&gt;"
+        );
+
+
+  const svg =
+    [];
+
+
+  svg.push(
+    `<?xml version="1.0" encoding="UTF-8"?>`
+  );
+
+
+  svg.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+  );
+
+
+  svg.push(
+    `<rect width="100%" height="100%" fill="white"/>`
+  );
+
+
+  svg.push(
+    `<text x="${left}" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="700">BIANCO PRECAST - GREENAIR TRENDLOG</text>`
+  );
+
+
+  svg.push(
+    `<text x="${left}" y="72" font-family="Arial, sans-serif" font-size="16">8 Hour Trend Graph: ${escapeXml(formatAdelaideDateTime(from))} to ${escapeXml(formatAdelaideDateTime(to))}</text>`
+  );
+
+
+  for (
+    let i = 0;
+    i <= 6;
+    i += 1
+  ) {
+
+    const y =
+      top +
+      (
+        i /
+        6
+      )
+      *
+      plotHeight;
+
+
+    const value =
+      maxValue -
+      (
+        i /
+        6
+      )
+      *
+      (
+        maxValue -
+        minValue
+      );
+
+
+    svg.push(
+      `<line x1="${left}" y1="${y.toFixed(1)}" x2="${left + plotWidth}" y2="${y.toFixed(1)}" stroke="#d0d0d0" stroke-width="1"/>`
+    );
+
+
+    svg.push(
+      `<text x="${left - 12}" y="${(y + 5).toFixed(1)}" text-anchor="end" font-family="Arial, sans-serif" font-size="13">${value.toFixed(1)} °C</text>`
+    );
+
+  }
+
+
+  svg.push(
+    `<line x1="${left}" y1="${top}" x2="${left}" y2="${top + plotHeight}" stroke="#333" stroke-width="2"/>`
+  );
+
+
+  svg.push(
+    `<line x1="${left}" y1="${top + plotHeight}" x2="${left + plotWidth}" y2="${top + plotHeight}" stroke="#333" stroke-width="2"/>`
+  );
+
+
+  series.forEach(
+    (
+      item,
+      seriesIndex
+    ) => {
+
+      const points =
+        [];
+
+
+      rows.forEach(
+        (
+          row,
+          index
+        ) => {
+
+          const value =
+            Number(
+              row[item.key]
+            );
+
+
+          if (
+            Number.isFinite(
+              value
+            )
+          ) {
+
+            points.push(
+              `${xFor(index).toFixed(1)},${yFor(value).toFixed(1)}`
+            );
+
+          }
+
+        }
+      );
+
+
+      if (
+        points.length
+      ) {
+
+        svg.push(
+          `<polyline fill="none" stroke="${colours[seriesIndex]}" stroke-width="2.5" points="${points.join(" ")}"/>`
+        );
+
+      }
+
+
+      const legendX =
+        left +
+        (
+          seriesIndex % 3
+        )
+        *
+        390;
+
+      const legendY =
+        height -
+        55 +
+        (
+          seriesIndex >= 3
+          ?
+          24
+          :
+          0
+        );
+
+
+      svg.push(
+        `<line x1="${legendX}" y1="${legendY - 5}" x2="${legendX + 28}" y2="${legendY - 5}" stroke="${colours[seriesIndex]}" stroke-width="4"/>`
+      );
+
+
+      svg.push(
+        `<text x="${legendX + 38}" y="${legendY}" font-family="Arial, sans-serif" font-size="14">${escapeXml(item.label)}</text>`
+      );
+
+    }
+  );
+
+
+  if (
+    !rows.length
+  ) {
+
+    svg.push(
+      `<text x="${width / 2}" y="${height / 2}" text-anchor="middle" font-family="Arial, sans-serif" font-size="28">No stored trend records for this period</text>`
+    );
+
+  }
+
+
+  svg.push(
+    `</svg>`
+  );
+
+
+  return svg.join(
+    "\n"
+  );
+
+}
+
+
+/*
+==================================================
+DROPBOX 8-HOUR BACKUP
+==================================================
+*/
+
+async function backupEightHoursToDropbox(
+  to = new Date()
+) {
+
+  const from =
+    new Date(
+      to.getTime()
+      -
+      DROPBOX_BACKUP_MS
+    );
+
+
+  try {
+
+    const rows =
+      await queryHistory(
+        from,
+        to
+      );
+
+
+    const csv =
+      buildEmailCsv(
+        rows
+      );
+
+
+    const graph =
+      buildTrendGraphSvg(
+        rows,
+        from,
+        to
+      );
+
+
+    const accessToken =
+      await getDropboxAccessToken();
+
+
+    const parts =
+      new Intl.DateTimeFormat(
+        "en-AU",
+        {
+          timeZone:
+            "Australia/Adelaide",
+
+          year:
+            "numeric",
+
+          month:
+            "2-digit",
+
+          day:
+            "2-digit",
+
+          hour:
+            "2-digit",
+
+          minute:
+            "2-digit",
+
+          hour12:
+            false
+        }
+      )
+        .formatToParts(
+          to
+        )
+        .reduce(
+          (
+            result,
+            part
+          ) => {
+
+            if (
+              part.type !==
+              "literal"
+            ) {
+
+              result[part.type] =
+                part.value;
+
+            }
+
+
+            return result;
+
+          },
+          {}
+        );
+
+
+    const year =
+      parts.year;
+
+    const month =
+      parts.month;
+
+    const stamp =
+      `${parts.year}-${parts.month}-${parts.day}_${parts.hour}-${parts.minute}`;
+
+
+    const base =
+      `/Bianco Precast/${year}/${month}`;
+
+
+    const folders = [
+      "/Bianco Precast",
+      `/Bianco Precast/${year}`,
+      base,
+      `${base}/Trend Data`,
+      `${base}/Graphs`
+    ];
+
+
+    for (
+      const folder
+      of folders
+    ) {
+
+      await ensureDropboxFolder(
+        accessToken,
+        folder
+      );
+
+    }
+
+
+    const csvPath =
+      `${base}/Trend Data/Greenair_TrendLog_8Hour_${stamp}.csv`;
+
+
+    const graphPath =
+      `${base}/Graphs/Greenair_TrendLog_8Hour_${stamp}.svg`;
+
+
+    await uploadDropboxFile(
+      accessToken,
+      csvPath,
+      csv,
+      "text/csv; charset=utf-8"
+    );
+
+
+    await uploadDropboxFile(
+      accessToken,
+      graphPath,
+      graph,
+      "image/svg+xml; charset=utf-8"
+    );
+
+
+    lastDropboxBackupAt =
+      new Date();
+
+
+    lastDropboxBackupError =
+      null;
+
+
+    console.log(
+      "Dropbox 8-hour backup complete."
+    );
+
+
+    console.log(
+      "Dropbox CSV:",
+      csvPath
+    );
+
+
+    console.log(
+      "Dropbox graph:",
+      graphPath
+    );
+
+
+    console.log(
+      "Dropbox rows:",
+      rows.length
+    );
+
+
+    return {
+      ok:
+        true,
+
+      rows:
+        rows.length,
+
+      from:
+        from.toISOString(),
+
+      to:
+        to.toISOString(),
+
+      csvPath,
+
+      graphPath
+    };
+
+  }
+
+  catch (
+    error
+  ) {
+
+    lastDropboxBackupError =
+      error.message;
+
+
+    console.error(
+      "Dropbox 8-hour backup failed:",
+      error.message
+    );
+
+
+    throw error;
+
+  }
+
+}
+
+
+/*
+==================================================
+SCHEDULE DROPBOX BACKUP
+==================================================
+*/
+
+function scheduleNextDropboxBackup() {
+
+  if (
+    dropboxBackupTimer
+  ) {
+
+    clearTimeout(
+      dropboxBackupTimer
+    );
+
+  }
+
+
+  const next =
+    getNextEightHourBoundary();
+
+
+  nextDropboxBackupAt =
+    next;
+
+
+  const delay =
+    Math.max(
+      1000,
+      next.getTime() -
+      Date.now()
+    );
+
+
+  console.log(
+    "Next 8-hour Dropbox backup:",
+    next.toISOString()
+  );
+
+
+  dropboxBackupTimer =
+    setTimeout(
+      async () => {
+
+        try {
+
+          await backupEightHoursToDropbox(
+            next
+          );
+
+        }
+
+        catch {}
+
+
+        scheduleNextDropboxBackup();
+
+      },
+      delay
+    );
+
+}
+
+
+/*
+==================================================
 NEXT 8-HOUR BOUNDARY
 ==================================================
 */
@@ -6515,6 +7638,146 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      DROPBOX BACKUP STATUS
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/dropbox/status"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok:
+                false,
+
+              error:
+                "Master access required"
+            },
+            403
+          );
+
+        }
+
+
+        return sendJson(
+          response,
+          {
+            ok:
+              true,
+
+            configured:
+              Boolean(
+                DROPBOX_APP_KEY
+                &&
+                DROPBOX_APP_SECRET
+                &&
+                DROPBOX_REFRESH_TOKEN
+              ),
+
+            everyHours:
+              DROPBOX_BACKUP_HOURS,
+
+            lastBackupAt:
+              lastDropboxBackupAt
+              ?
+              lastDropboxBackupAt.toISOString()
+              :
+              null,
+
+            nextBackupAt:
+              nextDropboxBackupAt
+              ?
+              nextDropboxBackupAt.toISOString()
+              :
+              null,
+
+            lastError:
+              lastDropboxBackupError
+          }
+        );
+
+      }
+
+
+      /*
+      ================================================
+      DROPBOX BACKUP TEST
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/dropbox/test"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok:
+                false,
+
+              error:
+                "Master access required"
+            },
+            403
+          );
+
+        }
+
+
+        try {
+
+          const result =
+            await backupEightHoursToDropbox(
+              new Date()
+            );
+
+
+          return sendJson(
+            response,
+            result
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok:
+                false,
+
+              error:
+                error.message
+            },
+            500
+          );
+
+        }
+
+      }
+
+
+      /*
+      ================================================
       CURRENT USER
       ================================================
       */
@@ -7712,6 +8975,13 @@ async function startServer() {
 
       console.log(
 
+        `Dropbox backup token configured: ${Boolean(DROPBOX_REFRESH_TOKEN)}`
+
+      );
+
+
+      console.log(
+
         `Master username configured: ${Boolean(MASTER_USERNAME)}`
 
       );
@@ -7798,6 +9068,13 @@ async function startServer() {
   */
 
   scheduleNextEmail();
+
+
+  /*
+  AUTOMATIC 8-HOUR DROPBOX BACKUP
+  */
+
+  scheduleNextDropboxBackup();
 
 
   /*
