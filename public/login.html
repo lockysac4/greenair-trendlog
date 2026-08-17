@@ -1,441 +1,73 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-
 <meta charset="utf-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1"
->
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Greenair TrendLog Login</title>
-
 <style>
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-
-  display: grid;
-  place-items: center;
-
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-
-  background:
-    #eef2ef;
-}
-
-
-.login-card {
-  width:
-    min(
-      420px,
-      92vw
-    );
-
-  background:
-    white;
-
-  padding:
-    32px;
-
-  border-radius:
-    12px;
-
-  border-top:
-    6px solid #1b5e20;
-
-  box-shadow:
-    0 10px 35px rgba(0,0,0,.14);
-}
-
-
-.bianco-title {
-  margin: 0;
-
-  color:
-    #f57c00;
-
-  font-size:
-    25px;
-
-  font-weight:
-    900;
-
-  letter-spacing:
-    1px;
-}
-
-
-.greenair-title {
-  margin:
-    5px 0 26px;
-
-  color:
-    #1b5e20;
-
-  font-weight:
-    800;
-
-  font-size:
-    17px;
-}
-
-
-.login-heading {
-  margin:
-    0 0 18px;
-
-  color:
-    #333;
-
-  font-size:
-    18px;
-
-  font-weight:
-    800;
-}
-
-
-label {
-  display:
-    block;
-
-  margin:
-    14px 0 6px;
-
-  font-weight:
-    700;
-}
-
-
-input {
-  width:
-    100%;
-
-  padding:
-    13px;
-
-  border:
-    1px solid #bbb;
-
-  border-radius:
-    6px;
-
-  font-size:
-    16px;
-
-  outline:
-    none;
-}
-
-
-input:focus {
-  border-color:
-    #1b5e20;
-
-  box-shadow:
-    0 0 0 2px rgba(27,94,32,.12);
-}
-
-
-button {
-  width:
-    100%;
-
-  margin-top:
-    22px;
-
-  padding:
-    13px;
-
-  border:
-    0;
-
-  border-radius:
-    6px;
-
-  background:
-    #1b5e20;
-
-  color:
-    white;
-
-  font-size:
-    15px;
-
-  font-weight:
-    800;
-
-  cursor:
-    pointer;
-}
-
-
-button:hover {
-  background:
-    #154d1a;
-}
-
-
-button:disabled {
-  opacity:
-    .65;
-
-  cursor:
-    wait;
-}
-
-
-.error {
-  min-height:
-    22px;
-
-  margin-top:
-    12px;
-
-  color:
-    #b00020;
-
-  font-size:
-    14px;
-
-  font-weight:
-    700;
-}
-
-
-.footer {
-  margin-top:
-    20px;
-
-  text-align:
-    center;
-
-  color:
-    #777;
-
-  font-size:
-    11px;
-}
-
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,Helvetica,sans-serif;background:#eef2ef}
+.login-card{width:min(430px,92vw);background:white;padding:30px 32px 32px;border-radius:12px;border-top:6px solid #1b5e20;box-shadow:0 10px 35px rgba(0,0,0,.14)}
+.logo-wrap{text-align:center;margin-bottom:18px}
+.logo{display:block;width:min(280px,100%);max-height:90px;object-fit:contain;margin:0 auto}
+.bianco-title{margin:0;color:#f57c00;font-size:25px;font-weight:900;letter-spacing:1px}
+.greenair-title{margin:5px 0 26px;color:#1b5e20;font-weight:800;font-size:17px}
+.login-heading{margin:0 0 18px;color:#333;font-size:18px;font-weight:800}
+label{display:block;margin:14px 0 6px;font-weight:700}
+input{width:100%;padding:13px;border:1px solid #bbb;border-radius:6px;font-size:16px;outline:none}
+input:focus{border-color:#1b5e20;box-shadow:0 0 0 2px rgba(27,94,32,.12)}
+button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:6px;background:#1b5e20;color:white;font-size:15px;font-weight:800;cursor:pointer}
+button:hover{background:#154d1a}
+button:disabled{opacity:.65;cursor:wait}
+.error{min-height:22px;margin-top:12px;color:#b00020;font-size:14px;font-weight:700}
+.footer{margin-top:20px;text-align:center;color:#777;font-size:11px}
 </style>
-
 </head>
-
-
 <body>
-
-
-<form
-  class="login-card"
-  id="loginForm"
->
-
-  <h1 class="bianco-title">
-    BIANCO PRECAST
-  </h1>
-
-
-  <div class="greenair-title">
-    GREENAIR TRENDLOG
+<form class="login-card" id="loginForm">
+  <div class="logo-wrap">
+    <img class="logo" src="/greenair-logo.png" alt="Greenair">
   </div>
+  <h1 class="bianco-title">BIANCO PRECAST</h1>
+  <div class="greenair-title">GREENAIR TRENDLOG</div>
+  <div class="login-heading">User Login</div>
 
+  <label for="username">Username</label>
+  <input id="username" name="username" type="text" autocomplete="username" required autofocus>
 
-  <div class="login-heading">
-    User Login
-  </div>
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" required>
 
-
-  <label for="username">
-    Username
-  </label>
-
-
-  <input
-    id="username"
-    name="username"
-    type="text"
-    autocomplete="username"
-    required
-    autofocus
-  >
-
-
-  <label for="password">
-    Password
-  </label>
-
-
-  <input
-    id="password"
-    name="password"
-    type="password"
-    autocomplete="current-password"
-    required
-  >
-
-
-  <button
-    id="loginButton"
-    type="submit"
-  >
-    LOGIN
-  </button>
-
-
-  <div
-    class="error"
-    id="errorMessage"
-  ></div>
-
-
-  <div class="footer">
-    Greenair Controls
-  </div>
-
+  <button id="loginButton" type="submit">LOGIN</button>
+  <div class="error" id="errorMessage"></div>
+  <div class="footer">Greenair Controls</div>
 </form>
 
-
 <script>
+const loginForm=document.getElementById("loginForm");
+const username=document.getElementById("username");
+const password=document.getElementById("password");
+const loginButton=document.getElementById("loginButton");
+const errorMessage=document.getElementById("errorMessage");
 
-const loginForm =
-  document.getElementById(
-    "loginForm"
-  );
-
-
-const username =
-  document.getElementById(
-    "username"
-  );
-
-
-const password =
-  document.getElementById(
-    "password"
-  );
-
-
-const loginButton =
-  document.getElementById(
-    "loginButton"
-  );
-
-
-const errorMessage =
-  document.getElementById(
-    "errorMessage"
-  );
-
-
-loginForm.addEventListener(
-
-  "submit",
-
-  async event => {
-
-    event.preventDefault();
-
-
-    errorMessage.textContent =
-      "Signing in...";
-
-
-    loginButton.disabled =
-      true;
-
-
-    try {
-
-      const response =
-
-        await fetch(
-
-          "/api/auth/login",
-
-          {
-
-            method:
-              "POST",
-
-            headers: {
-
-              "Content-Type":
-                "application/json"
-
-            },
-
-            body:
-
-              JSON.stringify({
-
-                username:
-                  username.value,
-
-                password:
-                  password.value
-
-              })
-
-          }
-
-        );
-
-
-      const data =
-        await response.json();
-
-
-      if (
-        !response.ok
-      ) {
-
-        throw new Error(
-
-          data.error ||
-          "Login failed"
-
-        );
-
-      }
-
-
-      window.location.href =
-        "/";
-
-    }
-
-
-    catch (
-      error
-    ) {
-
-      errorMessage.textContent =
-        error.message;
-
-
-      loginButton.disabled =
-        false;
-
-    }
-
+loginForm.addEventListener("submit",async event=>{
+  event.preventDefault();
+  errorMessage.textContent="Signing in...";
+  loginButton.disabled=true;
+  try{
+    const response=await fetch("/api/auth/login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username:username.value,password:password.value})
+    });
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||"Login failed");
+    window.location.href="/";
+  }catch(error){
+    errorMessage.textContent=error.message;
+    loginButton.disabled=false;
   }
-
-);
-
+});
 </script>
-
-
 </body>
-
 </html>

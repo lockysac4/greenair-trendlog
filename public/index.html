@@ -52,6 +52,23 @@ HEADER
 
 .brand-left {
   justify-self: start;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-logo {
+  display: block;
+  width: 150px;
+  max-height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -625,6 +642,12 @@ PRINT - ONE A3 LANDSCAPE PAGE
   }
 
 
+  .header-logo {
+    width: 42mm !important;
+    max-height: 14mm !important;
+  }
+
+
   .bianco-title {
     font-size: 18pt !important;
 
@@ -960,12 +983,22 @@ HEADER
 
   <div class="brand-left">
 
-    <div class="bianco-title">
-      BIANCO PRECAST
-    </div>
+    <img
+      class="header-logo"
+      src="/greenair-logo.png"
+      alt="Greenair"
+    >
 
-    <div class="greenair-title">
-      GREENAIR TRENDLOG
+    <div class="brand-text">
+
+      <div class="bianco-title">
+        BIANCO PRECAST
+      </div>
+
+      <div class="greenair-title">
+        GREENAIR TRENDLOG
+      </div>
+
     </div>
 
   </div>
