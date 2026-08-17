@@ -7,13 +7,12 @@
 
 <meta
   name="viewport"
-  content="width=device-width,initial-scale=1"
+  content="width=device-width, initial-scale=1"
 >
 
 <title>Bianco Precast - Greenair TrendLog</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
 
@@ -39,9 +38,9 @@ HEADER
 ================================================== */
 
 .top-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
 
   padding: 8px 14px;
 
@@ -50,77 +49,127 @@ HEADER
   border-bottom: 1px solid #d6d6d6;
 }
 
+
 .brand-left {
-  display: flex;
-  flex-direction: column;
+  justify-self: start;
 }
+
 
 .bianco-title {
   color: #f57c00;
+
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 1px;
 }
 
+
 .greenair-title {
   color: #1b5e20;
+
   font-size: 16px;
   font-weight: 800;
 }
 
+
 .header-centre {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+
+  gap: 3px;
 }
 
+
+.page-title {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+
 .mode-badge {
-  padding: 4px 9px;
-  border-radius: 12px;
-  font-size: 10px;
+  padding: 3px 12px;
+
+  border-radius: 14px;
+
+  font-size: 11px;
   font-weight: 900;
 }
 
+
 .mode-badge.live {
-  background: #e8f5e9;
-  color: #1b5e20;
+  background: #dff6df;
+  color: #166c20;
 }
+
 
 .mode-badge.history {
   background: #e3f2fd;
   color: #0d47a1;
 }
 
+
 .connection-box {
+  justify-self: end;
+
   display: flex;
   align-items: center;
-  gap: 8px;
+
+  gap: 7px;
 }
+
 
 .connection-label {
   font-size: 12px;
-  color: #666;
+  font-weight: 800;
 }
 
+
 .led {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
+
   border-radius: 50%;
 }
 
+
 .led.good {
-  background: #00c853;
-  box-shadow: 0 0 7px rgba(0,200,83,.8);
+  background: #00b63d;
+
+  box-shadow:
+    0 0 7px rgba(0,182,61,.75);
 }
+
 
 .led.bad {
   background: #d50000;
-  box-shadow: 0 0 7px rgba(213,0,0,.8);
+
+  box-shadow:
+    0 0 7px rgba(213,0,0,.75);
 }
+
 
 .led.waiting {
   background: #ffb300;
-  box-shadow: 0 0 7px rgba(255,179,0,.8);
+
+  box-shadow:
+    0 0 7px rgba(255,179,0,.75);
+}
+
+
+/* ==================================================
+DATE
+================================================== */
+
+.date-row {
+  padding: 4px 12px;
+
+  background: white;
+
+  border-bottom: 1px solid #ddd;
+
+  font-size: 12px;
+  font-weight: 600;
 }
 
 
@@ -132,19 +181,22 @@ TOOLBAR
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
 
-  padding: 8px 10px;
+  gap: 7px;
+
+  padding: 7px 10px;
 
   background: #f7f7f7;
 
   border-bottom: 1px solid #d6d6d6;
 }
 
+
 .toolbar label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
+
 
 .toolbar select,
 .toolbar button {
@@ -155,33 +207,80 @@ TOOLBAR
 
   background: white;
 
-  padding: 0 10px;
+  padding: 0 11px;
 
   font-size: 12px;
 }
+
 
 .toolbar button {
   cursor: pointer;
 }
 
+
 .toolbar button:hover {
-  background: #eee;
+  background: #eeeeee;
 }
+
 
 .live-button {
-  color: #2e7d32;
+  background: #e1f5e3 !important;
+
+  color: #146b20;
+
+  border-color: #a6dca9 !important;
 }
 
-.png-button {
-  background: #6a1b9a !important;
+
+.print-button {
+  background: #7b1fa2 !important;
+
   color: white;
-  border-color: #6a1b9a !important;
+
+  border-color: #7b1fa2 !important;
+
+  font-weight: 800;
 }
+
 
 .export-button {
-  margin-left: auto;
   background: #263238 !important;
+
   color: white;
+
+  border-color: #263238 !important;
+}
+
+
+.user-button {
+  background: #1565c0 !important;
+  color: white !important;
+  border-color: #1565c0 !important;
+  font-weight: 800;
+  display: none;
+}
+
+.logout-button {
+  background: #b71c1c !important;
+  color: white !important;
+  border-color: #b71c1c !important;
+  font-weight: 800;
+}
+
+.logged-user {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #444;
+}
+
+@media print {
+  .user-button,
+  .logout-button,
+  .logged-user {
+    display: none !important;
+  }
 }
 
 
@@ -193,23 +292,27 @@ CUSTOM HISTORY
   display: none;
   flex-wrap: wrap;
   align-items: center;
+
   gap: 8px;
 
-  padding: 9px 10px;
+  padding: 8px 10px;
 
   background: #fff8e1;
 
   border-bottom: 1px solid #e4d6a4;
 }
 
+
 .custom-history.show {
   display: flex;
 }
 
+
 .custom-history label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
+
 
 .custom-history input {
   height: 32px;
@@ -220,6 +323,7 @@ CUSTOM HISTORY
   padding: 0 8px;
 }
 
+
 .custom-history button {
   height: 32px;
 
@@ -228,15 +332,14 @@ CUSTOM HISTORY
 
   padding: 0 14px;
 
-  cursor: pointer;
-
-  font-weight: 800;
-}
-
-.load-history-button {
   background: #1565c0;
   color: white;
+
+  font-weight: 800;
+
+  cursor: pointer;
 }
+
 
 .history-status {
   font-size: 12px;
@@ -245,25 +348,29 @@ CUSTOM HISTORY
 
 
 /* ==================================================
-RANGE BAR
+RANGE
 ================================================== */
 
 .range-bar {
   display: flex;
   justify-content: space-between;
 
-  padding: 5px 12px;
+  gap: 10px;
+
+  padding: 4px 12px;
 
   background: white;
 
   border-bottom: 1px solid #ddd;
 
   font-size: 11px;
+
   color: #666;
 }
 
+
 .range-bar strong {
-  color: #333;
+  color: #222;
 }
 
 
@@ -273,10 +380,16 @@ MAIN LAYOUT
 
 .main-layout {
   display: grid;
-  grid-template-columns: 290px 1fr;
-  gap: 8px;
-  padding: 8px;
-  height: calc(100vh - 137px);
+
+  grid-template-columns:
+    280px 1fr;
+
+  gap: 7px;
+
+  padding: 7px;
+
+  height: calc(100vh - 151px);
+
   min-height: 620px;
 }
 
@@ -288,91 +401,112 @@ SIDEBAR
 .sidebar {
   background: white;
 
-  border: 1px solid #d8d8d8;
-  border-radius: 4px;
+  border: 1px solid #d4d4d4;
 
   padding: 8px;
 
   overflow: auto;
 }
 
-.side-controls {
+
+.filter-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+
+  grid-template-columns:
+    1fr 1fr 1fr;
+
+  gap: 5px;
+
   margin-bottom: 8px;
 }
 
-.side-controls button {
-  height: 31px;
 
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.filter-row button {
+  height: 32px;
 
   background: white;
 
-  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 3px;
 
-  font-weight: 700;
+  cursor: pointer;
 }
+
 
 .point-row {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+
+  grid-template-columns:
+    26px 1fr auto;
+
   align-items: center;
+
   gap: 7px;
 
-  padding: 10px 8px;
-  margin-bottom: 6px;
+  padding: 10px 7px;
 
-  border: 1px solid #e1e1e1;
-  border-radius: 4px;
+  margin-bottom: 5px;
+
+  border: 1px solid #dddddd;
+  border-radius: 3px;
 
   background: #fafafa;
 
   cursor: pointer;
 }
 
+
 .point-row.disabled {
-  opacity: .4;
+  opacity: .35;
 }
+
 
 .point-number {
   font-size: 11px;
-  color: #888;
+
+  color: #777;
 }
+
+
+.point-middle {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+
+.point-colour {
+  width: 18px;
+  height: 8px;
+
+  border-radius: 8px;
+
+  flex-shrink: 0;
+}
+
 
 .point-name {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.point-state {
-  font-size: 9px;
-  font-weight: 900;
-  color: #2e7d32;
+
+.point-unit {
+  font-size: 10px;
+  font-weight: 800;
 }
 
-.point-row.disabled .point-state {
-  color: #c62828;
-}
 
 .point-value {
   grid-column: 2 / 4;
 
-  font-size: 18px;
+  margin-top: 3px;
+
+  font-size: 16px;
   font-weight: 900;
 
   color: #1b5e20;
-}
-
-.color-bar {
-  grid-column: 1;
-
-  width: 18px;
-  height: 8px;
-
-  border-radius: 5px;
 }
 
 
@@ -383,34 +517,37 @@ GRAPH
 .graph-panel {
   position: relative;
 
+  min-width: 0;
+
   background: white;
 
-  border: 1px solid #d8d8d8;
-  border-radius: 4px;
+  border: 1px solid #cfcfcf;
 
-  padding: 10px;
-
-  min-width: 0;
+  padding: 7px;
 }
+
 
 .graph-container {
   position: relative;
+
   width: 100%;
   height: 100%;
 }
 
+
 .graph-info {
   position: absolute;
 
-  right: 18px;
-  bottom: 12px;
+  right: 16px;
+  bottom: 10px;
 
-  padding: 4px 7px;
+  padding: 3px 6px;
 
-  background: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.88);
 
-  font-size: 11px;
-  color: #666;
+  color: #777;
+
+  font-size: 10px;
 }
 
 
@@ -422,16 +559,387 @@ MOBILE
 
   .main-layout {
     grid-template-columns: 1fr;
+
     height: auto;
-    min-height: 0;
   }
+
 
   .graph-panel {
     height: 520px;
   }
 
-  .export-button {
-    margin-left: 0;
+}
+
+
+/* ==================================================
+PRINT - ONE A3 LANDSCAPE PAGE
+================================================== */
+
+@page {
+  size: A3 landscape;
+  margin: 3mm;
+}
+
+
+@media print {
+
+  html,
+  body {
+    width: 100% !important;
+    height: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
+
+    overflow: hidden !important;
+  }
+
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+
+  body > * {
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+  }
+
+
+  /* HEADER */
+
+  .top-header {
+    height: 18mm !important;
+    min-height: 18mm !important;
+
+    padding:
+      1mm 4mm !important;
+
+    margin: 0 !important;
+  }
+
+
+  .bianco-title {
+    font-size: 18pt !important;
+
+    line-height: 1 !important;
+  }
+
+
+  .greenair-title {
+    font-size: 11pt !important;
+
+    line-height: 1 !important;
+
+    margin-top: 1mm !important;
+  }
+
+
+  .page-title {
+    font-size: 15pt !important;
+  }
+
+
+  .mode-badge {
+    font-size: 8pt !important;
+
+    padding:
+      0.5mm 4mm !important;
+  }
+
+
+  .connection-label {
+    font-size: 10pt !important;
+  }
+
+
+  .led {
+    width: 4mm !important;
+    height: 4mm !important;
+  }
+
+
+  /* DATE */
+
+  .date-row {
+    height: 6mm !important;
+    min-height: 6mm !important;
+
+    padding:
+      0.5mm 4mm !important;
+
+    margin: 0 !important;
+
+    font-size: 8.5pt !important;
+
+    line-height: 5mm !important;
+  }
+
+
+  /* TOOLBAR */
+
+  .toolbar {
+    height: 10mm !important;
+    min-height: 10mm !important;
+
+    padding:
+      1mm 4mm !important;
+
+    gap: 1.5mm !important;
+
+    margin: 0 !important;
+
+    flex-wrap: nowrap !important;
+
+    overflow: hidden !important;
+  }
+
+
+  .toolbar label {
+    font-size: 8pt !important;
+  }
+
+
+  .toolbar select,
+  .toolbar button {
+    height: 7mm !important;
+    min-height: 7mm !important;
+
+    padding:
+      0 2.5mm !important;
+
+    font-size: 7.5pt !important;
+
+    white-space: nowrap !important;
+  }
+
+
+  /* DON'T PRINT PRINT BUTTON */
+
+  #printButton {
+    display: none !important;
+  }
+
+
+  /* DON'T PRINT CUSTOM HISTORY CONTROLS */
+
+  .custom-history {
+    display: none !important;
+  }
+
+
+  /* RANGE */
+
+  .range-bar {
+    height: 7mm !important;
+    min-height: 7mm !important;
+
+    padding:
+      0.5mm 4mm !important;
+
+    margin: 0 !important;
+
+    font-size: 7.5pt !important;
+
+    line-height: 5mm !important;
+  }
+
+
+  /* MAIN AREA */
+
+  .main-layout {
+    display: grid !important;
+
+    grid-template-columns:
+      58mm minmax(0, 1fr) !important;
+
+    gap: 2mm !important;
+
+    width: 100% !important;
+
+    height: 242mm !important;
+    min-height: 242mm !important;
+    max-height: 242mm !important;
+
+    padding:
+      2mm 0 0 0 !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
+
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+  }
+
+
+  /* SIDEBAR */
+
+  .sidebar {
+    width: 58mm !important;
+
+    height: 239mm !important;
+    min-height: 239mm !important;
+    max-height: 239mm !important;
+
+    padding: 1.5mm !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
+
+    border:
+      0.25mm solid #bbbbbb !important;
+
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+
+  .filter-row {
+    height: 8mm !important;
+
+    gap: 1mm !important;
+
+    margin-bottom: 1.5mm !important;
+  }
+
+
+  .filter-row button {
+    height: 7mm !important;
+    min-height: 7mm !important;
+
+    padding: 0 !important;
+
+    font-size: 7pt !important;
+  }
+
+
+  .point-row {
+    min-height: 12mm !important;
+
+    padding:
+      1.5mm !important;
+
+    margin-bottom:
+      1mm !important;
+
+    gap:
+      1mm !important;
+
+    grid-template-columns:
+      6mm 1fr auto !important;
+  }
+
+
+  .point-number {
+    font-size: 7pt !important;
+  }
+
+
+  .point-middle {
+    gap: 1.5mm !important;
+  }
+
+
+  .point-name {
+    font-size: 8pt !important;
+
+    line-height: 1.1 !important;
+  }
+
+
+  .point-unit {
+    font-size: 6.5pt !important;
+  }
+
+
+  .point-colour {
+    width: 4mm !important;
+    height: 1.8mm !important;
+  }
+
+
+  .point-value {
+    display: none !important;
+  }
+
+
+  /* GRAPH */
+
+  .graph-panel {
+    width: 100% !important;
+
+    height: 239mm !important;
+    min-height: 239mm !important;
+    max-height: 239mm !important;
+
+    padding: 1.5mm !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
+
+    border:
+      0.25mm solid #aaaaaa !important;
+
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+
+  .graph-container {
+    position: relative !important;
+
+    width: 100% !important;
+
+    height: 235mm !important;
+    min-height: 235mm !important;
+    max-height: 235mm !important;
+
+    overflow: hidden !important;
+  }
+
+
+  #trendChart {
+    display: block !important;
+
+    width: 100% !important;
+    height: 235mm !important;
+
+    max-width: 100% !important;
+    max-height: 235mm !important;
+  }
+
+
+  .graph-info {
+    display: none !important;
+  }
+
+
+  .main-layout,
+  .sidebar,
+  .graph-panel,
+  .graph-container,
+  canvas {
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
   }
 
 }
@@ -443,6 +951,10 @@ MOBILE
 
 <body>
 
+
+<!-- =================================================
+HEADER
+================================================= -->
 
 <div class="top-header">
 
@@ -461,15 +973,16 @@ MOBILE
 
   <div class="header-centre">
 
-    <strong>
+    <div class="page-title">
       Trend Log
-    </strong>
+    </div>
+
 
     <div
       id="modeBadge"
       class="mode-badge live"
     >
-      LIVE
+      ● LIVE
     </div>
 
   </div>
@@ -481,6 +994,7 @@ MOBILE
       BMS
     </span>
 
+
     <div
       id="connectionLed"
       class="led waiting"
@@ -491,239 +1005,321 @@ MOBILE
 </div>
 
 
+<!-- =================================================
+DATE
+================================================= -->
+
+<div
+  id="currentDateRow"
+  class="date-row"
+>
+—
+</div>
+
+
+<!-- =================================================
+TOOLBAR
+================================================= -->
+
 <div class="toolbar">
 
-<label>
-Time Base:
-</label>
-
-<select id="timeBase">
-
-<option value="5">
-5 minutes
-</option>
-
-<option value="15">
-15 minutes
-</option>
-
-<option value="30">
-30 minutes
-</option>
-
-<option value="60">
-1 hour
-</option>
-
-<option value="360">
-6 hours
-</option>
-
-<option value="720">
-12 hours
-</option>
-
-<option value="1440">
-24 hours
-</option>
-
-<option value="custom">
-Custom Define
-</option>
-
-</select>
+  <label>
+    Time Base:
+  </label>
 
 
-<button id="zoomInButton">
-Zoom In
-</button>
+  <select id="timeBase">
 
-<button id="zoomOutButton">
-Zoom Out
-</button>
+    <option value="5">
+      5 minutes
+    </option>
 
-<button id="resetButton">
-Reset
-</button>
+    <option value="15">
+      15 minutes
+    </option>
 
-<button
-  id="liveButton"
-  class="live-button"
->
-Live
-</button>
+    <option value="30">
+      30 minutes
+    </option>
 
-<button id="last5Button">
-Last 5 min
-</button>
+    <option value="60">
+      1 hour
+    </option>
 
-<button
-  id="printPngButton"
-  class="png-button"
->
-Print A3 Landscape
-</button>
+    <option value="360">
+      6 hours
+    </option>
 
-<button
-  id="exportButton"
-  class="export-button"
->
-Export
-</button>
+    <option value="720">
+      12 hours
+    </option>
+
+    <option value="1440">
+      24 hours
+    </option>
+
+    <option value="custom">
+      Custom Define
+    </option>
+
+  </select>
+
+
+  <button
+    id="zoomInButton"
+    type="button"
+  >
+    Zoom In
+  </button>
+
+
+  <button
+    id="zoomOutButton"
+    type="button"
+  >
+    Zoom Out
+  </button>
+
+
+  <button
+    id="resetButton"
+    type="button"
+  >
+    Reset
+  </button>
+
+
+  <button
+    id="liveButton"
+    class="live-button"
+    type="button"
+  >
+    Live
+  </button>
+
+
+  <button
+    id="last5Button"
+    type="button"
+  >
+    Last 5 min
+  </button>
+
+
+  <button
+    id="printButton"
+    class="print-button"
+    type="button"
+  >
+    Print
+  </button>
+
+
+  <button
+    id="exportButton"
+    class="export-button"
+    type="button"
+  >
+    Export
+  </button>
+
+
+  <span
+    id="loggedUser"
+    class="logged-user"
+  >
+    User
+  </span>
+
+
+  <button
+    id="userManagementButton"
+    class="user-button"
+    type="button"
+  >
+    User Management
+  </button>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    Logout
+  </button>
 
 </div>
 
+
+<!-- =================================================
+CUSTOM HISTORY
+================================================= -->
 
 <div
   id="customHistory"
   class="custom-history"
 >
 
-<label>
-From:
-</label>
+  <label>
+    From:
+  </label>
 
-<input
-  id="fromDate"
-  type="datetime-local"
->
 
-<label>
-To:
-</label>
+  <input
+    id="fromDate"
+    type="datetime-local"
+  >
 
-<input
-  id="toDate"
-  type="datetime-local"
->
 
-<button
-  id="loadHistoryButton"
-  class="load-history-button"
->
-Load History
-</button>
+  <label>
+    To:
+  </label>
 
-<span
-  id="historyStatus"
-  class="history-status"
->
-Select a date range
-</span>
+
+  <input
+    id="toDate"
+    type="datetime-local"
+  >
+
+
+  <button
+    id="loadHistoryButton"
+    type="button"
+  >
+    Load History
+  </button>
+
+
+  <span
+    id="historyStatus"
+    class="history-status"
+  >
+    Select a date range
+  </span>
 
 </div>
 
+
+<!-- =================================================
+RANGE
+================================================= -->
 
 <div class="range-bar">
 
-<span>
-Mode:
-<strong id="rangeMode">
-Live
-</strong>
-</span>
+  <span>
 
-<span>
-Display Range:
-<strong id="displayRange">
-Waiting...
-</strong>
-</span>
+    Mode:
+
+    <strong id="rangeMode">
+      Live
+    </strong>
+
+  </span>
+
+
+  <span>
+
+    Display Range:
+
+    <strong id="displayRange">
+      Waiting...
+    </strong>
+
+  </span>
 
 </div>
 
+
+<!-- =================================================
+MAIN
+================================================= -->
 
 <div class="main-layout">
 
-<aside class="sidebar">
 
-<div class="side-controls">
-
-<button id="showAllButton">
-Show All
-</button>
-
-<button id="hideAllButton">
-Hide All
-</button>
-
-</div>
-
-<div id="pointList"></div>
-
-</aside>
+  <aside class="sidebar">
 
 
-<section class="graph-panel">
+    <div id="pointList"></div>
 
-<div class="graph-container">
 
-<canvas id="trendChart"></canvas>
+  </aside>
 
-</div>
 
-<div
-  id="graphInfo"
-  class="graph-info"
->
-Loading...
-</div>
+  <section class="graph-panel">
 
-</section>
+
+    <div class="graph-container">
+
+      <canvas id="trendChart"></canvas>
+
+    </div>
+
+
+    <div
+      id="graphInfo"
+      class="graph-info"
+    >
+      Loading...
+    </div>
+
+
+  </section>
+
 
 </div>
 
 
 <script>
 
-
 /* ==================================================
-POINTS
+POINT DEFINITIONS
 ================================================== */
 
 const POINTS = [
 
-{
-  id: "in1",
-  number: 1,
-  name: "Planks In",
-  colour: "red"
-},
+  {
+    id: "in1",
+    number: 1,
+    name: "Planks In",
+    colour: "#ff0000"
+  },
 
-{
-  id: "in2",
-  number: 2,
-  name: "Planks Out",
-  colour: "blue"
-},
+  {
+    id: "in2",
+    number: 2,
+    name: "Planks Out",
+    colour: "#0000ff"
+  },
 
-{
-  id: "in3",
-  number: 3,
-  name: "Ambient",
-  colour: "green"
-},
+  {
+    id: "in3",
+    number: 3,
+    name: "Ambient",
+    colour: "#008000"
+  },
 
-{
-  id: "in4",
-  number: 4,
-  name: "Planks Concrete",
-  colour: "orange"
-},
+  {
+    id: "in4",
+    number: 4,
+    name: "Planks Concrete",
+    colour: "#ff9800"
+  },
 
-{
-  id: "in5",
-  number: 5,
-  name: "Planks Tank",
-  colour: "purple"
-},
+  {
+    id: "in5",
+    number: 5,
+    name: "Planks Tank",
+    colour: "#9c149c"
+  },
 
-{
-  id: "diff",
-  number: 6,
-  name: "Ambient - Concrete Differential",
-  colour: "black"
-}
+  {
+    id: "diff",
+    number: 6,
+    name: "Ambient - Concrete Differential",
+    colour: "#000000"
+  }
 
 ];
 
@@ -733,103 +1329,177 @@ ELEMENTS
 ================================================== */
 
 const led =
-document.getElementById(
-"connectionLed"
-);
+  document.getElementById(
+    "connectionLed"
+  );
+
 
 const modeBadge =
-document.getElementById(
-"modeBadge"
-);
+  document.getElementById(
+    "modeBadge"
+  );
+
 
 const rangeMode =
-document.getElementById(
-"rangeMode"
-);
+  document.getElementById(
+    "rangeMode"
+  );
+
 
 const displayRange =
-document.getElementById(
-"displayRange"
-);
+  document.getElementById(
+    "displayRange"
+  );
+
+
+const currentDateRow =
+  document.getElementById(
+    "currentDateRow"
+  );
+
 
 const pointList =
-document.getElementById(
-"pointList"
-);
+  document.getElementById(
+    "pointList"
+  );
+
 
 const timeBase =
-document.getElementById(
-"timeBase"
-);
+  document.getElementById(
+    "timeBase"
+  );
+
 
 const customHistory =
-document.getElementById(
-"customHistory"
-);
+  document.getElementById(
+    "customHistory"
+  );
+
 
 const fromDate =
-document.getElementById(
-"fromDate"
-);
+  document.getElementById(
+    "fromDate"
+  );
+
 
 const toDate =
-document.getElementById(
-"toDate"
-);
+  document.getElementById(
+    "toDate"
+  );
+
 
 const loadHistoryButton =
-document.getElementById(
-"loadHistoryButton"
-);
+  document.getElementById(
+    "loadHistoryButton"
+  );
+
 
 const historyStatus =
-document.getElementById(
-"historyStatus"
-);
+  document.getElementById(
+    "historyStatus"
+  );
+
 
 const graphInfo =
-document.getElementById(
-"graphInfo"
-);
+  document.getElementById(
+    "graphInfo"
+  );
+
 
 const canvas =
-document.getElementById(
-"trendChart"
-);
+  document.getElementById(
+    "trendChart"
+  );
 
-const printPngButton =
-document.getElementById(
-"printPngButton"
-);
+
+const printButton =
+  document.getElementById(
+    "printButton"
+  );
 
 
 /* ==================================================
 STATE
 ================================================== */
 
-let liveSamples =
-[];
+let liveSamples = [];
 
-let historySamples =
-[];
+let historySamples = [];
 
-let currentMode =
-"live";
+let currentMode = "live";
 
-let zoomFactor =
-1;
+let zoomFactor = 1;
 
 
 const visiblePoints = {
 
-in1: true,
-in2: true,
-in3: true,
-in4: true,
-in5: true,
-diff: true
+  in1: true,
+  in2: true,
+  in3: true,
+  in4: true,
+  in5: true,
+  diff: true
 
 };
+
+
+/* ==================================================
+DATE
+================================================== */
+
+function formatDateTime(
+  date
+) {
+
+  return date.toLocaleString(
+    "en-AU",
+    {
+
+      day:
+        "2-digit",
+
+      month:
+        "2-digit",
+
+      year:
+        "numeric",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit",
+
+      second:
+        "2-digit",
+
+      hour12:
+        false
+
+    }
+  );
+
+}
+
+
+function updateClock() {
+
+  currentDateRow.textContent =
+
+    formatDateTime(
+      new Date()
+    );
+
+}
+
+
+updateClock();
+
+
+setInterval(
+  updateClock,
+  1000
+);
 
 
 /* ==================================================
@@ -838,41 +1508,52 @@ POINT LIST
 
 pointList.innerHTML =
 
-POINTS.map(
+  POINTS.map(
 
-point => `
+    point => `
 
-<div
-class="point-row"
-data-id="${point.id}"
->
+      <div
+        class="point-row"
+        data-id="${point.id}"
+      >
 
-<div class="point-number">
-${point.number}
-</div>
+        <div class="point-number">
+          ${point.number}
+        </div>
 
-<div class="point-name">
-${point.name}
-</div>
 
-<div class="point-state">
-ON
-</div>
+        <div class="point-middle">
 
-<div
-class="color-bar"
-style="background:${point.colour}"
-></div>
+          <span
+            class="point-colour"
+            style="background:${point.colour}"
+          ></span>
 
-<div class="point-value">
-—
-</div>
 
-</div>
+          <span class="point-name">
+            ${point.name}
+          </span>
 
-`
+        </div>
 
-).join("");
+
+        <div
+          class="point-unit"
+          style="color:${point.colour}"
+        >
+          Deg.C
+        </div>
+
+
+        <div class="point-value">
+          —
+        </div>
+
+      </div>
+
+    `
+
+  ).join("");
 
 
 /* ==================================================
@@ -880,18 +1561,19 @@ LED
 ================================================== */
 
 function setLed(
-state
+  state
 ) {
 
-led.classList.remove(
-"good",
-"bad",
-"waiting"
-);
+  led.classList.remove(
+    "good",
+    "bad",
+    "waiting"
+  );
 
-led.classList.add(
-state
-);
+
+  led.classList.add(
+    state
+  );
 
 }
 
@@ -902,237 +1584,352 @@ MODE
 
 function updateMode() {
 
-modeBadge.classList.remove(
-"live",
-"history"
-);
+  modeBadge.classList.remove(
+    "live",
+    "history"
+  );
 
 
-if (
-currentMode ===
-"history"
-) {
+  if (
+    currentMode ===
+    "history"
+  ) {
 
-modeBadge.classList.add(
-"history"
-);
+    modeBadge.classList.add(
+      "history"
+    );
 
-modeBadge.textContent =
-"HISTORY";
 
-rangeMode.textContent =
-"Historical";
+    modeBadge.textContent =
+      "HISTORY";
 
-}
 
-else {
+    rangeMode.textContent =
+      "Historical";
 
-modeBadge.classList.add(
-"live"
-);
+  }
 
-modeBadge.textContent =
-"LIVE";
+  else {
 
-rangeMode.textContent =
-"Live";
+    modeBadge.classList.add(
+      "live"
+    );
 
-}
+
+    modeBadge.textContent =
+      "● LIVE";
+
+
+    rangeMode.textContent =
+      "Live";
+
+  }
 
 }
 
 
 /* ==================================================
-LIVE VALUES
+BMS STATE
 ================================================== */
 
 function renderState(
-state
+  state
 ) {
 
-if (
-!state ||
-!state.ok ||
-!Array.isArray(
-state.results
-)
-) {
+  if (
+    !state ||
+    !state.ok ||
+    !Array.isArray(
+      state.results
+    )
+  ) {
 
-setLed(
-"bad"
-);
-
-return;
-
-}
+    setLed(
+      "bad"
+    );
 
 
-setLed(
-"good"
-);
+    return;
+
+  }
 
 
-for (
-const result
-of state.results
-) {
-
-const element =
-
-document.querySelector(
-
-`[data-id="${result.id}"] .point-value`
-
-);
+  setLed(
+    "good"
+  );
 
 
-if (
-element
-) {
+  for (
+    const result
+    of state.results
+  ) {
 
-element.textContent =
+    const element =
 
-Number(
-result.value
-).toFixed(1)
+      document.querySelector(
 
-+
+        `[data-id="${result.id}"] .point-value`
 
-" °C";
+      );
 
-}
 
-}
+    if (
+      element
+    ) {
+
+      element.textContent =
+
+        Number(
+          result.value
+        ).toFixed(1)
+
+        +
+
+        " °C";
+
+    }
+
+  }
 
 }
 
 
 /* ==================================================
-LIVE CHART
+CHART
 ================================================== */
 
 const chart =
 
-new Chart(
+  new Chart(
 
-canvas,
+    canvas,
 
-{
+    {
 
-type:
-"line",
-
-data: {
-
-labels:
-[],
-
-datasets:
-
-POINTS.map(
-
-point => ({
-
-id:
-point.id,
-
-label:
-point.name,
-
-data:
-[],
-
-borderColor:
-point.colour,
-
-backgroundColor:
-point.colour,
-
-borderWidth:
-2,
-
-pointRadius:
-0,
-
-tension:
-0.05
-
-})
-
-)
-
-},
+      type:
+        "line",
 
 
-options: {
+      data: {
 
-responsive:
-true,
+        datasets:
 
-maintainAspectRatio:
-false,
+          POINTS.map(
 
-animation:
-false,
+            point => ({
 
-interaction: {
+              id:
+                point.id,
 
-mode:
-"index",
+              label:
+                point.name,
 
-intersect:
-false
+              data:
+                [],
 
-},
+              borderColor:
+                point.colour,
 
-plugins: {
+              backgroundColor:
+                point.colour,
 
-legend: {
-display: false
-}
+              borderWidth:
+                2,
 
-},
+              pointRadius:
+                0,
 
-scales: {
+              tension:
+                0.03,
 
-x: {
+              parsing:
+                false
 
-grid: {
-color: "#ddd"
-},
+            })
 
-ticks: {
-maxTicksLimit: 8,
-maxRotation: 0
-}
+          )
 
-},
+      },
 
-y: {
 
-grid: {
-color: "#ddd"
-},
+      options: {
 
-title: {
+        responsive:
+          true,
 
-display:
-true,
+        maintainAspectRatio:
+          false,
 
-text:
-"Deg.C"
+        animation:
+          false,
 
-}
 
-}
+        interaction: {
 
-}
+          mode:
+            "nearest",
 
-}
+          intersect:
+            false
 
-}
+        },
 
-);
+
+        plugins: {
+
+          legend: {
+            display: false
+          },
+
+
+          tooltip: {
+
+            callbacks: {
+
+              title:
+                contexts => {
+
+                  if (
+                    !contexts.length
+                  ) {
+
+                    return "";
+
+                  }
+
+
+                  return formatDateTime(
+
+                    new Date(
+                      contexts[0].parsed.x
+                    )
+
+                  );
+
+                },
+
+
+              label:
+                context =>
+
+                  context.dataset.label
+
+                  +
+
+                  ": "
+
+                  +
+
+                  Number(
+                    context.parsed.y
+                  ).toFixed(1)
+
+                  +
+
+                  " °C"
+
+            }
+
+          }
+
+        },
+
+
+        scales: {
+
+          x: {
+
+            type:
+              "linear",
+
+
+            grid: {
+
+              color:
+                "#b0b0b0"
+
+            },
+
+
+            ticks: {
+
+              color:
+                "#333333",
+
+              maxTicksLimit:
+                8,
+
+
+              callback:
+                value => {
+
+                  const date =
+
+                    new Date(
+                      Number(value)
+                    );
+
+
+                  return date.toLocaleTimeString(
+                    "en-AU",
+                    {
+
+                      hour:
+                        "2-digit",
+
+                      minute:
+                        "2-digit",
+
+                      hour12:
+                        false
+
+                    }
+                  );
+
+                }
+
+            }
+
+          },
+
+
+          y: {
+
+            grid: {
+
+              color:
+                "#b0b0b0"
+
+            },
+
+
+            ticks: {
+
+              color:
+                "#333333"
+
+            },
+
+
+            title: {
+
+              display:
+                true,
+
+              text:
+                "Deg.C"
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  );
 
 
 /* ==================================================
@@ -1141,265 +1938,232 @@ VISIBILITY
 
 function updateVisibility() {
 
-POINTS.forEach(
+  POINTS.forEach(
 
-(
-point,
-index
-) => {
+    (
+      point,
+      index
+    ) => {
 
-const row =
+      chart.setDatasetVisibility(
 
-document.querySelector(
+        index,
 
-`.point-row[data-id="${point.id}"]`
+        visiblePoints[
+          point.id
+        ]
 
-);
-
-
-const state =
-
-row.querySelector(
-".point-state"
-);
+      );
 
 
-const visible =
+      const row =
 
-visiblePoints[
-point.id
-];
+        document.querySelector(
 
+          `.point-row[data-id="${point.id}"]`
 
-chart.setDatasetVisibility(
-index,
-visible
-);
+        );
 
 
-row.classList.toggle(
-"disabled",
-!visible
-);
+      if (
+        row
+      ) {
+
+        row.classList.toggle(
+
+          "disabled",
+
+          !visiblePoints[
+            point.id
+          ]
+
+        );
+
+      }
+
+    }
+
+  );
 
 
-state.textContent =
-
-visible
-?
-"ON"
-:
-"OFF";
-
-}
-
-);
-
-
-chart.update(
-"none"
-);
+  chart.update(
+    "none"
+  );
 
 }
 
 
 pointList.addEventListener(
 
-"click",
+  "click",
 
-event => {
+  event => {
 
-const row =
+    const row =
 
-event.target.closest(
-".point-row"
-);
-
-
-if (!row) {
-return;
-}
+      event.target.closest(
+        ".point-row"
+      );
 
 
-const id =
-row.dataset.id;
+    if (
+      !row
+    ) {
+
+      return;
+
+    }
 
 
-visiblePoints[id] =
-!visiblePoints[id];
+    const id =
+      row.dataset.id;
 
 
-updateVisibility();
-
-}
-
-);
+    visiblePoints[id] =
+      !visiblePoints[id];
 
 
-document
-.getElementById(
-"showAllButton"
-)
-.addEventListener(
+    updateVisibility();
 
-"click",
-
-() => {
-
-POINTS.forEach(
-
-point => {
-
-visiblePoints[
-point.id
-] = true;
-
-}
-
-);
-
-updateVisibility();
-
-}
+  }
 
 );
 
 
-document
-.getElementById(
-"hideAllButton"
-)
-.addEventListener(
+      updateVisibility();
 
-"click",
+    }
 
-() => {
-
-POINTS.forEach(
-
-point => {
-
-visiblePoints[
-point.id
-] = false;
-
-}
-
-);
-
-updateVisibility();
-
-}
-
-);
+  );
 
 
 /* ==================================================
-DATA
+SOURCE
 ================================================== */
 
 function sourceSamples() {
 
-return currentMode ===
-"history"
-?
-historySamples
-:
-liveSamples;
+  return currentMode ===
+    "history"
+
+    ?
+
+    historySamples
+
+    :
+
+    liveSamples;
 
 }
 
+
+/* ==================================================
+VISIBLE SAMPLES
+================================================== */
 
 function visibleSamples() {
 
-const source =
-sourceSamples();
+  const source =
+    sourceSamples();
 
 
-if (!source.length) {
+  if (
+    !source.length
+  ) {
 
-return [];
+    return [];
 
-}
-
-
-if (
-currentMode ===
-"history"
-) {
-
-return source;
-
-}
+  }
 
 
-const minutes =
+  if (
+    currentMode ===
+    "history"
+  ) {
 
-Number(
-timeBase.value
-);
+    return source;
 
-
-const newest =
-
-new Date(
-
-source[
-source.length - 1
-].timestamp
-
-).getTime();
+  }
 
 
-let samples =
+  const minutes =
 
-source.filter(
-
-sample =>
-
-new Date(
-sample.timestamp
-).getTime()
-
->=
-
-newest
-
--
-
-minutes *
-60000
-
-);
+    Number(
+      timeBase.value
+    );
 
 
-if (
-zoomFactor > 1
-) {
+  if (
+    !Number.isFinite(
+      minutes
+    )
+  ) {
 
-samples =
+    return source;
 
-samples.slice(
-
--Math.max(
-
-2,
-
-Math.floor(
-
-samples.length /
-zoomFactor
-
-)
-
-)
-
-);
-
-}
+  }
 
 
-return samples;
+  const newest =
+
+    new Date(
+
+      source[
+        source.length - 1
+      ].timestamp
+
+    ).getTime();
+
+
+  let samples =
+
+    source.filter(
+
+      sample =>
+
+        new Date(
+          sample.timestamp
+        ).getTime()
+
+        >=
+
+        newest
+
+        -
+
+        minutes *
+        60000
+
+    );
+
+
+  if (
+    zoomFactor > 1
+  ) {
+
+    samples =
+
+      samples.slice(
+
+        -Math.max(
+
+          2,
+
+          Math.floor(
+
+            samples.length /
+            zoomFactor
+
+          )
+
+        )
+
+      );
+
+  }
+
+
+  return samples;
 
 }
 
@@ -1410,103 +2174,112 @@ DRAW
 
 function drawTrend() {
 
-const samples =
-visibleSamples();
+  const samples =
+    visibleSamples();
 
 
-chart.data.labels =
+  POINTS.forEach(
 
-samples.map(
+    (
+      point,
+      index
+    ) => {
 
-sample =>
+      chart.data.datasets[
+        index
+      ].data =
 
-new Date(
+        samples.map(
 
-sample.timestamp
+          sample => ({
 
-).toLocaleString()
+            x:
 
-);
+              new Date(
+                sample.timestamp
+              ).getTime(),
 
+            y:
 
-POINTS.forEach(
+              Number(
+                sample[
+                  point.id
+                ]
+              )
 
-(
-point,
-index
-) => {
+          })
 
-chart.data.datasets[
-index
-].data =
+        );
 
-samples.map(
+    }
 
-sample =>
-sample[
-point.id
-]
-
-);
-
-}
-
-);
+  );
 
 
-updateVisibility();
-
-updateMode();
+  updateVisibility();
 
 
-if (
-samples.length
-) {
-
-displayRange.textContent =
-
-new Date(
-
-samples[0].timestamp
-
-).toLocaleString()
-
-+
-
-" → "
-
-+
-
-new Date(
-
-samples[
-samples.length - 1
-].timestamp
-
-).toLocaleString();
-
-}
-
-else {
-
-displayRange.textContent =
-"No data";
-
-}
+  updateMode();
 
 
-graphInfo.textContent =
+  if (
+    samples.length
+  ) {
 
-`${samples.length} ${
+    displayRange.textContent =
 
-currentMode ===
-"history"
-?
-"historical"
-:
-"live"
+      formatDateTime(
 
-} samples`;
+        new Date(
+          samples[0].timestamp
+        )
+
+      )
+
+      +
+
+      " → "
+
+      +
+
+      formatDateTime(
+
+        new Date(
+
+          samples[
+            samples.length - 1
+          ].timestamp
+
+        )
+
+      );
+
+  }
+
+  else {
+
+    displayRange.textContent =
+      "No data";
+
+  }
+
+
+  graphInfo.textContent =
+
+    `${samples.length} ${
+
+      currentMode ===
+      "history"
+
+      ?
+
+      "historical"
+
+      :
+
+      "live"
+
+    } samples`;
 
 }
 
@@ -1517,1813 +2290,899 @@ LIVE DATA
 
 async function loadLiveTrend() {
 
-if (
-currentMode !==
-"live"
-) {
+  if (
+    currentMode !==
+    "live"
+  ) {
 
-return;
+    return;
 
-}
-
-
-try {
-
-const response =
-
-await fetch(
-
-"/api/trend",
-
-{
-cache:
-"no-store"
-}
-
-);
+  }
 
 
-const data =
+  try {
 
-await response.json();
+    const response =
+
+      await fetch(
+
+        "/api/trend",
+
+        {
+          cache:
+            "no-store"
+        }
+
+      );
 
 
-liveSamples =
+    const data =
 
-Array.isArray(
-data.samples
-)
-?
-data.samples
-:
-[];
+      await response.json();
 
 
-drawTrend();
+    liveSamples =
 
-}
+      Array.isArray(
+        data.samples
+      )
 
-catch {
+      ?
 
-graphInfo.textContent =
-"Live trend unavailable";
+      data.samples
 
-}
+      :
+
+      [];
+
+
+    drawTrend();
+
+  }
+
+
+  catch {
+
+    graphInfo.textContent =
+      "Live trend unavailable";
+
+  }
 
 }
 
 
 /* ==================================================
-HISTORY
+DATE INPUT
 ================================================== */
 
 function toInputDate(
-date
+  date
 ) {
 
-const offset =
-date.getTimezoneOffset();
+  const offset =
+
+    date.getTimezoneOffset();
 
 
-return new Date(
+  return new Date(
 
-date.getTime()
+    date.getTime()
 
--
+    -
 
-offset *
-60000
+    offset *
+    60000
 
-)
-.toISOString()
-.slice(
-0,
-16
-);
+  )
+    .toISOString()
+    .slice(
+      0,
+      16
+    );
 
 }
 
+
+/* ==================================================
+HISTORY RANGE
+================================================== */
 
 async function loadAvailableRange() {
 
-try {
+  try {
 
-const response =
+    const response =
 
-await fetch(
+      await fetch(
 
-"/api/history/range",
+        "/api/history/range",
 
-{
-cache:
-"no-store"
+        {
+          cache:
+            "no-store"
+        }
+
+      );
+
+
+    const data =
+
+      await response.json();
+
+
+    if (
+      !data.ok ||
+      !data.first ||
+      !data.last
+    ) {
+
+      historyStatus.textContent =
+        "No permanent history saved yet";
+
+
+      return;
+
+    }
+
+
+    historyStatus.textContent =
+
+      `${data.count} records available`;
+
+
+    if (
+      !fromDate.value
+    ) {
+
+      fromDate.value =
+
+        toInputDate(
+
+          new Date(
+            data.first
+          )
+
+        );
+
+    }
+
+
+    if (
+      !toDate.value
+    ) {
+
+      toDate.value =
+
+        toInputDate(
+
+          new Date(
+            data.last
+          )
+
+        );
+
+    }
+
+  }
+
+
+  catch {
+
+    historyStatus.textContent =
+      "History database unavailable";
+
+  }
+
 }
 
-);
 
-
-const data =
-
-await response.json();
-
-
-if (
-!data.ok ||
-!data.first ||
-!data.last
-) {
-
-historyStatus.textContent =
-"No permanent history saved yet";
-
-return;
-
-}
-
-
-historyStatus.textContent =
-
-`${data.count} records available`;
-
-
-if (!fromDate.value) {
-
-fromDate.value =
-
-toInputDate(
-
-new Date(
-data.first
-)
-
-);
-
-}
-
-
-if (!toDate.value) {
-
-toDate.value =
-
-toInputDate(
-
-new Date(
-data.last
-)
-
-);
-
-}
-
-}
-
-catch {
-
-historyStatus.textContent =
-"History database unavailable";
-
-}
-
-}
-
+/* ==================================================
+LOAD HISTORY
+================================================== */
 
 async function loadHistory() {
 
-if (
-!fromDate.value ||
-!toDate.value
-) {
+  if (
+    !fromDate.value ||
+    !toDate.value
+  ) {
 
-alert(
-"Select both From and To dates."
-);
+    alert(
+      "Select both From and To dates."
+    );
 
-return;
+
+    return;
+
+  }
+
+
+  const from =
+
+    new Date(
+      fromDate.value
+    );
+
+
+  const to =
+
+    new Date(
+      toDate.value
+    );
+
+
+  if (
+    from > to
+  ) {
+
+    alert(
+      "From must be before To."
+    );
+
+
+    return;
+
+  }
+
+
+  historyStatus.textContent =
+    "Loading history...";
+
+
+  try {
+
+    const url =
+
+      "/api/history"
+
+      +
+
+      "?from="
+
+      +
+
+      encodeURIComponent(
+        from.toISOString()
+      )
+
+      +
+
+      "&to="
+
+      +
+
+      encodeURIComponent(
+        to.toISOString()
+      );
+
+
+    const response =
+
+      await fetch(
+
+        url,
+
+        {
+          cache:
+            "no-store"
+        }
+
+      );
+
+
+    const data =
+
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !data.ok
+    ) {
+
+      throw new Error(
+
+        data.error ||
+        "History query failed"
+
+      );
+
+    }
+
+
+    historySamples =
+
+      data.samples ||
+      [];
+
+
+    currentMode =
+      "history";
+
+
+    zoomFactor =
+      1;
+
+
+    historyStatus.textContent =
+
+      `${historySamples.length} permanent records loaded`;
+
+
+    drawTrend();
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    historyStatus.textContent =
+      "History load failed";
+
+
+    alert(
+      error.message
+    );
+
+  }
 
 }
 
 
-const from =
-new Date(
-fromDate.value
-);
-
-
-const to =
-new Date(
-toDate.value
-);
-
-
-if (
-from > to
-) {
-
-alert(
-"From must be before To."
-);
-
-return;
-
-}
-
-
-historyStatus.textContent =
-"Loading history...";
-
-
-try {
-
-const url =
-
-"/api/history"
-
-+
-
-"?from="
-
-+
-
-encodeURIComponent(
-from.toISOString()
-)
-
-+
-
-"&to="
-
-+
-
-encodeURIComponent(
-to.toISOString()
-);
-
-
-const response =
-
-await fetch(
-
-url,
-
-{
-cache:
-"no-store"
-}
-
-);
-
-
-const data =
-await response.json();
-
-
-if (
-!response.ok ||
-!data.ok
-) {
-
-throw new Error(
-
-data.error ||
-"History query failed"
-
-);
-
-}
-
-
-historySamples =
-data.samples ||
-[];
-
-
-currentMode =
-"history";
-
-
-zoomFactor =
-1;
-
-
-historyStatus.textContent =
-
-`${historySamples.length} permanent records loaded`;
-
-
-drawTrend();
-
-}
-
-catch (
-error
-) {
-
-historyStatus.textContent =
-"History load failed";
-
-
-alert(
-error.message
-);
-
-}
-
-}
-
+/* ==================================================
+TIME BASE
+================================================== */
 
 timeBase.addEventListener(
 
-"change",
+  "change",
 
-() => {
+  () => {
 
-zoomFactor =
-1;
+    zoomFactor =
+      1;
 
 
-if (
-timeBase.value ===
-"custom"
-) {
+    if (
+      timeBase.value ===
+      "custom"
+    ) {
 
-customHistory.classList.add(
-"show"
-);
+      customHistory.classList.add(
+        "show"
+      );
 
-loadAvailableRange();
 
-}
+      loadAvailableRange();
 
-else {
+    }
 
-customHistory.classList.remove(
-"show"
-);
+    else {
 
-currentMode =
-"live";
+      customHistory.classList.remove(
+        "show"
+      );
 
-loadLiveTrend();
 
-}
+      currentMode =
+        "live";
 
-}
+
+      loadLiveTrend();
+
+    }
+
+  }
 
 );
 
 
 loadHistoryButton.addEventListener(
 
-"click",
+  "click",
 
-loadHistory
+  loadHistory
 
 );
 
 
 /* ==================================================
-BUTTONS
+LIVE BUTTON
 ================================================== */
 
 document
-.getElementById(
-"liveButton"
-)
-.addEventListener(
+  .getElementById(
+    "liveButton"
+  )
+  .addEventListener(
 
-"click",
+    "click",
 
-() => {
+    () => {
 
-currentMode =
-"live";
+      currentMode =
+        "live";
 
-timeBase.value =
-"5";
 
-customHistory.classList.remove(
-"show"
-);
+      timeBase.value =
+        "5";
 
-zoomFactor =
-1;
 
-loadLiveTrend();
+      zoomFactor =
+        1;
 
-}
 
-);
+      customHistory.classList.remove(
+        "show"
+      );
 
 
-document
-.getElementById(
-"last5Button"
-)
-.addEventListener(
+      loadLiveTrend();
 
-"click",
+    }
 
-() => {
-
-currentMode =
-"live";
-
-timeBase.value =
-"5";
-
-customHistory.classList.remove(
-"show"
-);
-
-zoomFactor =
-1;
-
-loadLiveTrend();
-
-}
-
-);
-
-
-document
-.getElementById(
-"resetButton"
-)
-.addEventListener(
-
-"click",
-
-() => {
-
-currentMode =
-"live";
-
-timeBase.value =
-"5";
-
-zoomFactor =
-1;
-
-customHistory.classList.remove(
-"show"
-);
-
-
-POINTS.forEach(
-
-point => {
-
-visiblePoints[
-point.id
-] = true;
-
-}
-
-);
-
-
-loadLiveTrend();
-
-}
-
-);
-
-
-document
-.getElementById(
-"zoomInButton"
-)
-.addEventListener(
-
-"click",
-
-() => {
-
-zoomFactor =
-
-Math.min(
-
-16,
-
-zoomFactor * 2
-
-);
-
-
-drawTrend();
-
-}
-
-);
-
-
-document
-.getElementById(
-"zoomOutButton"
-)
-.addEventListener(
-
-"click",
-
-() => {
-
-zoomFactor =
-
-Math.max(
-
-1,
-
-zoomFactor / 2
-
-);
-
-
-drawTrend();
-
-}
-
-);
+  );
 
 
 /* ==================================================
-AUTO Y RANGE FOR EXPORT
+LAST 5
 ================================================== */
 
-function getExportYRange(
-samples
-) {
+document
+  .getElementById(
+    "last5Button"
+  )
+  .addEventListener(
 
-const values =
-[];
+    "click",
 
+    () => {
 
-POINTS.forEach(
-
-point => {
-
-if (
-!visiblePoints[
-point.id
-]
-) {
-
-return;
-
-}
+      currentMode =
+        "live";
 
 
-samples.forEach(
-
-sample => {
-
-const value =
-
-Number(
-sample[
-point.id
-]
-);
+      timeBase.value =
+        "5";
 
 
-if (
-Number.isFinite(
-value
-)
-) {
-
-values.push(
-value
-);
-
-}
-
-});
-
-});
+      zoomFactor =
+        1;
 
 
-if (
-!values.length
-) {
-
-return {
-min: 0,
-max: 20
-};
-
-}
+      customHistory.classList.remove(
+        "show"
+      );
 
 
-let min =
-Math.min(
-...values
-);
+      loadLiveTrend();
 
+    }
 
-let max =
-Math.max(
-...values
-);
-
-
-let span =
-max - min;
-
-
-if (
-span < 1
-) {
-
-span =
-1;
-
-}
-
-
-const padding =
-span * 0.12;
-
-
-min -=
-padding;
-
-
-max +=
-padding;
-
-
-return {
-
-min:
-Math.floor(
-min * 2
-) / 2,
-
-max:
-Math.ceil(
-max * 2
-) / 2
-
-};
-
-}
+  );
 
 
 /* ==================================================
-PNG NAME
+RESET
 ================================================== */
 
-function makePngFileName() {
+document
+  .getElementById(
+    "resetButton"
+  )
+  .addEventListener(
 
-const now =
-new Date();
+    "click",
+
+    () => {
+
+      currentMode =
+        "live";
 
 
-const pad =
-value =>
-String(value)
-.padStart(
-2,
-"0"
-);
+      timeBase.value =
+        "5";
 
 
-return (
+      zoomFactor =
+        1;
 
-"Greenair_A3_TrendLog_"
 
-+
+      customHistory.classList.remove(
+        "show"
+      );
 
-now.getFullYear()
 
-+
+      POINTS.forEach(
 
-"-"
+        point => {
 
-+
+          visiblePoints[
+            point.id
+          ] = true;
 
-pad(
-now.getMonth() + 1
-)
+        }
 
-+
+      );
 
-"-"
 
-+
+      loadLiveTrend();
 
-pad(
-now.getDate()
-)
+    }
 
-+
+  );
 
-"_"
 
-+
+/* ==================================================
+ZOOM
+================================================== */
 
-pad(
-now.getHours()
-)
+document
+  .getElementById(
+    "zoomInButton"
+  )
+  .addEventListener(
 
-+
+    "click",
 
-pad(
-now.getMinutes()
-)
+    () => {
 
-+
+      zoomFactor =
 
-".png"
+        Math.min(
 
-);
+          16,
+
+          zoomFactor * 2
+
+        );
+
+
+      drawTrend();
+
+    }
+
+  );
+
+
+document
+  .getElementById(
+    "zoomOutButton"
+  )
+  .addEventListener(
+
+    "click",
+
+    () => {
+
+      zoomFactor =
+
+        Math.max(
+
+          1,
+
+          zoomFactor / 2
+
+        );
+
+
+      drawTrend();
+
+    }
+
+  );
+
+
+/* ==================================================
+PRINT AXIS
+================================================== */
+
+function preparePrintChart() {
+
+  const samples =
+    visibleSamples();
+
+
+  if (
+    !samples.length
+  ) {
+
+    return;
+
+  }
+
+
+  const firstTime =
+
+    new Date(
+      samples[0].timestamp
+    ).getTime();
+
+
+  const lastTime =
+
+    new Date(
+
+      samples[
+        samples.length - 1
+      ].timestamp
+
+    ).getTime();
+
+
+  const duration =
+
+    lastTime -
+    firstTime;
+
+
+  /*
+  ONE HOUR OR LONGER:
+  BOTTOM AXIS = EVERY HOUR
+  */
+
+  if (
+    duration >=
+    60 * 60 * 1000
+  ) {
+
+    const minimum =
+
+      new Date(
+        firstTime
+      );
+
+
+    minimum.setMinutes(
+      0,
+      0,
+      0
+    );
+
+
+    const maximum =
+
+      new Date(
+        lastTime
+      );
+
+
+    maximum.setMinutes(
+      0,
+      0,
+      0
+    );
+
+
+    if (
+      maximum.getTime() <
+      lastTime
+    ) {
+
+      maximum.setHours(
+
+        maximum.getHours() +
+        1
+
+      );
+
+    }
+
+
+    chart.options.scales.x.min =
+      minimum.getTime();
+
+
+    chart.options.scales.x.max =
+      maximum.getTime();
+
+
+    chart.options.scales.x.ticks.stepSize =
+
+      60 *
+      60 *
+      1000;
+
+
+    chart.options.scales.x.ticks.autoSkip =
+      false;
+
+
+    chart.options.scales.x.ticks.maxTicksLimit =
+      undefined;
+
+
+    chart.options.scales.x.ticks.callback =
+
+      value => {
+
+        const date =
+
+          new Date(
+            Number(value)
+          );
+
+
+        return date.toLocaleTimeString(
+          "en-AU",
+          {
+
+            hour:
+              "2-digit",
+
+            minute:
+              "2-digit",
+
+            hour12:
+              false
+
+          }
+
+        );
+
+      };
+
+  }
+
+
+  chart.resize();
+
+
+  chart.update(
+    "none"
+  );
 
 }
 
 
 /* ==================================================
-DEDICATED A3 EXPORT
+RESTORE AFTER PRINT
 ================================================== */
 
-async function createA3Export() {
+function restoreNormalChart() {
 
-const samples =
-visibleSamples();
+  delete chart.options.scales.x.min;
 
+  delete chart.options.scales.x.max;
 
-if (
-!samples.length
-) {
+  delete chart.options.scales.x.ticks.stepSize;
 
-throw new Error(
-"No trend data available."
-);
 
-}
+  chart.options.scales.x.ticks.autoSkip =
+    true;
 
 
-const PAGE_WIDTH =
-1754;
+  chart.options.scales.x.ticks.maxTicksLimit =
+    8;
 
 
-const PAGE_HEIGHT =
-1240;
+  chart.options.scales.x.ticks.callback =
 
+    value => {
 
-const page =
+      const date =
 
-document.createElement(
-"div"
-);
+        new Date(
+          Number(value)
+        );
 
 
-page.style.position =
-"fixed";
+      return date.toLocaleTimeString(
+        "en-AU",
+        {
 
+          hour:
+            "2-digit",
 
-page.style.left =
-"-20000px";
+          minute:
+            "2-digit",
 
+          hour12:
+            false
 
-page.style.top =
-"0";
+        }
 
+      );
 
-page.style.width =
-PAGE_WIDTH +
-"px";
+    };
 
 
-page.style.height =
-PAGE_HEIGHT +
-"px";
+  chart.resize();
 
 
-page.style.background =
-"#ffffff";
-
-
-page.style.fontFamily =
-"Arial, Helvetica, sans-serif";
-
-
-page.style.padding =
-"0";
-
-
-page.style.overflow =
-"hidden";
-
-
-/* HEADER */
-
-const header =
-
-document.createElement(
-"div"
-);
-
-
-header.style.height =
-"42px";
-
-
-header.style.display =
-"grid";
-
-
-header.style.gridTemplateColumns =
-"1fr 1fr 1fr";
-
-
-header.style.alignItems =
-"center";
-
-
-header.style.padding =
-"0 10px";
-
-
-header.style.borderBottom =
-"1px solid #d5d5d5";
-
-
-header.style.fontSize =
-"13px";
-
-
-const dateBox =
-
-document.createElement(
-"div"
-);
-
-
-dateBox.textContent =
-new Date()
-.toLocaleString();
-
-
-const titleBox =
-
-document.createElement(
-"div"
-);
-
-
-titleBox.textContent =
-"Trend Log";
-
-
-titleBox.style.textAlign =
-"center";
-
-
-titleBox.style.fontWeight =
-"700";
-
-
-header.appendChild(
-dateBox
-);
-
-
-header.appendChild(
-titleBox
-);
-
-
-header.appendChild(
-document.createElement(
-"div"
-)
-);
-
-
-page.appendChild(
-header
-);
-
-
-/* COMPACT TOOLBAR */
-
-const bar =
-
-document.createElement(
-"div"
-);
-
-
-bar.style.height =
-"48px";
-
-
-bar.style.display =
-"flex";
-
-
-bar.style.alignItems =
-"center";
-
-
-bar.style.gap =
-"6px";
-
-
-bar.style.padding =
-"5px 8px";
-
-
-bar.style.background =
-"#f6f6f6";
-
-
-bar.style.borderBottom =
-"1px solid #d5d5d5";
-
-
-bar.style.fontSize =
-"12px";
-
-
-const timeLabel =
-
-document.createElement(
-"strong"
-);
-
-
-timeLabel.textContent =
-"Time Base:";
-
-
-bar.appendChild(
-timeLabel
-);
-
-
-function addToolbarItem(
-text
-) {
-
-const item =
-
-document.createElement(
-"div"
-);
-
-
-item.textContent =
-text;
-
-
-item.style.background =
-"#ffffff";
-
-
-item.style.border =
-"1px solid #cfcfcf";
-
-
-item.style.padding =
-"7px 10px";
-
-
-item.style.borderRadius =
-"3px";
-
-
-bar.appendChild(
-item
-);
-
-}
-
-
-addToolbarItem(
-
-timeBase.options[
-timeBase.selectedIndex
-].text
-
-);
-
-
-addToolbarItem(
-"Zoom In"
-);
-
-
-addToolbarItem(
-"Zoom Out"
-);
-
-
-addToolbarItem(
-"Reset"
-);
-
-
-addToolbarItem(
-
-currentMode ===
-"history"
-?
-"History"
-:
-"Live - " +
-new Date()
-.toLocaleTimeString()
-
-);
-
-
-addToolbarItem(
-"Last 5 min"
-);
-
-
-addToolbarItem(
-"Export"
-);
-
-
-page.appendChild(
-bar
-);
-
-
-/* MAIN */
-
-const main =
-
-document.createElement(
-"div"
-);
-
-
-main.style.display =
-"grid";
-
-
-main.style.gridTemplateColumns =
-"270px 1fr";
-
-
-main.style.gap =
-"6px";
-
-
-main.style.height =
-"1150px";
-
-
-main.style.padding =
-"6px";
-
-
-/* SIDEBAR */
-
-const side =
-
-document.createElement(
-"div"
-);
-
-
-side.style.background =
-"#ffffff";
-
-
-side.style.border =
-"1px solid #cccccc";
-
-
-side.style.padding =
-"8px";
-
-
-/* FILTERS */
-
-const filters =
-
-document.createElement(
-"div"
-);
-
-
-filters.style.display =
-"grid";
-
-
-filters.style.gridTemplateColumns =
-"1fr 1fr 1fr";
-
-
-filters.style.gap =
-"4px";
-
-
-filters.style.marginBottom =
-"8px";
-
-
-[
-"All",
-"By Type",
-"By Unit"
-]
-.forEach(
-
-text => {
-
-const item =
-
-document.createElement(
-"div"
-);
-
-
-item.textContent =
-text;
-
-
-item.style.textAlign =
-"center";
-
-
-item.style.padding =
-"7px 2px";
-
-
-item.style.border =
-"1px solid #cccccc";
-
-
-item.style.background =
-"#fafafa";
-
-
-item.style.fontSize =
-"11px";
-
-
-filters.appendChild(
-item
-);
-
-}
-
-);
-
-
-side.appendChild(
-filters
-);
-
-
-/* POINTS */
-
-POINTS.forEach(
-
-point => {
-
-
-const row =
-
-document.createElement(
-"div"
-);
-
-
-row.style.display =
-"grid";
-
-
-row.style.gridTemplateColumns =
-"22px 1fr auto";
-
-
-row.style.alignItems =
-"center";
-
-
-row.style.gap =
-"6px";
-
-
-row.style.padding =
-"9px 6px";
-
-
-row.style.marginBottom =
-"5px";
-
-
-row.style.border =
-"1px solid #dddddd";
-
-
-row.style.background =
-"#fafafa";
-
-
-if (
-!visiblePoints[
-point.id
-]
-) {
-
-row.style.opacity =
-".3";
-
-}
-
-
-const num =
-
-document.createElement(
-"div"
-);
-
-
-num.textContent =
-point.number;
-
-
-num.style.color =
-"#888";
-
-
-num.style.fontSize =
-"11px";
-
-
-const mid =
-
-document.createElement(
-"div"
-);
-
-
-mid.style.display =
-"flex";
-
-
-mid.style.alignItems =
-"center";
-
-
-mid.style.gap =
-"7px";
-
-
-const colour =
-
-document.createElement(
-"span"
-);
-
-
-colour.style.width =
-"17px";
-
-
-colour.style.height =
-"8px";
-
-
-colour.style.borderRadius =
-"8px";
-
-
-colour.style.background =
-point.colour;
-
-
-const name =
-
-document.createElement(
-"strong"
-);
-
-
-name.textContent =
-point.name;
-
-
-name.style.fontSize =
-"12px";
-
-
-mid.appendChild(
-colour
-);
-
-
-mid.appendChild(
-name
-);
-
-
-const unit =
-
-document.createElement(
-"strong"
-);
-
-
-unit.textContent =
-"Deg.C";
-
-
-unit.style.fontSize =
-"10px";
-
-
-unit.style.color =
-point.colour;
-
-
-row.appendChild(
-num
-);
-
-
-row.appendChild(
-mid
-);
-
-
-row.appendChild(
-unit
-);
-
-
-side.appendChild(
-row
-);
-
-}
-
-);
-
-
-/* GRAPH PANEL */
-
-const graphPanel =
-
-document.createElement(
-"div"
-);
-
-
-graphPanel.style.background =
-"#ffffff";
-
-
-graphPanel.style.border =
-"1px solid #bbbbbb";
-
-
-graphPanel.style.padding =
-"6px";
-
-
-/* GRAPH CANVAS */
-
-const exportCanvas =
-
-document.createElement(
-"canvas"
-);
-
-
-exportCanvas.width =
-1450;
-
-
-exportCanvas.height =
-1135;
-
-
-exportCanvas.style.width =
-"100%";
-
-
-exportCanvas.style.height =
-"100%";
-
-
-graphPanel.appendChild(
-exportCanvas
-);
-
-
-main.appendChild(
-side
-);
-
-
-main.appendChild(
-graphPanel
-);
-
-
-page.appendChild(
-main
-);
-
-
-document.body.appendChild(
-page
-);
-
-
-/* AUTO SCALE */
-
-const yRange =
-getExportYRange(
-samples
-);
-
-
-/* EXPORT CHART */
-
-const exportChart =
-
-new Chart(
-
-exportCanvas,
-
-{
-
-type:
-"line",
-
-
-data: {
-
-labels:
-
-samples.map(
-
-sample =>
-
-new Date(
-sample.timestamp
-)
-.toLocaleString()
-
-),
-
-
-datasets:
-
-POINTS.map(
-
-point => ({
-
-label:
-point.name,
-
-
-data:
-
-samples.map(
-
-sample =>
-sample[
-point.id
-]
-
-),
-
-
-borderColor:
-point.colour,
-
-
-backgroundColor:
-point.colour,
-
-
-borderWidth:
-3,
-
-
-pointRadius:
-0,
-
-
-tension:
-0.03,
-
-
-hidden:
-
-!visiblePoints[
-point.id
-]
-
-})
-
-)
-
-},
-
-
-options: {
-
-responsive:
-true,
-
-
-maintainAspectRatio:
-false,
-
-
-animation:
-false,
-
-
-plugins: {
-
-legend: {
-display: false
-}
-
-},
-
-
-layout: {
-
-padding: {
-
-top:
-12,
-
-right:
-18,
-
-bottom:
-12,
-
-left:
-8
-
-}
-
-},
-
-
-scales: {
-
-x: {
-
-grid: {
-color: "#d5d5d5"
-},
-
-
-ticks: {
-
-maxTicksLimit:
-7,
-
-
-maxRotation:
-0,
-
-
-font: {
-size: 12
-}
-
-}
-
-},
-
-
-y: {
-
-min:
-yRange.min,
-
-
-max:
-yRange.max,
-
-
-grid: {
-color: "#d5d5d5"
-},
-
-
-ticks: {
-
-font: {
-size: 12
-}
-
-},
-
-
-title: {
-
-display:
-true,
-
-
-text:
-"Deg.C",
-
-
-font: {
-size: 14
-}
-
-}
-
-}
-
-}
-
-}
-
-}
-
-);
-
-
-/* WAIT */
-
-await new Promise(
-
-resolve =>
-setTimeout(
-resolve,
-160
-)
-
-);
-
-
-/* CAPTURE */
-
-const output =
-
-await html2canvas(
-
-page,
-
-{
-
-width:
-PAGE_WIDTH,
-
-
-height:
-PAGE_HEIGHT,
-
-
-scale:
-2,
-
-
-backgroundColor:
-"#ffffff",
-
-
-logging:
-false,
-
-
-useCORS:
-true
-
-}
-
-);
-
-
-exportChart.destroy();
-
-
-page.remove();
-
-
-return output;
+  chart.update(
+    "none"
+  );
 
 }
 
 
 /* ==================================================
-PRINT A3
+PRINT BUTTON
 ================================================== */
 
-printPngButton.addEventListener(
+printButton.addEventListener(
 
-"click",
+  "click",
 
-async () => {
+  () => {
 
-try {
-
-const output =
-
-await createA3Export();
+    preparePrintChart();
 
 
-output.toBlob(
+    /*
+    WAIT FOR PRINT CSS AND
+    CHART TO RESIZE BEFORE
+    OPENING PRINT DIALOG
+    */
 
-blob => {
+    setTimeout(
 
-if (!blob) {
+      () => {
 
-alert(
-"Unable to create A3 PNG."
-);
-
-return;
-
-}
+        chart.resize();
 
 
-const url =
-
-URL.createObjectURL(
-blob
-);
+        chart.update(
+          "none"
+        );
 
 
-const link =
+        setTimeout(
 
-document.createElement(
-"a"
-);
+          () => {
 
+            window.print();
 
-link.href =
-url;
+          },
 
+          250
 
-link.download =
-makePngFileName();
+        );
 
+      },
 
-document.body.appendChild(
-link
-);
+      250
 
+    );
 
-link.click();
-
-
-link.remove();
-
-
-setTimeout(
-
-() => {
-
-URL.revokeObjectURL(
-url
-);
-
-},
-
-1000
+  }
 
 );
 
-},
 
-"image/png",
+window.addEventListener(
 
-1
+  "beforeprint",
 
-);
+  () => {
 
-}
+    preparePrintChart();
 
-catch (
-error
-) {
 
-alert(
+    chart.resize();
 
-"A3 export failed: "
 
-+
+    chart.update(
+      "none"
+    );
 
-error.message
+  }
 
 );
 
-}
 
-}
+window.addEventListener(
+
+  "afterprint",
+
+  () => {
+
+    restoreNormalChart();
+
+  }
 
 );
 
@@ -3333,322 +3192,515 @@ CSV EXPORT
 ================================================== */
 
 function buildCsv(
-samples
+  samples
 ) {
 
-const active =
+  const active =
 
-POINTS.filter(
+    POINTS.filter(
 
-point =>
+      point =>
 
-visiblePoints[
-point.id
-]
+        visiblePoints[
+          point.id
+        ]
 
-);
-
-
-if (!active.length) {
-
-throw new Error(
-"No points selected."
-);
-
-}
+    );
 
 
-const rows = [
+  if (
+    !active.length
+  ) {
 
-[
-"Date",
-"Time",
+    throw new Error(
+      "No points selected."
+    );
 
-...active.map(
-
-point =>
-`${point.name} (C)`
-
-)
-
-]
-
-];
+  }
 
 
-for (
-const sample
-of samples
-) {
+  const rows = [
 
-const date =
-new Date(
-sample.timestamp
-);
+    [
 
+      "Date",
 
-rows.push(
+      "Time",
 
-[
+      ...active.map(
 
-date.toLocaleDateString(),
+        point =>
 
-date.toLocaleTimeString(),
+          `${point.name} (C)`
 
-...active.map(
+      )
 
-point =>
-sample[
-point.id
-]
+    ]
 
-)
-
-]
-
-);
-
-}
+  ];
 
 
-return rows.map(
+  for (
+    const sample
+    of samples
+  ) {
 
-row =>
+    const date =
 
-row.map(
+      new Date(
+        sample.timestamp
+      );
 
-value =>
 
-`"${String(value)
-.replace(
-/"/g,
-'""'
-)}"`
+    rows.push(
 
-).join(",")
+      [
 
-).join("\r\n");
+        date.toLocaleDateString(
+          "en-AU"
+        ),
+
+        date.toLocaleTimeString(
+          "en-AU"
+        ),
+
+        ...active.map(
+
+          point =>
+
+            sample[
+              point.id
+            ]
+
+        )
+
+      ]
+
+    );
+
+  }
+
+
+  return rows.map(
+
+    row =>
+
+      row.map(
+
+        value =>
+
+          `"${String(value)
+            .replace(
+              /"/g,
+              '""'
+            )}"`
+
+      ).join(",")
+
+  ).join("\r\n");
 
 }
 
 
 document
-.getElementById(
-"exportButton"
-)
-.addEventListener(
+  .getElementById(
+    "exportButton"
+  )
+  .addEventListener(
 
-"click",
+    "click",
 
-() => {
+    () => {
 
-try {
+      try {
 
-const samples =
-visibleSamples();
-
-
-if (!samples.length) {
-
-throw new Error(
-"No trend data available."
-);
-
-}
+        const samples =
+          visibleSamples();
 
 
-const csv =
-buildCsv(
-samples
-);
+        if (
+          !samples.length
+        ) {
+
+          throw new Error(
+            "No trend data available."
+          );
+
+        }
 
 
-const blob =
+        const csv =
 
-new Blob(
-
-[csv],
-
-{
-type:
-"text/csv;charset=utf-8"
-}
-
-);
+          buildCsv(
+            samples
+          );
 
 
-const url =
+        const blob =
 
-URL.createObjectURL(
-blob
-);
+          new Blob(
 
+            [csv],
 
-const link =
+            {
 
-document.createElement(
-"a"
-);
+              type:
+                "text/csv;charset=utf-8"
 
+            }
 
-link.href =
-url;
+          );
 
 
-link.download =
+        const url =
 
-currentMode ===
-"history"
-?
-"Greenair_History.csv"
-:
-"Greenair_TrendLog.csv";
+          URL.createObjectURL(
+            blob
+          );
 
 
-document.body.appendChild(
-link
-);
+        const link =
+
+          document.createElement(
+            "a"
+          );
 
 
-link.click();
+        link.href =
+          url;
 
 
-link.remove();
+        link.download =
+
+          currentMode ===
+          "history"
+
+          ?
+
+          "Greenair_History.csv"
+
+          :
+
+          "Greenair_TrendLog.csv";
 
 
-setTimeout(
+        document.body.appendChild(
+          link
+        );
 
-() => {
 
-URL.revokeObjectURL(
-url
-);
+        link.click();
 
-},
 
-1000
+        link.remove();
 
-);
 
-}
+        setTimeout(
 
-catch (
-error
-) {
+          () => {
 
-alert(
-error.message
-);
+            URL.revokeObjectURL(
+              url
+            );
 
-}
+          },
 
-}
+          1000
 
-);
+        );
+
+      }
+
+
+      catch (
+        error
+      ) {
+
+        alert(
+          error.message
+        );
+
+      }
+
+    }
+
+  );
 
 
 /* ==================================================
-INITIAL
+LOGIN / USER CONTROLS
+================================================== */
+
+const loggedUser =
+  document.getElementById(
+    "loggedUser"
+  );
+
+
+const userManagementButton =
+  document.getElementById(
+    "userManagementButton"
+  );
+
+
+const logoutButton =
+  document.getElementById(
+    "logoutButton"
+  );
+
+
+async function loadLoggedInUser() {
+
+  try {
+
+    const response =
+
+      await fetch(
+
+        "/api/auth/me",
+
+        {
+          cache:
+            "no-store"
+        }
+
+      );
+
+
+    if (
+      response.status === 401
+    ) {
+
+      window.location.href =
+        "/login";
+
+      return;
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (
+      !response.ok ||
+      !data.ok
+    ) {
+
+      throw new Error(
+        "Unable to read login"
+      );
+
+    }
+
+
+    loggedUser.textContent =
+
+      `Logged in: ${data.user.username}`;
+
+
+    if (
+      data.user.role ===
+      "master"
+    ) {
+
+      userManagementButton.style.display =
+        "inline-block";
+
+    }
+
+    else {
+
+      userManagementButton.style.display =
+        "none";
+
+    }
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    console.error(
+      "User check failed:",
+      error
+    );
+
+  }
+
+}
+
+
+userManagementButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    window.location.href =
+      "/admin";
+
+  }
+
+);
+
+
+logoutButton.addEventListener(
+
+  "click",
+
+  async () => {
+
+    try {
+
+      await fetch(
+
+        "/api/auth/logout",
+
+        {
+          method:
+            "POST"
+        }
+
+      );
+
+    }
+
+    catch {}
+
+
+    window.location.href =
+      "/login";
+
+  }
+
+);
+
+
+/*
+LOAD CURRENT USER
+*/
+
+loadLoggedInUser();
+
+
+/* ==================================================
+START
 ================================================== */
 
 setLed(
-"waiting"
+  "waiting"
 );
 
 
 fetch(
 
-"/api/state",
+  "/api/state",
 
-{
-cache:
-"no-store"
-}
+  {
+    cache:
+      "no-store"
+  }
+
+)
+
+.then(
+
+  response =>
+    response.json()
 
 )
 
 .then(
 
-response =>
-response.json()
+  renderState
 
-)
-
-.then(
-renderState
 )
 
 .catch(
 
-() =>
-setLed(
-"bad"
-)
+  () =>
+
+    setLed(
+      "bad"
+    )
 
 );
 
+
+/* ==================================================
+LIVE BMS STREAM
+================================================== */
 
 const stream =
 
-new EventSource(
-"/api/stream"
-);
+  new EventSource(
+    "/api/stream"
+  );
 
 
 stream.addEventListener(
 
-"state",
+  "state",
 
-event => {
+  event => {
 
-try {
+    try {
 
-renderState(
+      renderState(
 
-JSON.parse(
-event.data
-)
+        JSON.parse(
+          event.data
+        )
 
-);
+      );
 
-}
+    }
 
-catch {
+    catch {
 
-setLed(
-"bad"
-);
+      setLed(
+        "bad"
+      );
 
-}
+    }
 
-}
+  }
 
 );
 
 
 stream.onerror =
 
-() => {
+  () => {
 
-setLed(
-"bad"
-);
+    setLed(
+      "bad"
+    );
 
-};
+  };
 
+
+/* ==================================================
+START TREND
+================================================== */
 
 loadLiveTrend();
 
 
 setInterval(
 
-loadLiveTrend,
+  loadLiveTrend,
 
-15000
+  15000
 
 );
 
 </script>
 
 </body>
+
 </html>
