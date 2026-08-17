@@ -165,9 +165,84 @@ let emailTimer =
 
 /*
 ==================================================
-CREATE EMAIL TRANSPORTER
+DROPBOX OAUTH CONFIGURATION
 ==================================================
 */
+
+const DROPBOX_APP_KEY =
+  process.env.DROPBOX_APP_KEY ||
+  "";
+
+
+const DROPBOX_APP_SECRET =
+  process.env.DROPBOX_APP_SECRET ||
+  "";
+
+
+const DROPBOX_REDIRECT_URI =
+  process.env.DROPBOX_REDIRECT_URI ||
+  "https://greenair-trendlog.onrender.com/dropbox/callback";
+
+
+const dropboxOAuthStates =
+  new Map();
+
+
+function createDropboxOAuthState() {
+
+  const state =
+    crypto
+      .randomBytes(24)
+      .toString("hex");
+
+
+  dropboxOAuthStates.set(
+    state,
+    Date.now() + 10 * 60 * 1000
+  );
+
+
+  return state;
+
+}
+
+
+function consumeDropboxOAuthState(
+  state
+) {
+
+  const expiresAt =
+    dropboxOAuthStates.get(
+      state
+    );
+
+
+  dropboxOAuthStates.delete(
+    state
+  );
+
+
+  if (
+    !expiresAt
+    ||
+    expiresAt <
+    Date.now()
+  ) {
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+/*
+==================================================
+CREATE EMAIL TRANSPORTER
+==================================================
 
 if (
   EMAIL_USER &&
@@ -6039,6 +6114,394 @@ const server =
         }
 
 
+      /*
+      ================================================
+      DROPBOX CONNECT
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/dropbox/connect"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          response.writeHead(
+            403,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          response.end(
+            "Master access required."
+          );
+
+          return;
+
+        }
+
+
+        if (
+          !DROPBOX_APP_KEY
+          ||
+          !DROPBOX_APP_SECRET
+        ) {
+
+          response.writeHead(
+            500,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          response.end(
+            "Dropbox is not configured in Render."
+          );
+
+          return;
+
+        }
+
+
+        const state =
+          createDropboxOAuthState();
+
+
+        const authorizeUrl =
+          new URL(
+            "https://www.dropbox.com/oauth2/authorize"
+          );
+
+
+        authorizeUrl.searchParams.set(
+          "client_id",
+          DROPBOX_APP_KEY
+        );
+
+
+        authorizeUrl.searchParams.set(
+          "response_type",
+          "code"
+        );
+
+
+        authorizeUrl.searchParams.set(
+          "token_access_type",
+          "offline"
+        );
+
+
+        authorizeUrl.searchParams.set(
+          "redirect_uri",
+          DROPBOX_REDIRECT_URI
+        );
+
+
+        authorizeUrl.searchParams.set(
+          "state",
+          state
+        );
+
+
+        return redirect(
+          response,
+          authorizeUrl.toString()
+        );
+
+      }
+
+
+      /*
+      ================================================
+      DROPBOX CALLBACK
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/dropbox/callback"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          response.writeHead(
+            403,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          response.end(
+            "Master access required."
+          );
+
+          return;
+
+        }
+
+
+        const errorText =
+          url.searchParams.get(
+            "error_description"
+          )
+          ||
+          url.searchParams.get(
+            "error"
+          );
+
+
+        if (
+          errorText
+        ) {
+
+          response.writeHead(
+            400,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          response.end(
+            `Dropbox authorization failed: ${errorText}`
+          );
+
+          return;
+
+        }
+
+
+        const code =
+          url.searchParams.get(
+            "code"
+          );
+
+
+        const state =
+          url.searchParams.get(
+            "state"
+          );
+
+
+        if (
+          !code
+          ||
+          !state
+          ||
+          !consumeDropboxOAuthState(
+            state
+          )
+        ) {
+
+          response.writeHead(
+            400,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          response.end(
+            "Invalid or expired Dropbox authorization request."
+          );
+
+          return;
+
+        }
+
+
+        try {
+
+          const tokenBody =
+            new URLSearchParams();
+
+
+          tokenBody.set(
+            "code",
+            code
+          );
+
+
+          tokenBody.set(
+            "grant_type",
+            "authorization_code"
+          );
+
+
+          tokenBody.set(
+            "client_id",
+            DROPBOX_APP_KEY
+          );
+
+
+          tokenBody.set(
+            "client_secret",
+            DROPBOX_APP_SECRET
+          );
+
+
+          tokenBody.set(
+            "redirect_uri",
+            DROPBOX_REDIRECT_URI
+          );
+
+
+          const tokenResponse =
+            await fetch(
+              "https://api.dropboxapi.com/oauth2/token",
+              {
+                method:
+                  "POST",
+
+                headers:
+                  {
+                    "Content-Type":
+                      "application/x-www-form-urlencoded"
+                  },
+
+                body:
+                  tokenBody.toString()
+              }
+            );
+
+
+          const tokenData =
+            await tokenResponse.json();
+
+
+          if (
+            !tokenResponse.ok
+          ) {
+
+            throw new Error(
+              tokenData.error_description
+              ||
+              tokenData.error
+              ||
+              "Dropbox token exchange failed"
+            );
+
+          }
+
+
+          if (
+            !tokenData.refresh_token
+          ) {
+
+            throw new Error(
+              "Dropbox did not return a refresh token. Reconnect using offline access."
+            );
+
+          }
+
+
+          const safeToken =
+            String(
+              tokenData.refresh_token
+            )
+              .replaceAll(
+                "&",
+                "&amp;"
+              )
+              .replaceAll(
+                "<",
+                "&lt;"
+              )
+              .replaceAll(
+                ">",
+                "&gt;"
+              )
+              .replaceAll(
+                '"',
+                "&quot;"
+              );
+
+
+          response.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/html; charset=utf-8",
+
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+
+          response.end(
+            `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dropbox Connected</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f5f4;padding:30px;color:#222}
+.card{max-width:760px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:10px;padding:24px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+h1{color:#1b5e20;margin-top:0}
+.token{word-break:break-all;background:#f5f5f5;border:1px solid #ccc;border-radius:6px;padding:14px;font-family:monospace;font-size:13px}
+.warning{color:#b00020;font-weight:700}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Dropbox connected successfully</h1>
+<p>Your Dropbox refresh token has been created.</p>
+<p class="warning">Keep this token private. Do not paste it into ChatGPT.</p>
+<p>Copy the token below and add it to Render as <strong>DROPBOX_REFRESH_TOKEN</strong>.</p>
+<div class="token">${safeToken}</div>
+</div>
+</body>
+</html>`
+          );
+
+
+          return;
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          response.writeHead(
+            500,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8",
+
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+
+          response.end(
+            `Dropbox connection failed: ${error.message}`
+          );
+
+
+          return;
+
+        }
+
+      }
+
+
         return redirect(
 
           response,
@@ -7236,6 +7699,13 @@ async function startServer() {
       console.log(
 
         `Email configured: ${emailConfigured}`
+
+      );
+
+
+      console.log(
+
+        `Dropbox app configured: ${Boolean(DROPBOX_APP_KEY && DROPBOX_APP_SECRET)}`
 
       );
 
