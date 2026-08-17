@@ -1,0 +1,2685 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1"
+>
+
+<title>Greenair TrendLog - Test Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  background:
+    #eef2f5;
+
+  color:
+    #172230;
+}
+
+
+body {
+  display: grid;
+
+  grid-template-columns:
+    220px 1fr;
+
+  min-height: 100vh;
+}
+
+
+/* ==================================================
+SIDEBAR
+================================================== */
+
+.sidebar {
+
+  background:
+    linear-gradient(
+      180deg,
+      #102a43,
+      #163a5c
+    );
+
+  color:
+    white;
+
+  padding:
+    18px 14px;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  min-height:
+    100vh;
+
+}
+
+
+.brand {
+
+  display:
+    flex;
+
+  gap:
+    10px;
+
+  align-items:
+    center;
+
+  margin-bottom:
+    24px;
+
+}
+
+
+.brand-icon {
+
+  font-size:
+    30px;
+
+}
+
+
+.brand-title {
+
+  font-size:
+    20px;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    .5px;
+
+}
+
+
+.brand-sub {
+
+  font-size:
+    12px;
+
+  color:
+    #c7d5e3;
+
+  margin-top:
+    2px;
+
+}
+
+
+.nav {
+
+  display:
+    grid;
+
+  gap:
+    8px;
+
+}
+
+
+.nav button {
+
+  width:
+    100%;
+
+  text-align:
+    left;
+
+  border:
+    0;
+
+  border-radius:
+    6px;
+
+  padding:
+    12px 14px;
+
+  background:
+    transparent;
+
+  color:
+    #eef6ff;
+
+  font-size:
+    14px;
+
+  font-weight:
+    700;
+
+  cursor:
+    pointer;
+
+}
+
+
+.nav button.active,
+.nav button:hover {
+
+  background:
+    #1f6fcd;
+
+}
+
+
+.sidebar-footer {
+
+  margin-top:
+    auto;
+
+  color:
+    #cfe0ee;
+
+  font-size:
+    11px;
+
+  line-height:
+    1.6;
+
+}
+
+
+.sidebar-footer strong {
+
+  color:
+    #63d36f;
+
+}
+
+
+/* ==================================================
+MAIN APP
+================================================== */
+
+.app {
+
+  min-width:
+    0;
+
+}
+
+
+/* ==================================================
+TOP BAR
+================================================== */
+
+.topbar {
+
+  height:
+    70px;
+
+  background:
+    #0f2740;
+
+  color:
+    white;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  padding:
+    0 20px;
+
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.15);
+
+}
+
+
+.top-left {
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    18px;
+
+}
+
+
+.menu {
+
+  font-size:
+    26px;
+
+}
+
+
+.logged {
+
+  font-size:
+    14px;
+
+}
+
+
+.top-actions {
+
+  display:
+    flex;
+
+  gap:
+    10px;
+
+  align-items:
+    center;
+
+}
+
+
+.top-actions button {
+
+  height:
+    40px;
+
+  padding:
+    0 16px;
+
+  border:
+    0;
+
+  border-radius:
+    5px;
+
+  color:
+    white;
+
+  font-weight:
+    800;
+
+  cursor:
+    pointer;
+
+}
+
+
+.admin-btn {
+
+  background:
+    #2077d8;
+
+  display:
+    none;
+
+}
+
+
+.logout-btn {
+
+  background:
+    #e23d3d;
+
+}
+
+
+/* ==================================================
+CONTENT
+================================================== */
+
+.content {
+
+  padding:
+    14px;
+
+}
+
+
+.card {
+
+  background:
+    white;
+
+  border:
+    1px solid #d8e0e7;
+
+  border-radius:
+    8px;
+
+  box-shadow:
+    0 1px 4px rgba(0,0,0,.05);
+
+  padding:
+    14px;
+
+  margin-bottom:
+    14px;
+
+}
+
+
+/* ==================================================
+HEADER SECTION
+================================================== */
+
+.head-row {
+
+  display:
+    flex;
+
+  justify-content:
+    space-between;
+
+  gap:
+    20px;
+
+  align-items:
+    flex-start;
+
+}
+
+
+h1 {
+
+  margin:
+    0;
+
+  font-size:
+    23px;
+
+}
+
+
+.sub {
+
+  margin-top:
+    5px;
+
+  color:
+    #68737f;
+
+  font-size:
+    13px;
+
+}
+
+
+.conn {
+
+  font-size:
+    13px;
+
+  text-align:
+    right;
+
+}
+
+
+.conn .status {
+
+  font-weight:
+    900;
+
+  color:
+    #1f9d38;
+
+}
+
+
+.conn .dot {
+
+  display:
+    inline-block;
+
+  width:
+    12px;
+
+  height:
+    12px;
+
+  border-radius:
+    50%;
+
+  background:
+    #1f9d38;
+
+  margin-right:
+    5px;
+
+  vertical-align:
+    -1px;
+
+}
+
+
+/* ==================================================
+CONTROLS
+================================================== */
+
+.controls {
+
+  display:
+    grid;
+
+  grid-template-columns:
+    1fr 1fr 1fr auto;
+
+  gap:
+    16px;
+
+  align-items:
+    end;
+
+  margin-top:
+    18px;
+
+}
+
+
+.control label {
+
+  display:
+    block;
+
+  font-size:
+    12px;
+
+  font-weight:
+    800;
+
+  margin-bottom:
+    6px;
+
+}
+
+
+.control select {
+
+  width:
+    100%;
+
+  height:
+    40px;
+
+  border:
+    1px solid #c9d1d9;
+
+  border-radius:
+    5px;
+
+  padding:
+    0 10px;
+
+  background:
+    white;
+
+  font-size:
+    14px;
+
+}
+
+
+.refresh {
+
+  height:
+    40px;
+
+  border:
+    0;
+
+  border-radius:
+    5px;
+
+  background:
+    #2077d8;
+
+  color:
+    white;
+
+  font-weight:
+    800;
+
+  padding:
+    0 16px;
+
+  cursor:
+    pointer;
+
+}
+
+
+/* ==================================================
+AUTO REFRESH SWITCH
+================================================== */
+
+.toggle-row {
+
+  height:
+    40px;
+
+  display:
+    flex;
+
+  gap:
+    10px;
+
+  align-items:
+    center;
+
+}
+
+
+.toggle {
+
+  width:
+    48px;
+
+  height:
+    26px;
+
+  background:
+    #2077d8;
+
+  border-radius:
+    20px;
+
+  position:
+    relative;
+
+  cursor:
+    pointer;
+
+}
+
+
+.toggle:after {
+
+  content:
+    "";
+
+  position:
+    absolute;
+
+  width:
+    20px;
+
+  height:
+    20px;
+
+  top:
+    3px;
+
+  left:
+    25px;
+
+  border-radius:
+    50%;
+
+  background:
+    white;
+
+  transition:
+    .15s;
+
+}
+
+
+.toggle.off {
+
+  background:
+    #9aa7b4;
+
+}
+
+
+.toggle.off:after {
+
+  left:
+    3px;
+
+}
+
+
+/* ==================================================
+CHART
+================================================== */
+
+.chart-wrap {
+
+  height:
+    570px;
+
+  padding-top:
+    8px;
+
+}
+
+
+/* ==================================================
+VALUES
+================================================== */
+
+.values {
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  border:
+    1px solid #d9e0e7;
+
+  border-radius:
+    6px;
+
+  overflow:
+    hidden;
+
+}
+
+
+.value-card {
+
+  padding:
+    18px 16px;
+
+  text-align:
+    center;
+
+  border-right:
+    1px solid #e1e6eb;
+
+  border-bottom:
+    1px solid #e1e6eb;
+
+}
+
+
+.value-card:nth-child(3n) {
+
+  border-right:
+    0;
+
+}
+
+
+.value-card .name {
+
+  font-size:
+    12px;
+
+  color:
+    #263746;
+
+}
+
+
+.value-card .val {
+
+  margin-top:
+    8px;
+
+  font-size:
+    20px;
+
+  font-weight:
+    900;
+
+}
+
+
+/* ==================================================
+FOOTER
+================================================== */
+
+.footer {
+
+  background:
+    #0f2740;
+
+  color:
+    #e7eef6;
+
+  padding:
+    14px 18px;
+
+  font-size:
+    12px;
+
+}
+
+
+/* ==================================================
+TABLE
+================================================== */
+
+.hidden {
+
+  display:
+    none !important;
+
+}
+
+
+.table-wrap {
+
+  overflow:
+    auto;
+
+}
+
+
+table {
+
+  width:
+    100%;
+
+  border-collapse:
+    collapse;
+
+  font-size:
+    12px;
+
+}
+
+
+th,
+td {
+
+  padding:
+    9px;
+
+  border-bottom:
+    1px solid #e3e8ed;
+
+  text-align:
+    left;
+
+}
+
+
+th {
+
+  background:
+    #f4f6f8;
+
+}
+
+
+/* ==================================================
+MOBILE
+================================================== */
+
+@media(max-width:980px) {
+
+  body {
+
+    grid-template-columns:
+      1fr;
+
+  }
+
+
+  .sidebar {
+
+    display:
+      none;
+
+  }
+
+
+  .controls {
+
+    grid-template-columns:
+      1fr 1fr;
+
+  }
+
+
+  .values {
+
+    grid-template-columns:
+      1fr 1fr;
+
+  }
+
+
+  .value-card:nth-child(3n) {
+
+    border-right:
+      1px solid #e1e6eb;
+
+  }
+
+
+  .value-card:nth-child(2n) {
+
+    border-right:
+      0;
+
+  }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =================================================
+SIDEBAR
+================================================= -->
+
+<aside class="sidebar">
+
+
+  <div class="brand">
+
+    <div class="brand-icon">
+      🌿
+    </div>
+
+
+    <div>
+
+      <div class="brand-title">
+        GREENAIR
+      </div>
+
+      <div class="brand-sub">
+        TRENDLOG
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="nav">
+
+
+    <button
+      class="active"
+      data-view="trend"
+    >
+      📈 &nbsp; Live Trend
+    </button>
+
+
+    <button
+      data-view="table"
+    >
+      ▦ &nbsp; Data Table
+    </button>
+
+
+    <button id="exportSide">
+      ⬇ &nbsp; Export Data
+    </button>
+
+
+    <button
+      data-view="settings"
+    >
+      ⚙ &nbsp; Settings
+    </button>
+
+
+    <button
+      data-view="about"
+    >
+      ⓘ &nbsp; About
+    </button>
+
+
+  </div>
+
+
+  <div class="sidebar-footer">
+
+    <strong>
+      GREENAIR TRENDLOG
+    </strong>
+
+    <br>
+
+    © 2026 Greenair
+
+    <br>
+
+    Data archived every minute
+
+  </div>
+
+
+</aside>
+
+
+<!-- =================================================
+MAIN APP
+================================================= -->
+
+<main class="app">
+
+
+<!-- =================================================
+TOP BAR
+================================================= -->
+
+<header class="topbar">
+
+
+  <div class="top-left">
+
+    <div class="menu">
+      ☰
+    </div>
+
+
+    <div class="logged">
+
+      Logged in:
+
+      <strong id="loggedName">
+        User
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <div class="top-actions">
+
+
+    <button
+      id="adminBtn"
+      class="admin-btn"
+    >
+      👥 User Management
+    </button>
+
+
+    <button
+      id="logoutBtn"
+      class="logout-btn"
+    >
+      ⇥ Logout
+    </button>
+
+
+  </div>
+
+
+</header>
+
+
+<!-- =================================================
+CONTENT
+================================================= -->
+
+<div class="content">
+
+
+<!-- =================================================
+LIVE TREND
+================================================= -->
+
+<section id="trendView">
+
+
+<div class="card">
+
+
+  <div class="head-row">
+
+
+    <div>
+
+      <h1>
+        Live Trend
+      </h1>
+
+      <div class="sub">
+        Real-time Modbus data visualization
+      </div>
+
+    </div>
+
+
+    <div class="conn">
+
+
+      <div
+        id="connStatus"
+        class="status"
+      >
+
+        <span class="dot"></span>
+
+        Connected
+
+      </div>
+
+
+      <div class="sub">
+        Polling: 15 seconds
+      </div>
+
+
+    </div>
+
+
+  </div>
+
+
+<!-- =================================================
+CONTROLS
+================================================= -->
+
+<div class="controls">
+
+
+  <div class="control">
+
+    <label>
+      Select Points
+    </label>
+
+
+    <select id="pointsSelect">
+
+      <option value="all">
+        All Points (6)
+      </option>
+
+      <option value="temp">
+        Temperature Points
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="control">
+
+    <label>
+      Time Range
+    </label>
+
+
+    <select id="timeRange">
+
+      <option value="5">
+        5 Minutes
+      </option>
+
+      <option value="15">
+        15 Minutes
+      </option>
+
+      <option value="30">
+        30 Minutes
+      </option>
+
+      <option value="60">
+        1 Hour
+      </option>
+
+      <option value="360">
+        6 Hours
+      </option>
+
+      <option
+        value="480"
+        selected
+      >
+        8 Hours
+      </option>
+
+      <option value="720">
+        12 Hours
+      </option>
+
+      <option value="1440">
+        24 Hours
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="control">
+
+    <label>
+      Auto Refresh
+    </label>
+
+
+    <div class="toggle-row">
+
+      <div
+        id="autoToggle"
+        class="toggle"
+      ></div>
+
+      <strong id="autoText">
+        ON
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <button
+    id="refreshBtn"
+    class="refresh"
+  >
+    ⟳ Refresh Now
+  </button>
+
+
+</div>
+
+
+</div>
+
+
+<!-- =================================================
+CHART
+================================================= -->
+
+<div class="card">
+
+
+  <div class="chart-wrap">
+
+    <canvas id="trendChart"></canvas>
+
+  </div>
+
+
+</div>
+
+
+<!-- =================================================
+CURRENT VALUES
+================================================= -->
+
+<div class="card">
+
+  <div
+    id="valuesGrid"
+    class="values"
+  ></div>
+
+</div>
+
+
+</section>
+
+
+<!-- =================================================
+DATA TABLE
+================================================= -->
+
+<section
+  id="tableView"
+  class="card hidden"
+>
+
+
+<h1>
+  Data Table
+</h1>
+
+
+<div class="sub">
+  Recent live trend samples
+</div>
+
+
+<div
+  class="table-wrap"
+  style="margin-top:14px"
+>
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+  <th>
+    Time
+  </th>
+
+  <th>
+    Planks In
+  </th>
+
+  <th>
+    Planks Out
+  </th>
+
+  <th>
+    Ambient
+  </th>
+
+  <th>
+    Planks Concrete
+  </th>
+
+  <th>
+    Planks Tank
+  </th>
+
+  <th>
+    Differential
+  </th>
+
+</tr>
+
+</thead>
+
+
+<tbody id="dataRows"></tbody>
+
+
+</table>
+
+
+</div>
+
+
+</section>
+
+
+<!-- =================================================
+SETTINGS
+================================================= -->
+
+<section
+  id="settingsView"
+  class="card hidden"
+>
+
+
+<h1>
+  Settings
+</h1>
+
+
+<p>
+  Testing page only. Production settings remain managed
+  by the Greenair server and Render environment variables.
+</p>
+
+
+</section>
+
+
+<!-- =================================================
+ABOUT
+================================================= -->
+
+<section
+  id="aboutView"
+  class="card hidden"
+>
+
+
+<h1>
+  About
+</h1>
+
+
+<p>
+  Greenair TrendLog test dashboard.
+  Permanent history is archived server-side
+  to PostgreSQL every minute.
+</p>
+
+
+</section>
+
+
+</div>
+
+
+<footer class="footer">
+
+  Data is archived every minute and reports are emailed every 8 hours.
+
+</footer>
+
+
+</main>
+
+
+<script>
+
+
+/* ==================================================
+POINTS
+================================================== */
+
+const POINTS = [
+
+  {
+    id:
+      "in1",
+
+    name:
+      "Planks In",
+
+    colour:
+      "#1565d8"
+  },
+
+
+  {
+    id:
+      "in2",
+
+    name:
+      "Planks Out",
+
+    colour:
+      "#e53935"
+  },
+
+
+  {
+    id:
+      "in3",
+
+    name:
+      "Ambient",
+
+    colour:
+      "#2e9c3f"
+  },
+
+
+  {
+    id:
+      "in4",
+
+    name:
+      "Planks Concrete",
+
+    colour:
+      "#8e44ad"
+  },
+
+
+  {
+    id:
+      "in5",
+
+    name:
+      "Planks Tank",
+
+    colour:
+      "#0f9bb8"
+  },
+
+
+  {
+    id:
+      "diff",
+
+    name:
+      "Ambient - Concrete Differential",
+
+    colour:
+      "#f28c00"
+  }
+
+];
+
+
+let samples =
+  [];
+
+
+let autoRefresh =
+  true;
+
+
+/* ==================================================
+CHART
+================================================== */
+
+const chart =
+
+  new Chart(
+
+    document.getElementById(
+      "trendChart"
+    ),
+
+    {
+
+      type:
+        "line",
+
+
+      data: {
+
+        datasets:
+
+          POINTS.map(
+
+            point => ({
+
+              label:
+                point.name,
+
+              data:
+                [],
+
+              borderColor:
+                point.colour,
+
+              backgroundColor:
+                point.colour,
+
+              borderWidth:
+                2.3,
+
+              pointRadius:
+                1.8,
+
+              pointHoverRadius:
+                4,
+
+              tension:
+                0.18,
+
+              parsing:
+                false
+
+            })
+
+          )
+
+      },
+
+
+      options: {
+
+        responsive:
+          true,
+
+        maintainAspectRatio:
+          false,
+
+        animation:
+          false,
+
+
+        interaction: {
+
+          mode:
+            "nearest",
+
+          intersect:
+            false
+
+        },
+
+
+        plugins: {
+
+
+          legend: {
+
+            display:
+              true,
+
+            position:
+              "top",
+
+
+            labels: {
+
+              color:
+                "#1f2c38",
+
+              font: {
+
+                size:
+                  12,
+
+                weight:
+                  "600"
+
+              },
+
+              usePointStyle:
+                true,
+
+              pointStyle:
+                "line",
+
+              padding:
+                20
+
+            }
+
+          },
+
+
+          tooltip: {
+
+            callbacks: {
+
+
+              title(
+                items
+              ) {
+
+                if (
+                  !items.length
+                ) {
+
+                  return "";
+
+                }
+
+
+                return new Date(
+
+                  items[0]
+                    .parsed
+                    .x
+
+                ).toLocaleString(
+                  "en-AU"
+                );
+
+              },
+
+
+              label(
+                context
+              ) {
+
+                return (
+
+                  context.dataset.label
+
+                  +
+
+                  ": "
+
+                  +
+
+                  Number(
+                    context.parsed.y
+                  ).toFixed(2)
+
+                  +
+
+                  " °C"
+
+                );
+
+              }
+
+
+            }
+
+          }
+
+
+        },
+
+
+        scales: {
+
+
+          x: {
+
+            type:
+              "linear",
+
+
+            grid: {
+
+              /*
+              DARKER GRID LINES
+              */
+
+              color:
+                "#c6ced6",
+
+              lineWidth:
+                1.2
+
+            },
+
+
+            border: {
+
+              color:
+                "#697784",
+
+              width:
+                1.2
+
+            },
+
+
+            ticks: {
+
+              /*
+              DARKER AXIS TEXT
+              */
+
+              color:
+                "#2d3740",
+
+              font: {
+
+                size:
+                  12,
+
+                weight:
+                  "600"
+
+              },
+
+              maxTicksLimit:
+                9,
+
+
+              callback(
+                value
+              ) {
+
+                return new Date(
+
+                  Number(
+                    value
+                  )
+
+                ).toLocaleTimeString(
+
+                  "en-AU",
+
+                  {
+
+                    hour:
+                      "2-digit",
+
+                    minute:
+                      "2-digit",
+
+                    hour12:
+                      false
+
+                  }
+
+                );
+
+              }
+
+            },
+
+
+            title: {
+
+              display:
+                true,
+
+              text:
+                "Time",
+
+              color:
+                "#222",
+
+              font: {
+
+                size:
+                  13,
+
+                weight:
+                  "700"
+
+              }
+
+            }
+
+          },
+
+
+          y: {
+
+
+            grid: {
+
+              /*
+              DARKER HORIZONTAL LINES
+              */
+
+              color:
+                "#c4ccd4",
+
+              lineWidth:
+                1.25
+
+            },
+
+
+            border: {
+
+              color:
+                "#65727e",
+
+              width:
+                1.3
+
+            },
+
+
+            ticks: {
+
+              /*
+              DARKER Y AXIS NUMBERS
+              */
+
+              color:
+                "#252d35",
+
+              font: {
+
+                size:
+                  12,
+
+                weight:
+                  "600"
+
+              }
+
+            },
+
+
+            title: {
+
+              display:
+                true,
+
+              text:
+                "Deg.C",
+
+              color:
+                "#222",
+
+              font: {
+
+                size:
+                  13,
+
+                weight:
+                  "700"
+
+              }
+
+            }
+
+
+          }
+
+
+        }
+
+
+      }
+
+
+    }
+
+
+  );
+
+
+/* ==================================================
+FORMAT NUMBER
+================================================== */
+
+function fmt(
+  value
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  return Number.isFinite(
+    number
+  )
+
+  ?
+
+  number.toFixed(
+    2
+  )
+
+  :
+
+  "—";
+
+}
+
+
+/* ==================================================
+VISIBLE SAMPLE RANGE
+================================================== */
+
+function activeSamples() {
+
+  if (
+    !samples.length
+  ) {
+
+    return [];
+
+  }
+
+
+  const minutes =
+
+    Number(
+
+      document.getElementById(
+        "timeRange"
+      ).value
+
+    );
+
+
+  const newest =
+
+    new Date(
+
+      samples[
+        samples.length - 1
+      ].timestamp
+
+    ).getTime();
+
+
+  const cutoff =
+
+    newest
+
+    -
+
+    minutes *
+    60000;
+
+
+  return samples.filter(
+
+    sample =>
+
+      new Date(
+        sample.timestamp
+      ).getTime()
+
+      >=
+
+      cutoff
+
+  );
+
+}
+
+
+/* ==================================================
+RENDER
+================================================== */
+
+function render() {
+
+  const data =
+    activeSamples();
+
+
+  POINTS.forEach(
+
+    (
+      point,
+      index
+    ) => {
+
+
+      chart.data.datasets[
+        index
+      ].data =
+
+        data.map(
+
+          sample => ({
+
+            x:
+
+              new Date(
+                sample.timestamp
+              ).getTime(),
+
+            y:
+
+              Number(
+                sample[
+                  point.id
+                ]
+              )
+
+          })
+
+        );
+
+    }
+
+  );
+
+
+  chart.update(
+    "none"
+  );
+
+
+  const latest =
+
+    data[
+      data.length - 1
+    ]
+
+    ||
+
+    {};
+
+
+  /*
+  CURRENT VALUE CARDS
+  */
+
+  document.getElementById(
+    "valuesGrid"
+  ).innerHTML =
+
+    POINTS.map(
+
+      point => `
+
+        <div class="value-card">
+
+          <div class="name">
+
+            ${point.name}
+
+          </div>
+
+
+          <div
+            class="val"
+            style="color:${point.colour}"
+          >
+
+            ${fmt(
+              latest[
+                point.id
+              ]
+            )} °C
+
+          </div>
+
+        </div>
+
+      `
+
+    ).join("");
+
+
+  /*
+  DATA TABLE
+  */
+
+  document.getElementById(
+    "dataRows"
+  ).innerHTML =
+
+    data
+      .slice(-200)
+      .reverse()
+      .map(
+
+        sample => `
+
+          <tr>
+
+            <td>
+
+              ${new Date(
+                sample.timestamp
+              ).toLocaleString(
+                "en-AU"
+              )}
+
+            </td>
+
+            <td>
+              ${fmt(sample.in1)}
+            </td>
+
+            <td>
+              ${fmt(sample.in2)}
+            </td>
+
+            <td>
+              ${fmt(sample.in3)}
+            </td>
+
+            <td>
+              ${fmt(sample.in4)}
+            </td>
+
+            <td>
+              ${fmt(sample.in5)}
+            </td>
+
+            <td>
+              ${fmt(sample.diff)}
+            </td>
+
+          </tr>
+
+        `
+
+      ).join("");
+
+}
+
+
+/* ==================================================
+LOAD TREND
+================================================== */
+
+async function loadTrend() {
+
+  try {
+
+    const response =
+
+      await fetch(
+
+        "/api/trend",
+
+        {
+
+          cache:
+            "no-store"
+
+        }
+
+      );
+
+
+    if (
+      response.status ===
+      401
+    ) {
+
+      location.href =
+        "/login";
+
+
+      return;
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    samples =
+
+      Array.isArray(
+        data.samples
+      )
+
+      ?
+
+      data.samples
+
+      :
+
+      [];
+
+
+    document.getElementById(
+      "connStatus"
+    ).innerHTML =
+
+      '<span class="dot"></span>Connected';
+
+
+    render();
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    document.getElementById(
+      "connStatus"
+    ).textContent =
+      "Disconnected";
+
+  }
+
+}
+
+
+/* ==================================================
+LOAD USER
+================================================== */
+
+async function loadUser() {
+
+  try {
+
+    const response =
+
+      await fetch(
+
+        "/api/auth/me",
+
+        {
+
+          cache:
+            "no-store"
+
+        }
+
+      );
+
+
+    if (
+      response.status ===
+      401
+    ) {
+
+      location.href =
+        "/login";
+
+
+      return;
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    document.getElementById(
+      "loggedName"
+    ).textContent =
+
+      data.user.username;
+
+
+    if (
+      data.user.role ===
+      "master"
+    ) {
+
+      document.getElementById(
+        "adminBtn"
+      ).style.display =
+        "inline-block";
+
+    }
+
+  }
+
+
+  catch {}
+
+}
+
+
+/* ==================================================
+REFRESH
+================================================== */
+
+document.getElementById(
+  "refreshBtn"
+).onclick =
+
+  loadTrend;
+
+
+/* ==================================================
+TIME RANGE
+================================================== */
+
+document.getElementById(
+  "timeRange"
+).onchange =
+
+  render;
+
+
+/* ==================================================
+AUTO REFRESH
+================================================== */
+
+document.getElementById(
+  "autoToggle"
+).onclick =
+
+  () => {
+
+
+    autoRefresh =
+      !autoRefresh;
+
+
+    document.getElementById(
+      "autoToggle"
+    ).classList.toggle(
+
+      "off",
+
+      !autoRefresh
+
+    );
+
+
+    document.getElementById(
+      "autoText"
+    ).textContent =
+
+      autoRefresh
+
+      ?
+
+      "ON"
+
+      :
+
+      "OFF";
+
+  };
+
+
+/* ==================================================
+USER MANAGEMENT
+================================================== */
+
+document.getElementById(
+  "adminBtn"
+).onclick =
+
+  () =>
+
+    location.href =
+      "/admin";
+
+
+/* ==================================================
+LOGOUT
+================================================== */
+
+document.getElementById(
+  "logoutBtn"
+).onclick =
+
+  async () => {
+
+
+    try {
+
+      await fetch(
+
+        "/api/auth/logout",
+
+        {
+
+          method:
+            "POST"
+
+        }
+
+      );
+
+    }
+
+    catch {}
+
+
+    location.href =
+      "/login";
+
+  };
+
+
+/* ==================================================
+EXPORT CSV
+================================================== */
+
+function exportCsv() {
+
+  const data =
+    activeSamples();
+
+
+  if (
+    !data.length
+  ) {
+
+    alert(
+      "No trend data available."
+    );
+
+
+    return;
+
+  }
+
+
+  const rows = [
+
+    [
+
+      "Date / Time",
+
+      "Planks In",
+
+      "Planks Out",
+
+      "Ambient",
+
+      "Planks Concrete",
+
+      "Planks Tank",
+
+      "Differential"
+
+    ],
+
+
+    ...data.map(
+
+      sample => [
+
+        new Date(
+          sample.timestamp
+        ).toLocaleString(
+          "en-AU"
+        ),
+
+        sample.in1,
+
+        sample.in2,
+
+        sample.in3,
+
+        sample.in4,
+
+        sample.in5,
+
+        sample.diff
+
+      ]
+
+    )
+
+  ];
+
+
+  const csv =
+
+    rows.map(
+
+      row =>
+
+        row.map(
+
+          value =>
+
+            `"${String(
+              value ?? ""
+            ).replaceAll(
+              '"',
+              '""'
+            )}"`
+
+        ).join(",")
+
+    ).join(
+      "\r\n"
+    );
+
+
+  const blob =
+
+    new Blob(
+
+      [
+        csv
+      ],
+
+      {
+
+        type:
+          "text/csv;charset=utf-8"
+
+      }
+
+    );
+
+
+  const url =
+
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+
+  link.download =
+    "Greenair_TrendLog_Test.csv";
+
+
+  link.click();
+
+
+  setTimeout(
+
+    () =>
+
+      URL.revokeObjectURL(
+        url
+      ),
+
+    1000
+
+  );
+
+}
+
+
+document.getElementById(
+  "exportSide"
+).onclick =
+
+  exportCsv;
+
+
+/* ==================================================
+SIDEBAR NAVIGATION
+================================================== */
+
+document
+  .querySelectorAll(
+    ".nav button[data-view]"
+  )
+  .forEach(
+
+    button => {
+
+
+      button.onclick =
+
+        () => {
+
+
+          document
+            .querySelectorAll(
+              ".nav button[data-view]"
+            )
+            .forEach(
+
+              item =>
+
+                item.classList.remove(
+                  "active"
+                )
+
+            );
+
+
+          button.classList.add(
+            "active"
+          );
+
+
+          [
+
+            "trend",
+
+            "table",
+
+            "settings",
+
+            "about"
+
+          ].forEach(
+
+            name => {
+
+
+              document.getElementById(
+
+                name +
+                "View"
+
+              ).classList.toggle(
+
+                "hidden",
+
+                button.dataset.view !==
+                name
+
+              );
+
+            }
+
+          );
+
+        };
+
+    }
+
+  );
+
+
+/* ==================================================
+START
+================================================== */
+
+loadUser();
+
+
+loadTrend();
+
+
+setInterval(
+
+  () => {
+
+    if (
+      autoRefresh
+    ) {
+
+      loadTrend();
+
+    }
+
+  },
+
+  15000
+
+);
+
+</script>
+
+
+</body>
+
+</html>
