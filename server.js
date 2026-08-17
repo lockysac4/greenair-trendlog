@@ -3798,8 +3798,7 @@ UPLOAD DROPBOX FILE
 async function uploadDropboxFile(
   accessToken,
   dropboxPath,
-  content,
-  contentType = "application/octet-stream"
+  content
 ) {
 
   const response =
@@ -3832,7 +3831,7 @@ async function uploadDropboxFile(
               ),
 
             "Content-Type":
-              contentType
+              "application/octet-stream"
           },
 
         body:
@@ -4484,16 +4483,14 @@ async function backupEightHoursToDropbox(
     await uploadDropboxFile(
       accessToken,
       csvPath,
-      csv,
-      "text/csv; charset=utf-8"
+      csv
     );
 
 
     await uploadDropboxFile(
       accessToken,
       graphPath,
-      graph,
-      "image/svg+xml; charset=utf-8"
+      graph
     );
 
 
