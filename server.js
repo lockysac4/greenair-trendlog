@@ -1226,9 +1226,6 @@ const T_BEAMS_POINTS = [
   { id:"in3", name:"T - Beams IN3 Hidden", register:7489, kind:"analog" },
   { id:"in4", name:"T - Beams Concrete", register:7491, kind:"analog" },
   { id:"in5", name:"T - Beams Tank", register:7493, kind:"analog" },
-  { id:"in6", name:"T - Beams Rotary Switch", register:7495, kind:"raw" },
-  { id:"in7", name:"T - Beams Boiler Status", register:7497, kind:"raw" },
-  { id:"in8", name:"T - Beams Pump Overide", register:7499, kind:"raw" },
   { id:"diff", name:"Ambient - Concrete Differential", register:952, kind:"signedAnalog" }
 ];
 
@@ -1410,6 +1407,19 @@ async function initialiseDatabase() {
     await db.query(`
       CREATE INDEX IF NOT EXISTS t_beams_history_recorded_at_idx
       ON t_beams_history(recorded_at)
+    `);
+
+
+    /*
+    OLD T-BEAMS STATUS COLUMNS ARE NO LONGER USED.
+    KEEP THEM NULLABLE FOR EXISTING DATABASE COMPATIBILITY.
+    */
+
+    await db.query(`
+      ALTER TABLE t_beams_history
+        ALTER COLUMN rotary_switch DROP NOT NULL,
+        ALTER COLUMN boiler_status DROP NOT NULL,
+        ALTER COLUMN pump_override DROP NOT NULL
     `);
 
 
@@ -2714,10 +2724,11 @@ function getLatestTBeamsValue(id){
 
 function tBeamsValues(){
   return {
-    in1:getLatestTBeamsValue("in1"),in2:getLatestTBeamsValue("in2"),
-    in3:getLatestTBeamsValue("in3"),in4:getLatestTBeamsValue("in4"),
-    in5:getLatestTBeamsValue("in5"),in6:getLatestTBeamsValue("in6"),
-    in7:getLatestTBeamsValue("in7"),in8:getLatestTBeamsValue("in8"),
+    in1:getLatestTBeamsValue("in1"),
+    in2:getLatestTBeamsValue("in2"),
+    in3:getLatestTBeamsValue("in3"),
+    in4:getLatestTBeamsValue("in4"),
+    in5:getLatestTBeamsValue("in5"),
     diff:getLatestTBeamsValue("diff")
   };
 }
@@ -2738,10 +2749,10 @@ async function archiveTBeamsSample(recordedAt){
   try{
     await db.query(`
       INSERT INTO t_beams_history
-      (recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,rotary_switch,boiler_status,pump_override,ambient_concrete_diff)
-      SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+      (recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff)
+      SELECT $1,$2,$3,$4,$5,$6,$7
       WHERE NOT EXISTS (SELECT 1 FROM t_beams_history WHERE recorded_at=$1)
-    `,[recordedAt,v.in1,v.in2,v.in3,v.in4,v.in5,v.in6,v.in7,v.in8,v.diff]);
+    `,[recordedAt,v.in1,v.in2,v.in3,v.in4,v.in5,v.diff]);
     lastTBeamsArchiveAt=recordedAt; lastTBeamsArchiveError=null;
     console.log("1-minute T-Beams history saved:",recordedAt.toISOString());
     return true;
@@ -2755,7 +2766,7 @@ async function archiveTBeamsSample(recordedAt){
 async function queryTBeamsHistory(from,to){
   if(!db)throw new Error("Database not configured");
   const result=await db.query(`
-    SELECT recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,rotary_switch,boiler_status,pump_override,ambient_concrete_diff
+    SELECT recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff
     FROM t_beams_history WHERE recorded_at >= $1 AND recorded_at <= $2 ORDER BY recorded_at ASC
   `,[from,to]);
   return result.rows;
@@ -8282,9 +8293,12 @@ h1{color:#1b5e20;margin-top:0}
           const rows=await queryTBeamsHistory(from,to);
           const samples=rows.map(row=>({
             timestamp:new Date(row.recorded_at).toISOString(),
-            in1:Number(row.t_beams_in),in2:Number(row.t_beams_out),in3:Number(row.in3_hidden),
-            in4:Number(row.t_beams_concrete),in5:Number(row.t_beams_tank),in6:Number(row.rotary_switch),
-            in7:Number(row.boiler_status),in8:Number(row.pump_override),diff:Number(row.ambient_concrete_diff)
+            in1:Number(row.t_beams_in),
+            in2:Number(row.t_beams_out),
+            in3:Number(row.in3_hidden),
+            in4:Number(row.t_beams_concrete),
+            in5:Number(row.t_beams_tank),
+            diff:Number(row.ambient_concrete_diff)
           }));
           return sendJson(response,{ok:true,count:samples.length,from:from.toISOString(),to:to.toISOString(),samples});
         }catch(error){return sendJson(response,{ok:false,error:error.message},500);}
