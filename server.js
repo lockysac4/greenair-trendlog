@@ -1234,7 +1234,7 @@ const T_BEAMS_POINTS = [
   { id:"in3", name:"T - Beams IN3 Hidden", register:7489, kind:"analog" },
   { id:"in4", name:"T - Beams Concrete", register:7491, kind:"analog" },
   { id:"in5", name:"T - Beams Tank", register:7493, kind:"analog" },
-  { id:"diff", name:"Ambient - Concrete Differential", register:7502, kind:"signedAnalog" }
+  { id:"diff", name:"Ambient - Concrete Differential", register:7503, kind:"signedAnalog" }
 ];
 
 let tBeamsTransactionId=1;
