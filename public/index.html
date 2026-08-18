@@ -807,6 +807,13 @@ PRINT - ONE A3 LANDSCAPE PAGE
   }
 
 
+  /* DO NOT SHOW CONCRETE DIFFERENTIAL ON PRINT */
+
+  .point-row[data-id="diff"] {
+    display: none !important;
+  }
+
+
   /* SIDEBAR */
 
   .sidebar {
@@ -2916,6 +2923,39 @@ PRINT AXIS
 
 function preparePrintChart() {
 
+  /*
+  CLIENT PRINT REQUIREMENT:
+  DO NOT SHOW AMBIENT - CONCRETE DIFFERENTIAL
+  ON THE PRINTED GRAPH.
+  */
+
+  const differentialIndex =
+
+    POINTS.findIndex(
+
+      point =>
+        point.id ===
+        "diff"
+
+    );
+
+
+  if (
+    differentialIndex >=
+    0
+  ) {
+
+    chart.setDatasetVisibility(
+
+      differentialIndex,
+
+      false
+
+    );
+
+  }
+
+
   const samples =
     visibleSamples();
 
@@ -3077,6 +3117,14 @@ RESTORE AFTER PRINT
 ================================================== */
 
 function restoreNormalChart() {
+
+  /*
+  RESTORE NORMAL ON-SCREEN POINT VISIBILITY
+  AFTER PRINTING.
+  */
+
+  updateVisibility();
+
 
   delete chart.options.scales.x.min;
 
