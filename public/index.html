@@ -1166,6 +1166,15 @@ TOOLBAR
 
 
   <button
+    id="tBeamsButton"
+    class="user-button"
+    type="button"
+  >
+    T - Beams
+  </button>
+
+
+  <button
     id="userManagementButton"
     class="user-button"
     type="button"
@@ -3463,6 +3472,12 @@ const loggedUser =
   );
 
 
+const tBeamsButton =
+  document.getElementById(
+    "tBeamsButton"
+  );
+
+
 const userManagementButton =
   document.getElementById(
     "userManagementButton"
@@ -3558,6 +3573,20 @@ async function loadLoggedInUser() {
   }
 
 }
+
+
+tBeamsButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    window.location.href =
+      "/t-beams.html";
+
+  }
+
+);
 
 
 userManagementButton.addEventListener(
