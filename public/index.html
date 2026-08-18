@@ -3541,6 +3541,10 @@ async function loadLoggedInUser() {
       `Logged in: ${data.user.username}`;
 
 
+    tBeamsButton.style.display =
+      "inline-block";
+
+
     if (
       data.user.role ===
       "master"
