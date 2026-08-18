@@ -227,6 +227,14 @@ let lastDropboxBackupError =
   null;
 
 
+let lastTBeamsDropboxBackupAt =
+  null;
+
+
+let lastTBeamsDropboxBackupError =
+  null;
+
+
 const dropboxOAuthStates =
   new Map();
 
@@ -4831,6 +4839,339 @@ async function backupEightHoursToDropbox(
 
 /*
 ==================================================
+T - BEAMS DROPBOX CSV
+==================================================
+*/
+
+function buildTBeamsDropboxCsv(
+  rows
+) {
+
+  const lines = [
+
+    [
+      "Date / Time",
+      "T - Beams In Deg.C",
+      "T - Beams Out Deg.C",
+      "Ambient Deg.C",
+      "T - Beams Concrete Deg.C",
+      "T - Beams Tank Deg.C",
+      "Ambient - Concrete Differential Deg.C"
+    ]
+      .map(csvValue)
+      .join(",")
+
+  ];
+
+
+  for (
+    const row
+    of rows
+  ) {
+
+    lines.push(
+
+      [
+        formatAdelaideDateTime(
+          new Date(row.recorded_at)
+        ),
+        row.t_beams_in,
+        row.t_beams_out,
+        row.planks_ambient,
+        row.t_beams_concrete,
+        row.t_beams_tank,
+        row.ambient_concrete_diff
+      ]
+        .map(csvValue)
+        .join(",")
+
+    );
+
+  }
+
+
+  return lines.join("\r\n");
+
+}
+
+
+/*
+==================================================
+T - BEAMS DROPBOX GRAPH
+==================================================
+*/
+
+function buildTBeamsTrendGraphSvg(
+  rows,
+  from,
+  to
+) {
+
+  const mappedRows =
+    rows.map(
+      row => ({
+        recorded_at:
+          row.recorded_at,
+        planks_in:
+          row.t_beams_in,
+        planks_out:
+          row.t_beams_out,
+        ambient:
+          row.planks_ambient,
+        planks_concrete:
+          row.t_beams_concrete,
+        planks_tank:
+          row.t_beams_tank,
+        ambient_concrete_diff:
+          row.ambient_concrete_diff
+      })
+    );
+
+
+  let svg =
+    buildTrendGraphSvg(
+      mappedRows,
+      from,
+      to
+    );
+
+
+  svg =
+    svg.replace(
+      "BIANCO PRECAST - GREENAIR TRENDLOG",
+      "BIANCO PRECAST - GREENAIR T-BEAMS TRENDLOG"
+    )
+    .replaceAll(
+      "Planks In",
+      "T - Beams In"
+    )
+    .replaceAll(
+      "Planks Out",
+      "T - Beams Out"
+    )
+    .replaceAll(
+      "Planks Concrete",
+      "T - Beams Concrete"
+    )
+    .replaceAll(
+      "Planks Tank",
+      "T - Beams Tank"
+    );
+
+
+  return svg;
+
+}
+
+
+/*
+==================================================
+T - BEAMS 8-HOUR DROPBOX BACKUP
+==================================================
+*/
+
+async function backupTBeamsEightHoursToDropbox(
+  to = new Date()
+) {
+
+  const from =
+    new Date(
+      to.getTime()
+      -
+      DROPBOX_BACKUP_MS
+    );
+
+
+  try {
+
+    const rows =
+      await queryTBeamsHistory(
+        from,
+        to
+      );
+
+
+    const csv =
+      buildTBeamsDropboxCsv(
+        rows
+      );
+
+
+    const graph =
+      buildTBeamsTrendGraphSvg(
+        rows,
+        from,
+        to
+      );
+
+
+    const accessToken =
+      await getDropboxAccessToken();
+
+
+    const parts =
+      new Intl.DateTimeFormat(
+        "en-AU",
+        {
+          timeZone:
+            "Australia/Adelaide",
+          year:
+            "numeric",
+          month:
+            "2-digit",
+          day:
+            "2-digit",
+          hour:
+            "2-digit",
+          minute:
+            "2-digit",
+          hour12:
+            false
+        }
+      )
+        .formatToParts(to)
+        .reduce(
+          (result, part) => {
+            if (
+              part.type !==
+              "literal"
+            ) {
+              result[part.type] =
+                part.value;
+            }
+            return result;
+          },
+          {}
+        );
+
+
+    const year =
+      parts.year;
+
+    const month =
+      parts.month;
+
+    const stamp =
+      `${parts.year}-${parts.month}-${parts.day}_${parts.hour}-${parts.minute}`;
+
+
+    const base =
+      `/Bianco Precast/${year}/${month}/T-Beams`;
+
+
+    const folders = [
+      "/Bianco Precast",
+      `/Bianco Precast/${year}`,
+      `/Bianco Precast/${year}/${month}`,
+      base,
+      `${base}/Trend Data`,
+      `${base}/Graphs`
+    ];
+
+
+    for (
+      const folder
+      of folders
+    ) {
+
+      await ensureDropboxFolder(
+        accessToken,
+        folder
+      );
+
+    }
+
+
+    const csvPath =
+      `${base}/Trend Data/Greenair_TBeams_TrendLog_8Hour_${stamp}.csv`;
+
+
+    const graphPath =
+      `${base}/Graphs/Greenair_TBeams_TrendLog_8Hour_${stamp}.svg`;
+
+
+    await uploadDropboxFile(
+      accessToken,
+      csvPath,
+      csv
+    );
+
+
+    await uploadDropboxFile(
+      accessToken,
+      graphPath,
+      graph
+    );
+
+
+    lastTBeamsDropboxBackupAt =
+      new Date();
+
+
+    lastTBeamsDropboxBackupError =
+      null;
+
+
+    console.log(
+      "T-Beams Dropbox 8-hour backup complete."
+    );
+
+
+    console.log(
+      "T-Beams Dropbox CSV:",
+      csvPath
+    );
+
+
+    console.log(
+      "T-Beams Dropbox graph:",
+      graphPath
+    );
+
+
+    console.log(
+      "T-Beams Dropbox rows:",
+      rows.length
+    );
+
+
+    return {
+      ok: true,
+      rows:
+        rows.length,
+      from:
+        from.toISOString(),
+      to:
+        to.toISOString(),
+      csvPath,
+      graphPath
+    };
+
+  }
+
+  catch (
+    error
+  ) {
+
+    lastTBeamsDropboxBackupError =
+      error.message;
+
+
+    console.error(
+      "T-Beams Dropbox 8-hour backup failed:",
+      error.message
+    );
+
+
+    throw error;
+
+  }
+
+}
+
+
+/*
+==================================================
 SCHEDULE DROPBOX BACKUP
 ==================================================
 */
@@ -4877,6 +5218,11 @@ function scheduleNextDropboxBackup() {
         try {
 
           await backupEightHoursToDropbox(
+            next
+          );
+
+
+          await backupTBeamsEightHoursToDropbox(
             next
           );
 
@@ -8002,15 +8348,29 @@ h1{color:#1b5e20;margin-top:0}
 
         try {
 
-          const result =
+          const now =
+            new Date();
+
+
+          const planks =
             await backupEightHoursToDropbox(
-              new Date()
+              now
+            );
+
+
+          const tBeams =
+            await backupTBeamsEightHoursToDropbox(
+              now
             );
 
 
           return sendJson(
             response,
-            result
+            {
+              ok: true,
+              planks,
+              tBeams
+            }
           );
 
         }
