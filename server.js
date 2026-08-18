@@ -1423,6 +1423,12 @@ async function initialiseDatabase() {
     `);
 
 
+    await db.query(`
+      ALTER TABLE t_beams_history
+        ADD COLUMN IF NOT EXISTS planks_ambient DOUBLE PRECISION
+    `);
+
+
     /*
     EMAIL REPORT LOG TABLE
     */
@@ -2703,6 +2709,27 @@ async function pollTBeams(){
       const raw=await readTBeamsRegister(point.register);
       results.push({...point,raw,value:scaleTBeamsValue(point,raw)});
     }
+    const planksAmbient =
+      getLatestValue("in3");
+
+    if (
+      planksAmbient !== null
+    ) {
+      results.splice(
+        2,
+        0,
+        {
+          id:"ambient",
+          name:"Ambient",
+          register:7489,
+          kind:"analog",
+          source:"Planks BMS",
+          raw:null,
+          value:planksAmbient
+        }
+      );
+    }
+
     tBeamsLatest={ok:true,status:"online",error:null,host:T_BEAMS_HOST,port:T_BEAMS_PORT,unitId:T_BEAMS_UNIT_ID,function:3,results,timestamp:new Date().toISOString()};
   }catch(error){
     tBeamsLatest={...tBeamsLatest,ok:false,status:"offline",error:error.message,timestamp:new Date().toISOString()};
@@ -2726,6 +2753,10 @@ function tBeamsValues(){
   return {
     in1:getLatestTBeamsValue("in1"),
     in2:getLatestTBeamsValue("in2"),
+
+    // Ambient is deliberately sourced from the original Planks BMS.
+    ambient:getLatestValue("in3"),
+
     in3:getLatestTBeamsValue("in3"),
     in4:getLatestTBeamsValue("in4"),
     in5:getLatestTBeamsValue("in5"),
@@ -2749,10 +2780,10 @@ async function archiveTBeamsSample(recordedAt){
   try{
     await db.query(`
       INSERT INTO t_beams_history
-      (recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff)
-      SELECT $1,$2,$3,$4,$5,$6,$7
+      (recorded_at,t_beams_in,t_beams_out,planks_ambient,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff)
+      SELECT $1,$2,$3,$4,$5,$6,$7,$8
       WHERE NOT EXISTS (SELECT 1 FROM t_beams_history WHERE recorded_at=$1)
-    `,[recordedAt,v.in1,v.in2,v.in3,v.in4,v.in5,v.diff]);
+    `,[recordedAt,v.in1,v.in2,v.ambient,v.in3,v.in4,v.in5,v.diff]);
     lastTBeamsArchiveAt=recordedAt; lastTBeamsArchiveError=null;
     console.log("1-minute T-Beams history saved:",recordedAt.toISOString());
     return true;
@@ -2766,7 +2797,7 @@ async function archiveTBeamsSample(recordedAt){
 async function queryTBeamsHistory(from,to){
   if(!db)throw new Error("Database not configured");
   const result=await db.query(`
-    SELECT recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff
+    SELECT recorded_at,t_beams_in,t_beams_out,planks_ambient,in3_hidden,t_beams_concrete,t_beams_tank,ambient_concrete_diff
     FROM t_beams_history WHERE recorded_at >= $1 AND recorded_at <= $2 ORDER BY recorded_at ASC
   `,[from,to]);
   return result.rows;
@@ -8295,6 +8326,12 @@ h1{color:#1b5e20;margin-top:0}
             timestamp:new Date(row.recorded_at).toISOString(),
             in1:Number(row.t_beams_in),
             in2:Number(row.t_beams_out),
+            ambient:
+              row.planks_ambient === null
+              ?
+              null
+              :
+              Number(row.planks_ambient),
             in3:Number(row.in3_hidden),
             in4:Number(row.t_beams_concrete),
             in5:Number(row.t_beams_tank),
