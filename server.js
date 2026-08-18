@@ -64,6 +64,17 @@ const PORT =
   );
 
 
+const T_BEAMS_HOST =
+  process.env.T_BEAMS_HOST ||
+  "bms.biancoprecast.com.au";
+
+const T_BEAMS_PORT =
+  Number(process.env.T_BEAMS_PORT || 505);
+
+const T_BEAMS_UNIT_ID =
+  Number(process.env.T_BEAMS_UNIT_ID || 68);
+
+
 /*
 ==================================================
 DATABASE
@@ -1209,6 +1220,31 @@ const POINTS = [
 
 ];
 
+const T_BEAMS_POINTS = [
+  { id:"in1", name:"T - Beams In", register:7485, kind:"analog" },
+  { id:"in2", name:"T - Beams Out", register:7487, kind:"analog" },
+  { id:"in3", name:"T - Beams IN3 Hidden", register:7489, kind:"analog" },
+  { id:"in4", name:"T - Beams Concrete", register:7491, kind:"analog" },
+  { id:"in5", name:"T - Beams Tank", register:7493, kind:"analog" },
+  { id:"in6", name:"T - Beams Rotary Switch", register:7495, kind:"raw" },
+  { id:"in7", name:"T - Beams Boiler Status", register:7497, kind:"raw" },
+  { id:"in8", name:"T - Beams Pump Overide", register:7499, kind:"raw" },
+  { id:"diff", name:"Ambient - Concrete Differential", register:952, kind:"signedAnalog" }
+];
+
+let tBeamsTransactionId=1;
+let tBeamsPolling=false;
+let tBeamsLiveHistory=[];
+const tBeamsStreamClients=new Set();
+let tBeamsLatest={
+  ok:false,status:"starting",error:null,
+  host:T_BEAMS_HOST,port:T_BEAMS_PORT,unitId:T_BEAMS_UNIT_ID,
+  function:3,results:[],timestamp:null
+};
+let lastTBeamsArchiveAt=null;
+let lastTBeamsArchiveError=null;
+
+
 
 /*
 ==================================================
@@ -1352,6 +1388,28 @@ async function initialiseDatabase() {
 
       ON trend_history(recorded_at)
 
+    `);
+
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS t_beams_history (
+        id BIGSERIAL PRIMARY KEY,
+        recorded_at TIMESTAMPTZ NOT NULL,
+        t_beams_in DOUBLE PRECISION NOT NULL,
+        t_beams_out DOUBLE PRECISION NOT NULL,
+        in3_hidden DOUBLE PRECISION NOT NULL,
+        t_beams_concrete DOUBLE PRECISION NOT NULL,
+        t_beams_tank DOUBLE PRECISION NOT NULL,
+        rotary_switch DOUBLE PRECISION NOT NULL,
+        boiler_status DOUBLE PRECISION NOT NULL,
+        pump_override DOUBLE PRECISION NOT NULL,
+        ambient_concrete_diff DOUBLE PRECISION NOT NULL
+      )
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS t_beams_history_recorded_at_idx
+      ON t_beams_history(recorded_at)
     `);
 
 
@@ -2558,6 +2616,165 @@ function saveLiveSample() {
 }
 /*
 ==================================================
+T - BEAMS MODBUS / TREND
+==================================================
+*/
+function nextTBeamsTransactionId(){
+  const n=tBeamsTransactionId++;
+  if(tBeamsTransactionId>65535)tBeamsTransactionId=1;
+  return n;
+}
+
+function buildTBeamsReadRequest(transaction,register){
+  const request=Buffer.alloc(12);
+  request.writeUInt16BE(transaction,0);
+  request.writeUInt16BE(0,2);
+  request.writeUInt16BE(6,4);
+  request[6]=T_BEAMS_UNIT_ID;
+  request[7]=3;
+  request.writeUInt16BE(register,8);
+  request.writeUInt16BE(1,10);
+  return request;
+}
+
+function readTBeamsRegister(register){
+  return new Promise((resolve,reject)=>{
+    const transaction=nextTBeamsTransactionId();
+    const socket=new net.Socket();
+    let done=false, buf=Buffer.alloc(0), ct=null, rt=null;
+    const fail=e=>{
+      if(done)return; done=true; clearTimeout(ct); clearTimeout(rt); socket.destroy();
+      reject(e instanceof Error?e:new Error(String(e)));
+    };
+    const succeed=v=>{
+      if(done)return; done=true; clearTimeout(ct); clearTimeout(rt); socket.end(); resolve(v);
+    };
+    ct=setTimeout(()=>fail(new Error(`TCP connect timeout to ${T_BEAMS_HOST}:${T_BEAMS_PORT}`)),7000);
+    socket.setNoDelay(true);
+    socket.once("connect",()=>{
+      clearTimeout(ct);
+      rt=setTimeout(()=>fail(new Error(`T-Beams Modbus response timeout Unit ${T_BEAMS_UNIT_ID} Register ${register}`)),5000);
+      socket.write(buildTBeamsReadRequest(transaction,register));
+    });
+    socket.on("data",chunk=>{
+      buf=Buffer.concat([buf,chunk]);
+      if(buf.length<7)return;
+      const tx=buf.readUInt16BE(0), proto=buf.readUInt16BE(2), len=buf.readUInt16BE(4), unit=buf[6];
+      if(len<2||len>254)return fail(new Error(`Invalid T-Beams response length ${len}`));
+      const complete=6+len;
+      if(buf.length<complete)return;
+      if(tx!==transaction)return fail(new Error("T-Beams transaction ID mismatch"));
+      if(proto!==0)return fail(new Error("T-Beams protocol ID mismatch"));
+      if(unit!==T_BEAMS_UNIT_ID)return fail(new Error("T-Beams Unit ID mismatch"));
+      const pdu=buf.subarray(7,complete);
+      if(pdu.length<2)return fail(new Error("Short T-Beams response"));
+      if((pdu[0]&0x80)!==0)return fail(new Error(`T-Beams Modbus exception ${pdu[1]}`));
+      if(pdu[0]!==3||pdu.length!==4||pdu[1]!==2)return fail(new Error("Unexpected T-Beams FC03 response"));
+      succeed(pdu.readUInt16BE(2));
+    });
+    socket.on("error",e=>fail(new Error(`T-Beams TCP/Modbus error: ${e.message}`)));
+    socket.on("close",()=>{if(!done)fail(new Error("T-Beams connection closed early"));});
+    socket.connect(T_BEAMS_PORT,T_BEAMS_HOST);
+  });
+}
+
+function scaleTBeamsValue(point,raw){
+  if(point.kind==="raw")return raw;
+  if(point.kind==="signedAnalog")return signed16(raw)/1000;
+  return raw/1000;
+}
+
+async function pollTBeams(){
+  if(tBeamsPolling)return;
+  tBeamsPolling=true;
+  try{
+    const results=[];
+    for(const point of T_BEAMS_POINTS){
+      const raw=await readTBeamsRegister(point.register);
+      results.push({...point,raw,value:scaleTBeamsValue(point,raw)});
+    }
+    tBeamsLatest={ok:true,status:"online",error:null,host:T_BEAMS_HOST,port:T_BEAMS_PORT,unitId:T_BEAMS_UNIT_ID,function:3,results,timestamp:new Date().toISOString()};
+  }catch(error){
+    tBeamsLatest={...tBeamsLatest,ok:false,status:"offline",error:error.message,timestamp:new Date().toISOString()};
+  }finally{
+    tBeamsPolling=false;
+    for(const client of tBeamsStreamClients){
+      try{client.write(`event: state\ndata: ${JSON.stringify(tBeamsLatest)}\n\n`);}catch{}
+    }
+  }
+}
+
+function getLatestTBeamsValue(id){
+  if(!tBeamsLatest.ok)return null;
+  const r=tBeamsLatest.results.find(p=>p.id===id);
+  if(!r)return null;
+  const v=Number(r.value);
+  return Number.isFinite(v)?v:null;
+}
+
+function tBeamsValues(){
+  return {
+    in1:getLatestTBeamsValue("in1"),in2:getLatestTBeamsValue("in2"),
+    in3:getLatestTBeamsValue("in3"),in4:getLatestTBeamsValue("in4"),
+    in5:getLatestTBeamsValue("in5"),in6:getLatestTBeamsValue("in6"),
+    in7:getLatestTBeamsValue("in7"),in8:getLatestTBeamsValue("in8"),
+    diff:getLatestTBeamsValue("diff")
+  };
+}
+
+function saveTBeamsLiveSample(){
+  if(!tBeamsLatest.ok)return;
+  const values=tBeamsValues();
+  if(Object.values(values).some(v=>v===null))return;
+  tBeamsLiveHistory.push({timestamp:new Date().toISOString(),...values});
+  if(tBeamsLiveHistory.length>MAX_LIVE_SAMPLES)tBeamsLiveHistory=tBeamsLiveHistory.slice(-MAX_LIVE_SAMPLES);
+}
+
+async function archiveTBeamsSample(recordedAt){
+  if(!db){lastTBeamsArchiveError="DATABASE_URL not configured";return false;}
+  if(!tBeamsLatest.ok){lastTBeamsArchiveError="T-Beams BMS offline at archive time";return false;}
+  const v=tBeamsValues();
+  if(Object.values(v).some(x=>x===null)){lastTBeamsArchiveError="T-Beams values unavailable";return false;}
+  try{
+    await db.query(`
+      INSERT INTO t_beams_history
+      (recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,rotary_switch,boiler_status,pump_override,ambient_concrete_diff)
+      SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+      WHERE NOT EXISTS (SELECT 1 FROM t_beams_history WHERE recorded_at=$1)
+    `,[recordedAt,v.in1,v.in2,v.in3,v.in4,v.in5,v.in6,v.in7,v.in8,v.diff]);
+    lastTBeamsArchiveAt=recordedAt; lastTBeamsArchiveError=null;
+    console.log("1-minute T-Beams history saved:",recordedAt.toISOString());
+    return true;
+  }catch(error){
+    lastTBeamsArchiveError=error.message;
+    console.error("T-Beams history save failed:",error.message);
+    return false;
+  }
+}
+
+async function queryTBeamsHistory(from,to){
+  if(!db)throw new Error("Database not configured");
+  const result=await db.query(`
+    SELECT recorded_at,t_beams_in,t_beams_out,in3_hidden,t_beams_concrete,t_beams_tank,rotary_switch,boiler_status,pump_override,ambient_concrete_diff
+    FROM t_beams_history WHERE recorded_at >= $1 AND recorded_at <= $2 ORDER BY recorded_at ASC
+  `,[from,to]);
+  return result.rows;
+}
+
+async function getTBeamsHistoryRange(){
+  if(!db)return {first:null,last:null,count:0};
+  const result=await db.query(`SELECT MIN(recorded_at) AS first,MAX(recorded_at) AS last,COUNT(*)::bigint AS count FROM t_beams_history`);
+  const row=result.rows[0];
+  return {
+    first:row.first?new Date(row.first).toISOString():null,
+    last:row.last?new Date(row.last).toISOString():null,
+    count:Number(row.count)
+  };
+}
+
+
+/*
+==================================================
 NEXT MINUTE
 ==================================================
 */
@@ -2845,6 +3062,10 @@ function scheduleNextArchive() {
       async () => {
 
         await archiveTrendSample(
+          next
+        );
+
+        await archiveTBeamsSample(
           next
         );
 
@@ -8040,6 +8261,52 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      T - BEAMS API
+      ================================================
+      */
+      if(url.pathname==="/api/tbeams/state"){
+        return sendJson(response,tBeamsLatest,tBeamsLatest.ok?200:503);
+      }
+
+      if(url.pathname==="/api/tbeams/trend"){
+        return sendJson(response,{ok:true,sampleIntervalMs:LIVE_SAMPLE_MS,count:tBeamsLiveHistory.length,samples:tBeamsLiveHistory});
+      }
+
+      if(url.pathname==="/api/tbeams/history"){
+        try{
+          const fromText=url.searchParams.get("from"),toText=url.searchParams.get("to");
+          if(!fromText||!toText)return sendJson(response,{ok:false,error:"from and to are required"},400);
+          const from=new Date(fromText),to=new Date(toText);
+          if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime()))return sendJson(response,{ok:false,error:"Invalid date range"},400);
+          if(from>to)return sendJson(response,{ok:false,error:"From must be before To"},400);
+          const rows=await queryTBeamsHistory(from,to);
+          const samples=rows.map(row=>({
+            timestamp:new Date(row.recorded_at).toISOString(),
+            in1:Number(row.t_beams_in),in2:Number(row.t_beams_out),in3:Number(row.in3_hidden),
+            in4:Number(row.t_beams_concrete),in5:Number(row.t_beams_tank),in6:Number(row.rotary_switch),
+            in7:Number(row.boiler_status),in8:Number(row.pump_override),diff:Number(row.ambient_concrete_diff)
+          }));
+          return sendJson(response,{ok:true,count:samples.length,from:from.toISOString(),to:to.toISOString(),samples});
+        }catch(error){return sendJson(response,{ok:false,error:error.message},500);}
+      }
+
+      if(url.pathname==="/api/tbeams/history/range"){
+        try{return sendJson(response,{ok:true,...await getTBeamsHistoryRange()});}
+        catch(error){return sendJson(response,{ok:false,error:error.message},500);}
+      }
+
+      if(url.pathname==="/api/tbeams/stream"){
+        response.writeHead(200,{"Content-Type":"text/event-stream","Cache-Control":"no-cache, no-transform","Connection":"keep-alive","X-Accel-Buffering":"no"});
+        response.write(`event: state\ndata: ${JSON.stringify(tBeamsLatest)}\n\n`);
+        tBeamsStreamClients.add(response);
+        const keepAlive=setInterval(()=>{try{response.write(": keepalive\n\n");}catch{}},15000);
+        request.on("close",()=>{clearInterval(keepAlive);tBeamsStreamClients.delete(response);});
+        return;
+      }
+
+
+      /*
+      ================================================
       CURRENT BMS STATE
       ================================================
       */
@@ -8928,6 +9195,14 @@ async function startServer() {
 
       );
 
+      console.log(
+        `T-Beams BMS: ${T_BEAMS_HOST}:${T_BEAMS_PORT}`
+      );
+
+      console.log(
+        `T-Beams Unit ID: ${T_BEAMS_UNIT_ID}`
+      );
+
 
       console.log(
         "Function: FC03 / READ ONLY"
@@ -9028,6 +9303,18 @@ async function startServer() {
 
 
   /*
+  T - BEAMS POLLING
+  */
+
+  await pollTBeams();
+
+  setInterval(
+    pollTBeams,
+    POLL_MS
+  );
+
+
+  /*
   FIRST LIVE SAMPLE
   */
 
@@ -9050,6 +9337,17 @@ async function startServer() {
 
     LIVE_SAMPLE_MS
 
+  );
+
+
+  setTimeout(
+    saveTBeamsLiveSample,
+    5000
+  );
+
+  setInterval(
+    saveTBeamsLiveSample,
+    LIVE_SAMPLE_MS
   );
 
 
