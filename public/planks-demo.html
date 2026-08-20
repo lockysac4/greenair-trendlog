@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greenair Planks Dashboard Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#082847;
+  --navy2:#0e355a;
+  --green:#19a844;
+  --light:#f3f6f8;
+  --border:#d9e0e6;
+  --text:#10233b;
+  --muted:#607080;
+  --shadow:0 3px 12px rgba(8,40,71,.10);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:var(--text)}
+button,input{font:inherit}
+.top{
+  background:#fff;
+  display:grid;
+  grid-template-columns:280px 1fr 250px;
+  align-items:center;
+  min-height:88px;
+  padding:10px 22px;
+  border-bottom:1px solid var(--border)
+}
+.logo{height:56px;max-width:250px;object-fit:contain}
+.title{text-align:center}
+.title h1{margin:0;font-size:32px;letter-spacing:1px}
+.title div{font-size:17px;margin-top:4px}
+.update{text-align:right;font-size:13px}
+.update strong{display:block;font-size:25px;margin:3px 0}
+.live-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#17b34c;margin-right:5px;box-shadow:0 0 8px #17b34c}
+.nav{
+  height:58px;background:linear-gradient(90deg,#082847,#061f37);
+  display:flex;align-items:stretch;padding:0 20px;gap:8px;color:#fff
+}
+.nav button{
+  border:0;color:#fff;background:transparent;padding:0 23px;font-weight:800;cursor:pointer;
+  border-bottom:3px solid transparent
+}
+.nav button.active{background:#139b3d;border-bottom-color:#55d477}
+.nav button:hover{background:rgba(255,255,255,.08)}
+.main{padding:14px 20px 18px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+.card{
+  background:#fff;border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);
+  min-height:168px;padding:14px 18px;position:relative;overflow:hidden
+}
+.card:after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--accent)}
+.card h3{text-align:center;margin:0 0 17px;color:var(--accent);font-size:17px}
+.value-row{display:flex;align-items:center;gap:16px}
+.icon{
+  width:54px;height:54px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--accent);font-size:29px;font-weight:900;flex:0 0 auto
+}
+.big{font-size:38px;font-weight:900;color:var(--accent);white-space:nowrap}
+.big small{font-size:20px}
+.sub{text-align:center;margin-top:6px;font-size:13px}
+.minmax{display:flex;justify-content:space-between;margin-top:21px;border-top:1px solid var(--border);padding-top:9px;font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 385px;gap:14px}
+.panel{background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{
+  height:38px;background:linear-gradient(90deg,var(--navy),var(--navy2));color:#fff;
+  display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-weight:900;font-size:14px
+}
+.chart-panel{min-height:510px}
+.chart-tools{display:flex;gap:11px;align-items:center;font-size:12px}
+.legend-check{display:flex;align-items:center;gap:4px}
+.legend-check input{accent-color:#159447}
+.chart-wrap{height:390px;padding:12px 16px 0}
+.rangebar{display:flex;align-items:center;gap:8px;padding:9px 18px 13px}
+.rangebar button,.quick button,.settings button{
+  border:1px solid #cfd8df;background:#fff;border-radius:5px;padding:7px 15px;font-weight:800;color:#18304b;cursor:pointer
+}
+.rangebar button.active{background:#19a844;color:#fff;border-color:#19a844}
+.status-body,.summary-body,.alarm-body{padding:12px 15px}
+.status-line,.summary-line{display:grid;grid-template-columns:1fr auto;gap:8px;margin:8px 0;font-size:13px}
+.ok{color:#078c35;font-weight:900}
+.bad{color:#c62828;font-weight:900}
+.side{display:flex;flex-direction:column;gap:13px}
+.bottom{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-top:14px}
+.alarm-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px}
+.limit{padding:4px 10px;border-right:1px solid var(--border);font-size:12px}
+.limit:last-child{border-right:0}
+.limit strong{display:block;text-align:center;margin-bottom:8px;font-size:13px}
+.limit div{display:flex;justify-content:space-between;margin:5px 0}
+.limit input{width:58px;border:1px solid #ccd5dc;border-radius:4px;padding:3px;text-align:right}
+.quick{display:flex;gap:10px;padding:16px;flex-wrap:wrap}
+.quick button{padding:12px 18px}
+.quick button.primary{background:#eef8f1;border-color:#9ad5aa;color:#087b2e}
+.quick button.dropbox{background:#eef4ff;border-color:#a5bfe8;color:#1452a0}
+.alarm-empty{text-align:center;padding:12px 0 4px;color:#078c35;font-weight:800}
+.footer{
+  background:linear-gradient(90deg,#082847,#061f37);color:#fff;
+  display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;padding:11px 26px;font-size:12px
+}
+.footer div:nth-child(2){text-align:center}.footer div:nth-child(3){text-align:right}
+.demo-badge{
+  position:fixed;right:14px;bottom:48px;background:#ffb300;color:#1a1a1a;font-weight:900;
+  padding:8px 12px;border-radius:6px;box-shadow:var(--shadow);z-index:20
+}
+.msg{font-size:11px;color:var(--muted);padding:0 14px 10px}
+@media(max-width:1100px){
+  .top{grid-template-columns:220px 1fr 180px}.title h1{font-size:25px}
+  .cards{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+  .top{grid-template-columns:1fr;gap:8px;text-align:center}.update{text-align:center}.title h1{font-size:22px}
+  .logo{margin:auto}.nav{overflow:auto}.nav button{padding:0 14px;white-space:nowrap}
+  .cards{grid-template-columns:1fr}.main{padding:10px}.chart-tools{display:none}
+  .footer{grid-template-columns:1fr;text-align:center;gap:4px}.footer div:nth-child(2),.footer div:nth-child(3){text-align:center}
+}
+@media print{
+  .nav,.rangebar,.bottom,.demo-badge,.quick,.footer{display:none!important}
+  .main{padding:0}.layout{grid-template-columns:1fr}.side{display:none}
+  .card[data-id="diff"]{display:none!important}
+  .chart-panel{box-shadow:none;border:0}.chart-wrap{height:560px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><img class="logo" src="/greenair-logo.png" alt="Greenair"></div>
+  <div class="title">
+    <h1>BIANCO PRECAST • PLANKS</h1>
+    <div>TEMPERATURE MONITORING SYSTEM</div>
+  </div>
+  <div class="update">
+    Last update:
+    <strong id="clock">--:--:--</strong>
+    <span id="liveLabel"><span class="live-dot"></span>LIVE</span>
+  </div>
+</header>
+
+<nav class="nav">
+  <button class="active">▣ DASHBOARD</button>
+  <button onclick="location.href='/'">▤ ORIGINAL PLANKS</button>
+  <button onclick="location.href='/t-beams.html'">▦ T-BEAMS</button>
+  <button onclick="document.getElementById('trendPanel').scrollIntoView({behavior:'smooth'})">⌁ TRENDS</button>
+  <button onclick="window.print()">▤ REPORTS</button>
+  <button onclick="document.getElementById('alarmPanel').scrollIntoView({behavior:'smooth'})">● ALARMS</button>
+</nav>
+
+<main class="main">
+  <section class="cards" id="cards"></section>
+
+  <section class="layout">
+    <div class="panel chart-panel" id="trendPanel">
+      <div class="panel-head">
+        <span>⌁ TEMPERATURE TRENDS</span>
+        <div class="chart-tools" id="chartToggles"></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div class="rangebar">
+        <strong>Zoom:</strong>
+        <button data-min="5">LIVE</button>
+        <button data-min="60">1 HR</button>
+        <button data-min="360">6 HR</button>
+        <button data-min="720">12 HR</button>
+        <button data-min="1440" class="active">24 HR</button>
+        <button data-min="10080">7 DAYS</button>
+      </div>
+      <div class="msg" id="rangeMsg">Loading stored history…</div>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-head">▤ SYSTEM STATUS</div>
+        <div class="status-body">
+          <div class="status-line"><span>BMS Connection</span><span id="bmsStatus" class="bad">CONNECTING</span></div>
+          <div class="status-line"><span>Last Successful Reading</span><span id="lastReading">—</span></div>
+          <div class="status-line"><span>Database Logging</span><span id="dbStatus">CHECKING</span></div>
+          <div class="status-line"><span>Dropbox Backup</span><span id="dropboxStatus">CHECKING</span></div>
+          <div class="status-line"><span>Last Backup</span><span id="lastBackup">—</span></div>
+          <div class="status-line"><span>Page Session</span><span id="uptime">00:00:00</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">▤ OPERATING SUMMARY (SELECTED RANGE)</div>
+        <div class="summary-body">
+          <div class="summary-line"><span>In → Out Differential (Now)</span><strong id="ioNow">—</strong></div>
+          <div class="summary-line"><span>In → Out Average</span><strong id="ioAvg">—</strong></div>
+          <div class="summary-line"><span>Concrete → Ambient (Now)</span><strong id="caNow">—</strong></div>
+          <div class="summary-line"><span>Concrete → Ambient Average</span><strong id="caAvg">—</strong></div>
+          <div class="summary-line"><span>Concrete Max</span><strong id="conMax">—</strong></div>
+          <div class="summary-line"><span>Concrete Min</span><strong id="conMin">—</strong></div>
+          <div class="summary-line"><span>Ambient Average</span><strong id="ambAvg">—</strong></div>
+        </div>
+      </div>
+
+      <div class="panel" id="alarmPanel">
+        <div class="panel-head">● ACTIVE ALARMS</div>
+        <div class="alarm-body" id="alarmBody"><div class="alarm-empty">✓ No Active Alarms</div></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="bottom">
+    <div class="panel settings">
+      <div class="panel-head">⚙ ALARM LIMITS (DEMO - SAVED IN THIS BROWSER)</div>
+      <div class="alarm-grid" id="limits"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">▤ QUICK REPORTS</div>
+      <div class="quick">
+        <button onclick="window.print()">🖨 PRINT REPORT</button>
+        <button class="primary" onclick="exportCsv()">▣ EXPORT CSV</button>
+        <button class="dropbox" onclick="runDropbox()">◆ DROPBOX BACKUP</button>
+        <button onclick="location.href='/'">↩ ORIGINAL PAGE</button>
+      </div>
+      <div class="msg" id="quickMsg">Demo page only. Your original Planks page is unchanged.</div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div>Greenair Concrete BMS • Live Dashboard Demo</div>
+  <div>Planks Controller • Modbus TCP • PostgreSQL Logging</div>
+  <div>© 2026 Greenair</div>
+</footer>
+<div class="demo-badge">LIVE DEMO • ORIGINAL UNCHANGED</div>
+
+<script>
+const POINTS=[
+  {id:"in1",name:"Planks In",accent:"#1565c0",icon:"➜"},
+  {id:"in2",name:"Planks Out",accent:"#18a43f",icon:"➜"},
+  {id:"in3",name:"Ambient",accent:"#7b2cbf",icon:"♨"},
+  {id:"in4",name:"Planks Concrete",accent:"#ef6c00",icon:"◉"},
+  {id:"in5",name:"Planks Tank",accent:"#0098ad",icon:"≋"}
+];
+const SERIES=[...POINTS,{id:"diff",name:"Ambient - Concrete Differential",accent:"#555"}];
+const startTime=Date.now();
+let latest={};
+let samples=[];
+let currentMinutes=1440;
+let chart;
+
+const fmt=v=>Number.isFinite(Number(v))?Number(v).toFixed(1)+" °C":"—";
+const timeFmt=d=>new Intl.DateTimeFormat("en-AU",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d);
+const dateTimeFmt=d=>new Intl.DateTimeFormat("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d);
+
+function renderCards(){
+  const box=document.getElementById("cards");
+  box.innerHTML=POINTS.map(p=>`
+    <article class="card" data-id="${p.id}" style="--accent:${p.accent}">
+      <h3>${p.name.toUpperCase()}</h3>
+      <div class="value-row"><div class="icon">${p.icon}</div><div class="big" id="value-${p.id}">—</div></div>
+      <div class="sub" id="sub-${p.id}">&nbsp;</div>
+      <div class="minmax"><span>Min: <b id="min-${p.id}">—</b></span><span>Max: <b id="max-${p.id}">—</b></span></div>
+    </article>`).join("");
+}
+renderCards();
+
+function makeToggles(){
+  document.getElementById("chartToggles").innerHTML=POINTS.map((p,i)=>`
+    <label class="legend-check"><input type="checkbox" data-index="${i}" checked> ${p.name.replace("Planks ","").toUpperCase()}</label>
+  `).join("");
+  document.querySelectorAll("#chartToggles input").forEach(el=>el.addEventListener("change",()=>{
+    chart.setDatasetVisibility(Number(el.dataset.index),el.checked);chart.update("none");
+  }));
+}
+
+function makeChart(){
+  chart=new Chart(document.getElementById("chart"),{
+    type:"line",
+    data:{datasets:POINTS.map(p=>({label:p.name,data:[],borderColor:p.accent,backgroundColor:p.accent,borderWidth:2.4,pointRadius:0,tension:.15,parsing:false}))},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:"nearest",intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:c=>c.length?dateTimeFmt(new Date(c[0].parsed.x)):"",
+        label:c=>`${c.dataset.label}: ${Number(c.parsed.y).toFixed(1)} °C`
+      }}},
+      scales:{
+        x:{type:"linear",ticks:{callback:v=>new Intl.DateTimeFormat("en-AU",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(v)),maxTicksLimit:10},grid:{color:"#e7ebef"}},
+        y:{title:{display:true,text:"°C"},grid:{color:"#e7ebef"}}
+      }
+    }
+  });
+}
+makeToggles();makeChart();
+
+function getResult(state,id){
+  return state?.results?.find(r=>r.id===id);
+}
+function applyState(state){
+  if(!state)return;
+  const ok=Boolean(state.ok);
+  document.getElementById("bmsStatus").textContent=ok?"● CONNECTED":"● OFFLINE";
+  document.getElementById("bmsStatus").className=ok?"ok":"bad";
+  if(state.timestamp) document.getElementById("lastReading").textContent=timeFmt(new Date(state.timestamp));
+  if(ok){
+    latest={};
+    SERIES.forEach(p=>{const r=getResult(state,p.id); if(r) latest[p.id]=Number(r.value)});
+    POINTS.forEach(p=>document.getElementById("value-"+p.id).innerHTML=fmt(latest[p.id]).replace(" °C",' <small>°C</small>'));
+    if(Number.isFinite(latest.in1)&&Number.isFinite(latest.in2)) document.getElementById("sub-in1").textContent=`In - Out: ${(latest.in1-latest.in2).toFixed(1)} °C`;
+    if(Number.isFinite(latest.in4)&&Number.isFinite(latest.in3)) document.getElementById("sub-in4").textContent=`vs Ambient: ${(latest.in4-latest.in3).toFixed(1)} °C`;
+    updateSummary();checkAlarms();
+  }
+}
+async function loadState(){
+  try{const r=await fetch("/api/state",{cache:"no-store"});const d=await r.json();applyState(d)}catch(e){
+    document.getElementById("bmsStatus").textContent="● OFFLINE";document.getElementById("bmsStatus").className="bad";
+  }
+}
+
+async function loadRange(minutes){
+  currentMinutes=minutes;
+  document.querySelectorAll(".rangebar button").forEach(b=>b.classList.toggle("active",Number(b.dataset.min)===minutes));
+  const to=new Date(),from=new Date(to.getTime()-minutes*60000);
+  document.getElementById("rangeMsg").textContent="Loading stored history…";
+  try{
+    const r=await fetch(`/api/history?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,{cache:"no-store"});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||"History unavailable");
+    samples=d.samples||[];
+    updateChart();
+    document.getElementById("rangeMsg").textContent=`${samples.length} stored 1-minute records • ${dateTimeFmt(from)} → ${dateTimeFmt(to)}`;
+  }catch(e){
+    // fall back to live trend
+    try{
+      const r=await fetch("/api/trend",{cache:"no-store"});const d=await r.json();
+      samples=(d.samples||[]).filter(s=>new Date(s.timestamp)>=from);
+      updateChart();
+      document.getElementById("rangeMsg").textContent=`Live trend fallback • ${samples.length} samples`;
+    }catch(_){document.getElementById("rangeMsg").textContent="Trend data unavailable";}
+  }
+}
+function updateChart(){
+  POINTS.forEach((p,i)=>{
+    chart.data.datasets[i].data=samples.map(s=>({x:new Date(s.timestamp).getTime(),y:Number(s[p.id])})).filter(x=>Number.isFinite(x.y));
+  });
+  chart.update("none");
+  updateStats();
+}
+function vals(id){return samples.map(s=>Number(s[id])).filter(Number.isFinite)}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function updateStats(){
+  POINTS.forEach(p=>{
+    const a=vals(p.id);
+    document.getElementById("min-"+p.id).textContent=a.length?Math.min(...a).toFixed(1)+" °C":"—";
+    document.getElementById("max-"+p.id).textContent=a.length?Math.max(...a).toFixed(1)+" °C":"—";
+  });
+  updateSummary();
+}
+function updateSummary(){
+  const aIn=vals("in1"),aOut=vals("in2"),aAmb=vals("in3"),aCon=vals("in4");
+  const pair=(a,b)=>samples.map(s=>Number(s[a])-Number(s[b])).filter(Number.isFinite);
+  document.getElementById("ioNow").textContent=Number.isFinite(latest.in1-latest.in2)?(latest.in1-latest.in2).toFixed(1)+" °C":"—";
+  document.getElementById("caNow").textContent=Number.isFinite(latest.in4-latest.in3)?(latest.in4-latest.in3).toFixed(1)+" °C":"—";
+  const io=pair("in1","in2"),ca=pair("in4","in3");
+  document.getElementById("ioAvg").textContent=io.length?avg(io).toFixed(1)+" °C":"—";
+  document.getElementById("caAvg").textContent=ca.length?avg(ca).toFixed(1)+" °C":"—";
+  document.getElementById("conMax").textContent=aCon.length?Math.max(...aCon).toFixed(1)+" °C":"—";
+  document.getElementById("conMin").textContent=aCon.length?Math.min(...aCon).toFixed(1)+" °C":"—";
+  document.getElementById("ambAvg").textContent=aAmb.length?avg(aAmb).toFixed(1)+" °C":"—";
+}
+
+const DEFAULT_LIMITS={
+  in1:{hi:70,lo:0},in2:{hi:70,lo:0},in3:{hi:45,lo:-5},in4:{hi:70,lo:0},in5:{hi:70,lo:0}
+};
+let limits=JSON.parse(localStorage.getItem("greenairDemoLimits")||"null")||DEFAULT_LIMITS;
+function renderLimits(){
+  document.getElementById("limits").innerHTML=POINTS.map(p=>`
+    <div class="limit"><strong>${p.name}</strong>
+      <div><span>High</span><input type="number" step="0.1" data-id="${p.id}" data-type="hi" value="${limits[p.id].hi}"></div>
+      <div><span>Low</span><input type="number" step="0.1" data-id="${p.id}" data-type="lo" value="${limits[p.id].lo}"></div>
+    </div>`).join("");
+  document.querySelectorAll("#limits input").forEach(i=>i.addEventListener("change",()=>{
+    limits[i.dataset.id][i.dataset.type]=Number(i.value);
+    localStorage.setItem("greenairDemoLimits",JSON.stringify(limits));
+    checkAlarms();
+  }));
+}
+renderLimits();
+function checkAlarms(){
+  const alarms=[];
+  POINTS.forEach(p=>{
+    const v=latest[p.id]; if(!Number.isFinite(v))return;
+    if(v>limits[p.id].hi) alarms.push(`${p.name} HIGH: ${v.toFixed(1)} °C`);
+    if(v<limits[p.id].lo) alarms.push(`${p.name} LOW: ${v.toFixed(1)} °C`);
+  });
+  const box=document.getElementById("alarmBody");
+  box.innerHTML=alarms.length?alarms.map(a=>`<div class="bad" style="margin:7px 0">⚠ ${a}</div>`).join(""):`<div class="alarm-empty">✓ No Active Alarms<br><small style="color:#607080;font-weight:normal">All configured limits normal</small></div>`;
+}
+
+async function loadStatus(){
+  try{
+    const r=await fetch("/api/logger/status",{cache:"no-store"});const d=await r.json();
+    const db=Boolean(d.databaseConnected);
+    const el=document.getElementById("dbStatus");el.textContent=db?"● OK":"● NOT READY";el.className=db?"ok":"bad";
+  }catch(e){document.getElementById("dbStatus").textContent="UNKNOWN";}
+  try{
+    const r=await fetch("/api/dropbox/status",{cache:"no-store"});
+    if(r.ok){
+      const d=await r.json(),ok=Boolean(d.configured);
+      const el=document.getElementById("dropboxStatus");el.textContent=ok?"● OK":"● NOT CONFIGURED";el.className=ok?"ok":"bad";
+      if(d.lastBackupAt)document.getElementById("lastBackup").textContent=dateTimeFmt(new Date(d.lastBackupAt));
+    }else document.getElementById("dropboxStatus").textContent="MASTER ONLY";
+  }catch(e){document.getElementById("dropboxStatus").textContent="UNKNOWN";}
+}
+async function runDropbox(){
+  const msg=document.getElementById("quickMsg");msg.textContent="Running Dropbox backup…";
+  try{const r=await fetch("/api/dropbox/test",{cache:"no-store"});const d=await r.json();
+    msg.textContent=d.ok?"Dropbox backup completed successfully.":"Dropbox: "+(d.error||"failed");
+    loadStatus();
+  }catch(e){msg.textContent="Dropbox backup test failed: "+e.message}
+}
+function exportCsv(){
+  if(!samples.length)return;
+  const header=["Date / Time",...POINTS.map(p=>p.name+" Deg.C")];
+  const rows=samples.map(s=>[dateTimeFmt(new Date(s.timestamp)),...POINTS.map(p=>s[p.id])]);
+  const csv=[header,...rows].map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=`Greenair_Planks_Demo_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+}
+
+document.querySelectorAll(".rangebar button").forEach(b=>b.addEventListener("click",()=>loadRange(Number(b.dataset.min))));
+setInterval(()=>{document.getElementById("clock").textContent=timeFmt(new Date());
+  const s=Math.floor((Date.now()-startTime)/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;
+  document.getElementById("uptime").textContent=[h,m,x].map(v=>String(v).padStart(2,"0")).join(":");
+},1000);
+
+try{
+  const stream=new EventSource("/api/stream");
+  stream.addEventListener("state",e=>{try{applyState(JSON.parse(e.data))}catch(_){}});
+}catch(_){}
+
+loadState();loadStatus();loadRange(1440);
+setInterval(loadState,10000);
+setInterval(loadStatus,60000);
+</script>
+</body>
+</html>
