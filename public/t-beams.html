@@ -290,7 +290,17 @@ TOOLBAR
   display: inline-block !important;
   white-space: nowrap;
 }
+.boiler-button {
+  background: #ef6c00 !important;
+  color: white !important;
+  border-color: #ef6c00 !important;
+  font-weight: 800;
+  display: inline-block;
+}
 
+.boiler-button:hover {
+  background: #d85f00 !important;
+}
 .logout-button {
   background: #b71c1c !important;
   color: white !important;
@@ -1192,17 +1202,31 @@ TOOLBAR
     class="return-planks-button"
     type="button"
   >
-    Return to Planks
-  </button>
+<button
+  id="tBeamsButton"
+  class="return-planks-button"
+  type="button"
+>
+  Return to Planks
+</button>
 
 
-  <button
-    id="userManagementButton"
-    class="user-button"
-    type="button"
-  >
-    User Management
-  </button>
+<button
+  id="boilerControlButton"
+  class="boiler-button"
+  type="button"
+>
+  Boiler Manual Control
+</button>
+
+
+<button
+  id="userManagementButton"
+  class="user-button"
+  type="button"
+>
+  User Management
+</button>
 
 
   <button
@@ -3517,7 +3541,10 @@ const tBeamsButton =
     "tBeamsButton"
   );
 
-
+const boilerControlButton =
+  document.getElementById(
+    "boilerControlButton"
+  );
 const userManagementButton =
   document.getElementById(
     "userManagementButton"
@@ -3628,7 +3655,13 @@ tBeamsButton.addEventListener(
 
 );
 
-
+boilerControlButton.addEventListener(
+  "click",
+  () => {
+    window.location.href =
+      "/boiler-control.html";
+  }
+);
 userManagementButton.addEventListener(
 
   "click",
