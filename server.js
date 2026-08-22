@@ -1177,6 +1177,39 @@ const POINTS = [
 
 ];
 
+/*
+==================================================
+PLANKS MANUAL CONTROL WRITE POINTS
+STRICT ALLOW-LIST
+==================================================
+*/
+
+const PLANKS_WRITE_POINTS = {
+
+  boilerEnable: {
+    name: "Planks Boiler Enable",
+    register: 7101,
+    min: 0,
+    max: 1
+  },
+
+  pumpEnable: {
+    name: "Planks Pump Enable",
+    register: 7103,
+    min: 0,
+    max: 1
+  },
+
+  secondaryPump: {
+    name: "Planks Secondary Pump",
+    register: 7117,
+    min: 0,
+    max: 100
+  }
+
+};
+
+
 
 /*
 ==================================================
@@ -2169,6 +2202,460 @@ function readRegister(
     }
 
   );
+
+}
+
+
+
+/*
+==================================================
+MODBUS FC06 - WRITE SINGLE HOLDING REGISTER
+==================================================
+*/
+
+function buildWriteSingleRequest(
+  transaction,
+  register,
+  value
+) {
+
+  const request =
+    Buffer.alloc(12);
+
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  request.writeUInt16BE(
+    6,
+    4
+  );
+
+
+  request[6] =
+    UNIT_ID;
+
+
+  request[7] =
+    6;
+
+
+  request.writeUInt16BE(
+    register,
+    8
+  );
+
+
+  request.writeUInt16BE(
+    value,
+    10
+  );
+
+
+  return request;
+
+}
+
+
+function writeSingleRegister(
+  register,
+  value
+) {
+
+  return new Promise(
+
+    (
+      resolve,
+      reject
+    ) => {
+
+
+      const transaction =
+        nextTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+          error instanceof Error
+          ?
+          error
+          :
+          new Error(
+            String(error)
+          )
+        );
+
+      }
+
+
+      function succeed() {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve(
+          true
+        );
+
+      }
+
+
+      connectTimer =
+        setTimeout(
+          () => {
+            fail(
+              new Error(
+                `TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`
+              )
+            );
+          },
+          7000
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+
+        "connect",
+
+        () => {
+
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+            setTimeout(
+              () => {
+                fail(
+                  new Error(
+                    `Modbus write timeout Unit ${UNIT_ID} Register ${register}`
+                  )
+                );
+              },
+              5000
+            );
+
+
+          socket.write(
+            buildWriteSingleRequest(
+              transaction,
+              register,
+              value
+            )
+          );
+
+        }
+
+      );
+
+
+      socket.on(
+
+        "data",
+
+        chunk => {
+
+
+          responseBuffer =
+            Buffer.concat(
+              [
+                responseBuffer,
+                chunk
+              ]
+            );
+
+
+          if (
+            responseBuffer.length <
+            12
+          ) {
+            return;
+          }
+
+
+          const responseTransaction =
+            responseBuffer.readUInt16BE(0);
+
+
+          const protocolId =
+            responseBuffer.readUInt16BE(2);
+
+
+          const length =
+            responseBuffer.readUInt16BE(4);
+
+
+          const responseUnit =
+            responseBuffer[6];
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+            return fail(
+              new Error(
+                "Transaction ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+            return fail(
+              new Error(
+                "Protocol ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            responseUnit !==
+            UNIT_ID
+          ) {
+            return fail(
+              new Error(
+                "Unit ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            length !==
+            6
+          ) {
+            return fail(
+              new Error(
+                `Unexpected FC06 response length ${length}`
+              )
+            );
+          }
+
+
+          const functionCode =
+            responseBuffer[7];
+
+
+          if (
+            (
+              functionCode &
+              0x80
+            ) !==
+            0
+          ) {
+            return fail(
+              new Error(
+                `Modbus exception ${responseBuffer[8]}`
+              )
+            );
+          }
+
+
+          if (
+            functionCode !==
+            6
+          ) {
+            return fail(
+              new Error(
+                "Unexpected Modbus write function"
+              )
+            );
+          }
+
+
+          const echoedRegister =
+            responseBuffer.readUInt16BE(8);
+
+
+          const echoedValue =
+            responseBuffer.readUInt16BE(10);
+
+
+          if (
+            echoedRegister !==
+            register
+            ||
+            echoedValue !==
+            value
+          ) {
+            return fail(
+              new Error(
+                "FC06 write verification echo mismatch"
+              )
+            );
+          }
+
+
+          succeed();
+
+        }
+
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+          fail(
+            new Error(
+              `TCP/Modbus write error: ${error.message}`
+            )
+          );
+        }
+      );
+
+
+      socket.on(
+        "close",
+        () => {
+          if (
+            !completed
+          ) {
+            fail(
+              new Error(
+                "Connection closed before complete write response"
+              )
+            );
+          }
+        }
+      );
+
+
+      socket.connect(
+        BMS_PORT,
+        BMS_HOST
+      );
+
+    }
+
+  );
+
+}
+
+
+async function readPlanksControlState() {
+
+  const result = {};
+
+
+  for (
+    const [
+      id,
+      point
+    ]
+    of Object.entries(
+      PLANKS_WRITE_POINTS
+    )
+  ) {
+
+    const raw =
+      await readRegister(
+        point.register
+      );
+
+
+    result[id] = {
+      name:
+        point.name,
+      register:
+        point.register,
+      value:
+        raw
+    };
+
+  }
+
+
+  return result;
 
 }
 
@@ -6774,6 +7261,231 @@ h1{color:#1b5e20;margin-top:0}
           response
 
         );
+
+      }
+
+
+
+      /*
+      ================================================
+      PLANKS MANUAL CONTROL STATE
+      AUTHENTICATED USERS
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/boiler/planks"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        try {
+
+          const controls =
+            await readPlanksControlState();
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              unitId: UNIT_ID,
+              controls
+            }
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            502
+          );
+
+        }
+
+      }
+
+
+      /*
+      ================================================
+      PLANKS MANUAL CONTROL WRITE
+      AUTHENTICATED USERS
+      STRICT REGISTER ALLOW-LIST
+      FC06 ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/boiler/planks/write"
+
+        &&
+
+        request.method ===
+        "POST"
+      ) {
+
+        try {
+
+          const body =
+            await readJsonBody(
+              request
+            );
+
+
+          const control =
+            String(
+              body.control || ""
+            );
+
+
+          const point =
+            PLANKS_WRITE_POINTS[
+              control
+            ];
+
+
+          if (
+            !point
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error: "Control is not allowed"
+              },
+              400
+            );
+
+          }
+
+
+          const value =
+            Number(
+              body.value
+            );
+
+
+          if (
+            !Number.isInteger(
+              value
+            )
+            ||
+            value <
+              point.min
+            ||
+            value >
+              point.max
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error:
+                  `${point.name} must be an integer from ${point.min} to ${point.max}`
+              },
+              400
+            );
+
+          }
+
+
+          await writeSingleRegister(
+            point.register,
+            value
+          );
+
+
+          const readBack =
+            await readRegister(
+              point.register
+            );
+
+
+          if (
+            readBack !==
+            value
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error:
+                  `Write sent but read-back mismatch on register ${point.register}: expected ${value}, got ${readBack}`
+              },
+              502
+            );
+
+          }
+
+
+          console.log(
+            "Planks manual control write:",
+            {
+              user:
+                authUser.username,
+              control,
+              register:
+                point.register,
+              value,
+              readBack
+            }
+          );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              control,
+              name:
+                point.name,
+              register:
+                point.register,
+              value,
+              readBack
+            }
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          console.error(
+            "Planks manual control write failed:",
+            error.message
+          );
+
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            502
+          );
+
+        }
 
       }
 
