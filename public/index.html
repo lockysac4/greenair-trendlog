@@ -259,7 +259,17 @@ TOOLBAR
   font-weight: 800;
   display: none;
 }
+.boiler-button {
+  background: #ef6c00 !important;
+  color: white !important;
+  border-color: #ef6c00 !important;
+  font-weight: 800;
+  display: inline-block;
+}
 
+.boiler-button:hover {
+  background: #d85f00 !important;
+}
 .logout-button {
   background: #b71c1c !important;
   color: white !important;
@@ -1132,13 +1142,13 @@ TOOLBAR
   </span>
 
 
-  <button
-    id="boilerControlButton"
-    class="user-button"
-    type="button"
-  >
-    Boiler Manual Control
-  </button>
+<button
+  id="boilerControlButton"
+  class="boiler-button"
+  type="button"
+>
+  Boiler Manual Control
+</button>
 
   <button
     id="userManagementButton"
