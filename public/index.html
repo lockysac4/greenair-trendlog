@@ -259,6 +259,18 @@ TOOLBAR
   font-weight: 800;
   display: none;
 }
+.tbeams-button {
+  background: #1565c0 !important;
+  color: white !important;
+  border-color: #1565c0 !important;
+  font-weight: 800;
+  display: inline-block;
+}
+
+.tbeams-button:hover {
+  background: #0d4f9e !important;
+}
+
 .boiler-button {
   background: #ef6c00 !important;
   color: white !important;
@@ -286,6 +298,7 @@ TOOLBAR
 }
 
 @media print {
+  .tbeams-button,
   .boiler-button,
   .user-button,
   .logout-button,
@@ -1142,6 +1155,14 @@ TOOLBAR
     User
   </span>
 
+
+<button
+  id="tBeamsButton"
+  class="tbeams-button"
+  type="button"
+>
+  T-Beams
+</button>
 
 <button
   id="boilerControlButton"
@@ -3501,6 +3522,12 @@ const loggedUser =
   );
 
 
+const tBeamsButton =
+  document.getElementById(
+    "tBeamsButton"
+  );
+
+
 const boilerControlButton =
   document.getElementById(
     "boilerControlButton"
@@ -3601,6 +3628,20 @@ async function loadLoggedInUser() {
   }
 
 }
+
+
+tBeamsButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    window.location.href =
+      "/t-beams.html";
+
+  }
+
+);
 
 
 boilerControlButton.addEventListener(
