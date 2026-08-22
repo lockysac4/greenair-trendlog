@@ -52,23 +52,6 @@ HEADER
 
 .brand-left {
   justify-self: start;
-
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-logo {
-  display: block;
-  width: 150px;
-  max-height: 48px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
 }
 
 
@@ -642,12 +625,6 @@ PRINT - ONE A3 LANDSCAPE PAGE
   }
 
 
-  .header-logo {
-    width: 42mm !important;
-    max-height: 14mm !important;
-  }
-
-
   .bianco-title {
     font-size: 18pt !important;
 
@@ -804,13 +781,6 @@ PRINT - ONE A3 LANDSCAPE PAGE
     break-before: avoid !important;
     break-after: avoid !important;
     break-inside: avoid !important;
-  }
-
-
-  /* DO NOT SHOW CONCRETE DIFFERENTIAL ON PRINT */
-
-  .point-row[data-id="diff"] {
-    display: none !important;
   }
 
 
@@ -990,22 +960,12 @@ HEADER
 
   <div class="brand-left">
 
-    <img
-      class="header-logo"
-      src="/greenair-logo.png"
-      alt="Greenair"
-    >
+    <div class="bianco-title">
+      BIANCO PRECAST
+    </div>
 
-    <div class="brand-text">
-
-      <div class="bianco-title">
-        BIANCO PRECAST
-      </div>
-
-      <div class="greenair-title">
-        GREENAIR TRENDLOG
-      </div>
-
+    <div class="greenair-title">
+      GREENAIR TRENDLOG
     </div>
 
   </div>
@@ -1173,13 +1133,12 @@ TOOLBAR
 
 
   <button
-    id="tBeamsButton"
+    id="boilerControlButton"
     class="user-button"
     type="button"
   >
-    T - Beams
+    Boiler Manual Control
   </button>
-
 
   <button
     id="userManagementButton"
@@ -1288,6 +1247,28 @@ MAIN
 
 
   <aside class="sidebar">
+
+
+    <div class="filter-row">
+
+      <button
+        id="showAllButton"
+        type="button"
+      >
+        All
+      </button>
+
+
+      <button type="button">
+        By Type
+      </button>
+
+
+      <button type="button">
+        By Unit
+      </button>
+
+    </div>
 
 
     <div id="pointList"></div>
@@ -2077,6 +2058,36 @@ pointList.addEventListener(
   }
 
 );
+
+
+document
+  .getElementById(
+    "showAllButton"
+  )
+  .addEventListener(
+
+    "click",
+
+    () => {
+
+      POINTS.forEach(
+
+        point => {
+
+          visiblePoints[
+            point.id
+          ] = true;
+
+        }
+
+      );
+
+
+      updateVisibility();
+
+    }
+
+  );
 
 
 /* ==================================================
@@ -2923,39 +2934,6 @@ PRINT AXIS
 
 function preparePrintChart() {
 
-  /*
-  CLIENT PRINT REQUIREMENT:
-  DO NOT SHOW AMBIENT - CONCRETE DIFFERENTIAL
-  ON THE PRINTED GRAPH.
-  */
-
-  const differentialIndex =
-
-    POINTS.findIndex(
-
-      point =>
-        point.id ===
-        "diff"
-
-    );
-
-
-  if (
-    differentialIndex >=
-    0
-  ) {
-
-    chart.setDatasetVisibility(
-
-      differentialIndex,
-
-      false
-
-    );
-
-  }
-
-
   const samples =
     visibleSamples();
 
@@ -3117,14 +3095,6 @@ RESTORE AFTER PRINT
 ================================================== */
 
 function restoreNormalChart() {
-
-  /*
-  RESTORE NORMAL ON-SCREEN POINT VISIBILITY
-  AFTER PRINTING.
-  */
-
-  updateVisibility();
-
 
   delete chart.options.scales.x.min;
 
@@ -3520,11 +3490,10 @@ const loggedUser =
   );
 
 
-const tBeamsButton =
+const boilerControlButton =
   document.getElementById(
-    "tBeamsButton"
+    "boilerControlButton"
   );
-
 
 const userManagementButton =
   document.getElementById(
@@ -3589,10 +3558,6 @@ async function loadLoggedInUser() {
       `Logged in: ${data.user.username}`;
 
 
-    tBeamsButton.style.display =
-      "inline-block";
-
-
     if (
       data.user.role ===
       "master"
@@ -3627,14 +3592,14 @@ async function loadLoggedInUser() {
 }
 
 
-tBeamsButton.addEventListener(
+boilerControlButton.addEventListener(
 
   "click",
 
   () => {
 
     window.location.href =
-      "/t-beams.html";
+      "/boiler-control.html";
 
   }
 

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bianco Precast - Boiler Manual Control</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0e1418;color:#eaf0f2}
+.topbar{background:#151d22;border-bottom:1px solid #2c3a42;padding:18px 28px 14px;display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap}
+.brand h1{margin:0;font-size:25px;letter-spacing:1px;color:#f39a31}
+.brand h2{margin:4px 0 0;font-size:18px;font-weight:600;letter-spacing:.7px;color:#dbe6e9}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav a{color:#d9e4e8;text-decoration:none;padding:9px 13px;border-radius:6px;border:1px solid #35454e;background:#1d282e;font-size:14px}
+nav a.active{background:#2f7b46;border-color:#3c9658;color:#fff}
+.wrap{max-width:1120px;margin:26px auto;padding:0 20px 40px}
+.title{margin-bottom:18px}.title h3{margin:0 0 6px;font-size:27px}.title p{margin:0;color:#9fb0b7}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.card{background:#172026;border:1px solid #2a3941;border-radius:10px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.label{font-size:13px;color:#93a7af;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.value{font-size:26px;font-weight:700}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:19px;font-weight:700}
+.dot{width:11px;height:11px;border-radius:50%;background:#38b85b;box-shadow:0 0 10px rgba(56,184,91,.55)} .dot.off{background:#77858c;box-shadow:none}
+.controls{background:#172026;border:1px solid #2a3941;border-radius:10px;padding:20px}
+.controls h4{margin:0 0 18px;font-size:20px}
+.row{display:grid;grid-template-columns:220px 1fr;align-items:center;gap:20px;padding:15px 0;border-bottom:1px solid #27353c}.row:last-of-type{border-bottom:none}
+.row-name{font-weight:700}.btn-group{display:flex;gap:10px;flex-wrap:wrap}
+button{border:1px solid #42545d;background:#202c32;color:#eaf0f2;border-radius:7px;padding:10px 18px;cursor:pointer;font-weight:700;min-width:90px}
+button:hover{filter:brightness(1.12)} button.selected{background:#2f7b46;border-color:#45a861;color:#fff} button.danger.selected{background:#983c3c;border-color:#c05151}
+input[type=number]{width:130px;background:#10171b;border:1px solid #43545d;color:#fff;padding:10px 12px;border-radius:6px;font-size:17px}.unit{color:#a9b7bd;margin-left:8px}
+.applybar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}.warning{color:#ffc66d;font-size:14px}
+.apply{background:#f39a31;border-color:#f7ad55;color:#111;min-width:170px;padding:12px 20px}.message{margin-top:16px;min-height:22px;color:#8fd3a2;font-weight:700}.demo{margin-top:16px;color:#8ea0a8;font-size:12px;text-align:right}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr;gap:10px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><h1>BIANCO PRECAST</h1><h2>GREENAIR BMS</h2></div>
+  <nav>
+    <a href="/">TrendLog</a>
+    
+    <a href="/boiler-control.html" class="active">Boiler Manual Control</a>
+    <a href="/admin" id="usersLink" style="display:none">User Management</a>
+  </nav>
+</div>
+
+<div class="wrap">
+  <div class="title"><h3>Boiler Manual Control</h3><p>Operator control and live boiler/pump status.</p></div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Boiler Status</div><div class="status"><span class="dot" id="boilerDot"></span><span id="boilerStatus">RUNNING</span></div></div>
+    <div class="card"><div class="label">Boiler Temperature</div><div class="value">61.4 °C</div></div>
+    <div class="card"><div class="label">Boiler Setpoint</div><div class="value" id="setpointDisplay">60.0 °C</div></div>
+    <div class="card"><div class="label">Burner Output</div><div class="value">74 %</div></div>
+    <div class="card"><div class="label">Pump Status</div><div class="status"><span class="dot" id="pumpDot"></span><span id="pumpStatus">RUNNING</span></div></div>
+    <div class="card"><div class="label">Alarm</div><div class="status"><span class="dot"></span><span>NORMAL</span></div></div>
+  </div>
+
+  <div class="controls">
+    <h4>Manual Control</h4>
+
+    <div class="row"><div class="row-name">Control Mode</div><div class="btn-group"><button id="autoBtn" onclick="selectMode('AUTO')">AUTO</button><button id="manualBtn" class="selected" onclick="selectMode('MANUAL')">MANUAL</button></div></div>
+    <div class="row"><div class="row-name">Boiler Enable</div><div class="btn-group"><button id="boilerOnBtn" class="selected" onclick="setBoiler(true)">ON</button><button id="boilerOffBtn" class="danger" onclick="setBoiler(false)">OFF</button></div></div>
+    <div class="row"><div class="row-name">Pump Enable</div><div class="btn-group"><button id="pumpOnBtn" class="selected" onclick="setPump(true)">ON</button><button id="pumpOffBtn" class="danger" onclick="setPump(false)">OFF</button></div></div>
+    <div class="row"><div class="row-name">Boiler Setpoint</div><div><input id="setpoint" type="number" min="0" max="90" step="0.1" value="60.0"><span class="unit">°C</span></div></div>
+
+    <div class="applybar"><div class="warning">⚠ Manual mode overrides automatic boiler control.</div><button class="apply" onclick="applyChanges()">APPLY CHANGES</button></div>
+    <div class="message" id="message"></div>
+  </div>
+
+  <div class="demo">SAFE MODE — no Modbus writes are performed.</div>
+</div>
+
+<script>
+let mode='MANUAL', boilerEnabled=true, pumpEnabled=true;
+function selectMode(v){
+  mode=v;
+  document.getElementById('autoBtn').classList.toggle('selected',v==='AUTO');
+  document.getElementById('manualBtn').classList.toggle('selected',v==='MANUAL');
+}
+function setBoiler(v){
+  boilerEnabled=v;
+  document.getElementById('boilerOnBtn').classList.toggle('selected',v);
+  document.getElementById('boilerOffBtn').classList.toggle('selected',!v);
+}
+function setPump(v){
+  pumpEnabled=v;
+  document.getElementById('pumpOnBtn').classList.toggle('selected',v);
+  document.getElementById('pumpOffBtn').classList.toggle('selected',!v);
+}
+function applyChanges(){
+  const sp=parseFloat(document.getElementById('setpoint').value);
+  if(Number.isNaN(sp)||sp<0||sp>90){alert('Enter a valid boiler setpoint between 0 and 90 °C.');return;}
+  const summary='Apply these DEMO settings?\n\nMode: '+mode+'\nBoiler Enable: '+(boilerEnabled?'ON':'OFF')+'\nPump Enable: '+(pumpEnabled?'ON':'OFF')+'\nSetpoint: '+sp.toFixed(1)+' °C';
+  if(!confirm(summary))return;
+  document.getElementById('setpointDisplay').textContent=sp.toFixed(1)+' °C';
+  document.getElementById('boilerStatus').textContent=boilerEnabled?'RUNNING':'STOPPED';
+  document.getElementById('boilerDot').classList.toggle('off',!boilerEnabled);
+  document.getElementById('pumpStatus').textContent=pumpEnabled?'RUNNING':'STOPPED';
+  document.getElementById('pumpDot').classList.toggle('off',!pumpEnabled);
+  document.getElementById('message').textContent='Demo settings applied on screen — no command was sent to the controller.';
+}
+
+async function loadUser(){try{const r=await fetch('/api/auth/me',{cache:'no-store'});if(r.status===401){location.href='/login';return;}const d=await r.json();if(d.user&&d.user.role==='master')document.getElementById('usersLink').style.display='inline-block';}catch(e){location.href='/login';}}
+loadUser();
+</script>
+</body>
+</html>
