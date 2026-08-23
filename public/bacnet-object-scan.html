@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Greenair BACnet Object Scan</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;margin:0;color:#222}
+.wrap{max-width:1050px;margin:30px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #d5d5d5;border-radius:8px;padding:20px}
+h1{margin-top:0;color:#1b5e20}
+button{padding:12px 18px;font-weight:800;border:0;border-radius:5px;cursor:pointer;background:#1565c0;color:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:16px;border-radius:6px;min-height:260px}
+.note{background:#e8f5e9;border:1px solid #b7dfbd;padding:12px;border-radius:5px;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1>BACnet Output Object Scan</h1>
+<div class="note">
+Device Instance <strong>110605</strong>. Read-only scan.
+It reads the Device Object_List, then names and Present_Value for
+Analog Output, Analog Value, Binary Output and Binary Value objects.
+No output commands are sent.
+</div>
+<button onclick="scan()">SCAN OUTPUT OBJECTS</button>
+<pre id="out">Ready.</pre>
+</div></div>
+<script>
+async function scan(){
+ const out=document.getElementById("out");
+ out.textContent="Scanning BACnet Object_List. This can take a little while...";
+ try{
+   const r=await fetch("/api/bacnet/objects",{cache:"no-store"});
+   const raw=await r.text();
+   let d=null; try{d=JSON.parse(raw)}catch{}
+   let summary="";
+   if(d?.ok){
+     summary=
+       "Device Instance: "+d.deviceInstance+"\n"+
+       "Object count: "+d.objectCount+"\n"+
+       "Output/value candidates: "+d.candidateCount+"\n\n"+
+       "LIKELY MATCHES\n"+
+       "==============================\n"+
+       (d.likelyMatches?.length
+         ? d.likelyMatches.map(x =>
+             x.typeName+" "+x.instance+
+             " | "+x.name+
+             " | Present_Value="+JSON.stringify(x.presentValue)
+           ).join("\n")
+         : "No name matches found")+
+       "\n\n";
+   }
+   out.textContent=
+     "HTTP status: "+r.status+"\n\n"+
+     summary+
+     "FULL RESPONSE\n==============================\n"+
+     raw;
+ }catch(e){
+   out.textContent="ERROR\n"+e.stack;
+ }
+}
+</script>
+</body>
+</html>
