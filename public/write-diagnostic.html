@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Greenair Planks Write Diagnostic</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;margin:0;color:#222}
+.wrap{max-width:900px;margin:30px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #d5d5d5;border-radius:8px;padding:20px}
+h1{margin-top:0;color:#1b5e20}
+button{padding:12px 18px;font-weight:800;border:0;border-radius:5px;cursor:pointer;margin-right:8px}
+.read{background:#1565c0;color:#fff}
+.test{background:#ef6c00;color:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:16px;border-radius:6px;min-height:180px}
+.note{background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:5px;margin:14px 0}
+.good{color:#1b5e20;font-weight:800}
+.bad{color:#b71c1c;font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<h1>Planks Modbus Write Diagnostic</h1>
+
+<div class="note">
+This page tests Pump Enable register <strong>7103</strong> only.
+The safe write test first reads the current value, then writes the
+<strong>same value back</strong>, so it should not change the pump state.
+</div>
+
+<p>
+<button class="read" onclick="readPump()">1. READ 7103</button>
+<button class="test" onclick="safeWriteTest()">2. SAFE WRITE TEST</button>
+</p>
+
+<div id="status">Ready.</div>
+<pre id="output">No test run yet.</pre>
+</div>
+</div>
+
+<script>
+const output = document.getElementById("output");
+const statusEl = document.getElementById("status");
+
+function showStatus(text, ok) {
+  statusEl.textContent = text;
+  statusEl.className = ok ? "good" : "bad";
+}
+
+async function readPump() {
+  output.textContent = "Reading...";
+  showStatus("Reading 7103...", true);
+
+  try {
+    const res = await fetch("/api/boiler/planks", {cache:"no-store"});
+    const raw = await res.text();
+
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch {}
+
+    output.textContent =
+      "HTTP status: " + res.status + "\n\n" +
+      "Raw response:\n" + raw + "\n\n" +
+      (parsed && parsed.controls && parsed.controls.pumpEnable
+        ? "Pump 7103 current value: " + parsed.controls.pumpEnable.value
+        : "Could not find pumpEnable in response.");
+
+    showStatus(res.ok ? "Read completed." : "Read failed.", res.ok);
+  } catch (e) {
+    output.textContent = "Browser/network error:\n" + e.stack;
+    showStatus("Read failed.", false);
+  }
+}
+
+async function safeWriteTest() {
+  output.textContent = "Step 1: reading current 7103 value...";
+  showStatus("Running safe same-value write test...", true);
+
+  try {
+    const readRes = await fetch("/api/boiler/planks", {cache:"no-store"});
+    const readRaw = await readRes.text();
+
+    let readData;
+    try {
+      readData = JSON.parse(readRaw);
+    } catch {
+      output.textContent =
+        "READ HTTP status: " + readRes.status +
+        "\n\nREAD raw response:\n" + readRaw +
+        "\n\nCannot continue because the read response was not JSON.";
+      showStatus("Read stage failed.", false);
+      return;
+    }
+
+    if (!readRes.ok || !readData.ok ||
+        !readData.controls ||
+        !readData.controls.pumpEnable) {
+      output.textContent =
+        "READ HTTP status: " + readRes.status +
+        "\n\nREAD response:\n" +
+        JSON.stringify(readData, null, 2);
+      showStatus("Read stage failed.", false);
+      return;
+    }
+
+    const current = Number(readData.controls.pumpEnable.value);
+
+    output.textContent =
+      "Current 7103 value = " + current +
+      "\n\nStep 2: writing SAME value (" + current + ") back to 7103...";
+
+    const writeRes = await fetch("/api/boiler/planks/write", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        control: "pumpEnable",
+        value: current
+      })
+    });
+
+    const writeRaw = await writeRes.text();
+
+    let writeParsed = null;
+    try { writeParsed = JSON.parse(writeRaw); } catch {}
+
+    output.textContent =
+      "SAFE WRITE TEST\n" +
+      "==============================\n" +
+      "Register: 7103\n" +
+      "Original value: " + current + "\n" +
+      "Requested value: " + current + " (same value)\n\n" +
+      "WRITE HTTP status: " + writeRes.status + "\n\n" +
+      "WRITE raw response:\n" + writeRaw + "\n\n" +
+      "Parsed response:\n" +
+      (writeParsed ? JSON.stringify(writeParsed, null, 2) : "Not JSON");
+
+    showStatus(
+      writeRes.ok ? "Safe write test succeeded." : "Safe write test failed — copy the output below.",
+      writeRes.ok
+    );
+
+  } catch (e) {
+    output.textContent = "Browser/network error:\n" + e.stack;
+    showStatus("Diagnostic failed.", false);
+  }
+}
+</script>
+</body>
+</html>
