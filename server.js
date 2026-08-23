@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const net = require("net");
+const dgram = require("dgram");
 const crypto = require("crypto");
 const { Pool } = require("pg");
 const nodemailer = require("nodemailer");
@@ -55,6 +56,22 @@ const UNIT_ID =
     process.env.UNIT_ID ||
     69
   );
+
+/*
+==================================================
+BACNET/IP DISCOVERY
+==================================================
+*/
+const BACNET_HOST =
+  BMS_HOST;
+
+const BACNET_PORT =
+  Number(
+    process.env.BACNET_PORT ||
+    47808
+  );
+
+
 
 
 const PORT =
@@ -8258,6 +8275,328 @@ function serveProtectedStatic(
 
 /*
 ==================================================
+BACNET/IP UNICAST WHO-IS DISCOVERY
+==================================================
+*/
+
+function buildBacnetWhoIsPacket() {
+
+  /*
+  BVLC:
+    81 = BACnet/IP
+    0A = Original-Unicast-NPDU
+    0008 = total packet length
+
+  NPDU:
+    01 = version
+    00 = no destination/source routing
+
+  APDU:
+    10 = Unconfirmed Request
+    08 = Who-Is
+  */
+
+  return Buffer.from(
+    [
+      0x81,
+      0x0a,
+      0x00,
+      0x08,
+      0x01,
+      0x00,
+      0x10,
+      0x08
+    ]
+  );
+
+}
+
+
+function parseBacnetIAm(
+  message,
+  remote
+) {
+
+  const result = {
+    from:
+      `${remote.address}:${remote.port}`,
+    rawHex:
+      message.toString("hex")
+  };
+
+
+  if (
+    message.length <
+    10
+  ) {
+
+    result.error =
+      "Response too short";
+
+    return result;
+
+  }
+
+
+  /*
+  Find an I-Am APDU:
+    10 00 = Unconfirmed Request / I-Am
+  Then locate application tag C4 (Object Identifier).
+  */
+
+  let iamIndex =
+    -1;
+
+
+  for (
+    let i = 0;
+    i <
+    message.length -
+    1;
+    i++
+  ) {
+
+    if (
+      message[i] ===
+      0x10
+      &&
+      message[i + 1] ===
+      0x00
+    ) {
+
+      iamIndex =
+        i;
+
+      break;
+
+    }
+
+  }
+
+
+  if (
+    iamIndex <
+    0
+  ) {
+
+    result.type =
+      "BACnet response (not I-Am)";
+
+    return result;
+
+  }
+
+
+  result.type =
+    "I-Am";
+
+
+  let objectTagIndex =
+    -1;
+
+
+  for (
+    let i =
+      iamIndex +
+      2;
+    i <
+    message.length -
+    4;
+    i++
+  ) {
+
+    if (
+      message[i] ===
+      0xc4
+    ) {
+
+      objectTagIndex =
+        i;
+
+      break;
+
+    }
+
+  }
+
+
+  if (
+    objectTagIndex <
+    0
+  ) {
+
+    result.error =
+      "I-Am received but Device Object Identifier was not found";
+
+    return result;
+
+  }
+
+
+  const objectIdentifier =
+    message.readUInt32BE(
+      objectTagIndex +
+      1
+    );
+
+
+  result.objectType =
+    objectIdentifier >>>
+    22;
+
+
+  result.deviceInstance =
+    objectIdentifier &
+    0x3fffff;
+
+
+  return result;
+
+}
+
+
+function discoverBacnetDevice(
+  timeoutMs =
+    5000
+) {
+
+  return new Promise(
+    (
+      resolve
+    ) => {
+
+      const socket =
+        dgram.createSocket(
+          "udp4"
+        );
+
+
+      const responses =
+        [];
+
+
+      let sendError =
+        null;
+
+
+      let finished =
+        false;
+
+
+      function finish() {
+
+        if (
+          finished
+        ) {
+          return;
+        }
+
+
+        finished =
+          true;
+
+
+        try {
+          socket.close();
+        }
+        catch {
+          // ignore
+        }
+
+
+        resolve({
+          ok:
+            responses.some(
+              item =>
+                Number.isInteger(
+                  item.deviceInstance
+                )
+            ),
+          host:
+            BACNET_HOST,
+          port:
+            BACNET_PORT,
+          timeoutMs,
+          sendError,
+          responses
+        });
+
+      }
+
+
+      socket.on(
+        "message",
+        (
+          message,
+          remote
+        ) => {
+
+          responses.push(
+            parseBacnetIAm(
+              message,
+              remote
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+
+          sendError =
+            error.message;
+
+        }
+      );
+
+
+      socket.bind(
+        0,
+        "0.0.0.0",
+        () => {
+
+          const packet =
+            buildBacnetWhoIsPacket();
+
+
+          socket.send(
+            packet,
+            BACNET_PORT,
+            BACNET_HOST,
+            error => {
+
+              if (
+                error
+              ) {
+
+                sendError =
+                  error.message;
+
+              }
+
+            }
+          );
+
+        }
+      );
+
+
+      setTimeout(
+        finish,
+        timeoutMs
+      );
+
+    }
+  );
+
+}
+
+
+/*
+==================================================
 HTTP SERVER
 ==================================================
 */
@@ -9978,6 +10317,66 @@ h1{color:#1b5e20;margin-top:0}
 
 
         return;
+
+      }
+
+
+      /*
+      ================================================
+      BACNET/IP DEVICE DISCOVERY
+      AUTHENTICATED USERS
+      READ/DISCOVERY ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/bacnet/discover"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        try {
+
+          const discovery =
+            await discoverBacnetDevice(
+              5000
+            );
+
+
+          return sendJson(
+            response,
+            discovery,
+            discovery.ok
+            ?
+            200
+            :
+            504
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok:
+                false,
+              host:
+                BACNET_HOST,
+              port:
+                BACNET_PORT,
+              error:
+                error.message
+            },
+            502
+          );
+
+        }
 
       }
 
