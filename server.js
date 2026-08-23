@@ -3150,6 +3150,603 @@ function writeSingleRegisterFC06(
 }
 
 
+/*
+==================================================
+T3000 OUTPUT VALUE HELPERS
+32-BIT SIGNED INTEGER, SCALE x1000
+Each output occupies TWO consecutive 16-bit registers.
+Example OUT2:
+  7103 = high word
+  7104 = low word
+1.000 => raw 1000 => [0, 1000]
+==================================================
+*/
+
+function combineSignedInt32(
+  highWord,
+  lowWord
+) {
+
+  const unsigned =
+    (
+      (
+        highWord &
+        0xffff
+      ) *
+      65536
+    ) +
+    (
+      lowWord &
+      0xffff
+    );
+
+
+  return unsigned >=
+    0x80000000
+    ?
+    unsigned -
+    0x100000000
+    :
+    unsigned;
+
+}
+
+
+function splitSignedInt32(
+  value
+) {
+
+  let unsigned =
+    Number(value);
+
+
+  if (
+    unsigned <
+    0
+  ) {
+
+    unsigned =
+      0x100000000 +
+      unsigned;
+
+  }
+
+
+  unsigned =
+    unsigned >>>
+    0;
+
+
+  return [
+    (
+      unsigned >>>
+      16
+    ) &
+    0xffff,
+    unsigned &
+    0xffff
+  ];
+
+}
+
+
+async function readT3000Output32(
+  startRegister
+) {
+
+  const highWord =
+    await readRegister(
+      startRegister
+    );
+
+
+  const lowWord =
+    await readRegister(
+      startRegister +
+      1
+    );
+
+
+  const rawValue =
+    combineSignedInt32(
+      highWord,
+      lowWord
+    );
+
+
+  return {
+    highWord,
+    lowWord,
+    rawValue,
+    value:
+      rawValue /
+      1000
+  };
+
+}
+
+
+function buildWriteTwoRegistersRequest(
+  transaction,
+  startRegister,
+  highWord,
+  lowWord
+) {
+
+  const request =
+    Buffer.alloc(
+      17
+    );
+
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  /*
+  Unit ID 1
+  Function 1
+  Start address 2
+  Quantity 2
+  Byte count 1
+  Data 4
+  = 11 bytes after MBAP protocol/length fields.
+  */
+
+  request.writeUInt16BE(
+    11,
+    4
+  );
+
+
+  request[6] =
+    UNIT_ID;
+
+
+  request[7] =
+    16;
+
+
+  request.writeUInt16BE(
+    startRegister,
+    8
+  );
+
+
+  request.writeUInt16BE(
+    2,
+    10
+  );
+
+
+  request[12] =
+    4;
+
+
+  request.writeUInt16BE(
+    highWord,
+    13
+  );
+
+
+  request.writeUInt16BE(
+    lowWord,
+    15
+  );
+
+
+  return request;
+
+}
+
+
+function writeT3000Output32(
+  startRegister,
+  engineeringValue
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const rawValue =
+        Math.round(
+          Number(
+            engineeringValue
+          ) *
+          1000
+        );
+
+
+      const [
+        highWord,
+        lowWord
+      ] =
+        splitSignedInt32(
+          rawValue
+        );
+
+
+      const transaction =
+        nextTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+          error instanceof Error
+          ?
+          error
+          :
+          new Error(
+            String(error)
+          )
+        );
+
+      }
+
+
+      function succeed() {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve({
+          rawValue,
+          highWord,
+          lowWord
+        });
+
+      }
+
+
+      connectTimer =
+        setTimeout(
+          () => {
+
+            fail(
+              new Error(
+                `TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`
+              )
+            );
+
+          },
+          7000
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+        "connect",
+        () => {
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+            setTimeout(
+              () => {
+
+                fail(
+                  new Error(
+                    `Modbus FC16 32-bit write timeout Unit ${UNIT_ID} Register ${startRegister}`
+                  )
+                );
+
+              },
+              5000
+            );
+
+
+          socket.write(
+            buildWriteTwoRegistersRequest(
+              transaction,
+              startRegister,
+              highWord,
+              lowWord
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "data",
+        chunk => {
+
+          responseBuffer =
+            Buffer.concat(
+              [
+                responseBuffer,
+                chunk
+              ]
+            );
+
+
+          if (
+            responseBuffer.length <
+            12
+          ) {
+            return;
+          }
+
+
+          const length =
+            responseBuffer.readUInt16BE(
+              4
+            );
+
+
+          const completeLength =
+            6 +
+            length;
+
+
+          if (
+            responseBuffer.length <
+            completeLength
+          ) {
+            return;
+          }
+
+
+          const responseTransaction =
+            responseBuffer.readUInt16BE(
+              0
+            );
+
+
+          const protocolId =
+            responseBuffer.readUInt16BE(
+              2
+            );
+
+
+          const responseUnit =
+            responseBuffer[6];
+
+
+          const functionCode =
+            responseBuffer[7];
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+
+            return fail(
+              new Error(
+                "Transaction ID mismatch"
+              )
+            );
+
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+
+            return fail(
+              new Error(
+                "Protocol ID mismatch"
+              )
+            );
+
+          }
+
+
+          if (
+            responseUnit !==
+            UNIT_ID
+          ) {
+
+            return fail(
+              new Error(
+                `Unit ID mismatch: expected ${UNIT_ID}, got ${responseUnit}`
+              )
+            );
+
+          }
+
+
+          if (
+            (
+              functionCode &
+              0x80
+            ) !==
+            0
+          ) {
+
+            return fail(
+              new Error(
+                `Modbus exception ${responseBuffer[8]}`
+              )
+            );
+
+          }
+
+
+          if (
+            functionCode !==
+            16
+          ) {
+
+            return fail(
+              new Error(
+                `Unexpected Modbus function ${functionCode}; expected FC16`
+              )
+            );
+
+          }
+
+
+          const echoedRegister =
+            responseBuffer.readUInt16BE(
+              8
+            );
+
+
+          const echoedQuantity =
+            responseBuffer.readUInt16BE(
+              10
+            );
+
+
+          if (
+            echoedRegister !==
+            startRegister
+            ||
+            echoedQuantity !==
+            2
+          ) {
+
+            return fail(
+              new Error(
+                `FC16 32-bit verification mismatch: register ${echoedRegister}, quantity ${echoedQuantity}`
+              )
+            );
+
+          }
+
+
+          succeed();
+
+        }
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+
+          fail(
+            new Error(
+              `TCP/Modbus FC16 32-bit write error: ${error.message}`
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "close",
+        () => {
+
+          if (
+            !completed
+          ) {
+
+            fail(
+              new Error(
+                "Connection closed before complete FC16 32-bit response"
+              )
+            );
+
+          }
+
+        }
+      );
+
+
+      socket.connect(
+        BMS_PORT,
+        BMS_HOST
+      );
+
+    }
+  );
+
+}
+
+
 
 async function readPlanksControlState() {
 
@@ -3160,14 +3757,14 @@ async function readPlanksControlState() {
     const [
       id,
       point
-    ]
-    of Object.entries(
+    ] of
+    Object.entries(
       PLANKS_WRITE_POINTS
     )
   ) {
 
-    const raw =
-      await readRegister(
+    const reading =
+      await readT3000Output32(
         point.register
       );
 
@@ -3177,11 +3774,19 @@ async function readPlanksControlState() {
         point.name,
       register:
         point.register,
+      registers: [
+        point.register,
+        point.register +
+        1
+      ],
+      highWord:
+        reading.highWord,
+      lowWord:
+        reading.lowWord,
       rawValue:
-        raw,
+        reading.rawValue,
       value:
-        raw /
-        point.scale
+        reading.value
     };
 
   }
@@ -3190,7 +3795,6 @@ async function readPlanksControlState() {
   return result;
 
 }
-
 
 
 /*
@@ -8990,53 +9594,29 @@ h1{color:#1b5e20;margin-top:0}
           }
 
 
-          const rawValue =
-            Math.round(
-              value *
-              point.scale
-            );
-
-
-          const writeFunction =
-            control ===
-            "pumpEnable"
-            ?
-            6
-            :
-            16;
-
-
-          if (
-            writeFunction ===
-            6
-          ) {
-
-            await writeSingleRegisterFC06(
+          const writeResult =
+            await writeT3000Output32(
               point.register,
-              rawValue
+              value
             );
 
-          }
 
-          else {
-
-            await writeSingleRegister(
-              point.register,
-              rawValue
-            );
-
-          }
-
-
-          const rawReadBack =
-            await readRegister(
+          const readResult =
+            await readT3000Output32(
               point.register
             );
 
 
+          const rawValue =
+            writeResult.rawValue;
+
+
+          const rawReadBack =
+            readResult.rawValue;
+
+
           const readBack =
-            rawReadBack /
-            point.scale;
+            readResult.value;
 
 
           if (
@@ -9049,7 +9629,7 @@ h1{color:#1b5e20;margin-top:0}
               {
                 ok: false,
                 error:
-                  `FC${String(writeFunction).padStart(2,"0")} write sent but read-back mismatch on register ${point.register}: expected raw ${rawValue} (${value}), got raw ${rawReadBack} (${readBack})`
+                  `FC16 two-register write sent but read-back mismatch on registers ${point.register}/${point.register + 1}: expected raw ${rawValue} (${value}), got raw ${rawReadBack} (${readBack})`
               },
               502
             );
@@ -9071,8 +9651,16 @@ h1{color:#1b5e20;margin-top:0}
               rawReadBack,
               scale:
                 point.scale,
-              functionCode:
-                writeFunction
+              functionCode: 16,
+              quantity: 2,
+              highWord:
+                writeResult.highWord,
+              lowWord:
+                writeResult.lowWord,
+              readHighWord:
+                readResult.highWord,
+              readLowWord:
+                readResult.lowWord
             }
           );
 
