@@ -1209,21 +1209,24 @@ const PLANKS_WRITE_POINTS = {
     name: "Planks Boiler Enable",
     register: 7101,
     min: 0,
-    max: 1
+    max: 1,
+    scale: 1000
   },
 
   pumpEnable: {
     name: "Planks Pump Enable",
     register: 7103,
     min: 0,
-    max: 1
+    max: 1,
+    scale: 1000
   },
 
   secondaryPump: {
     name: "Planks Secondary Pump",
     register: 7117,
     min: 0,
-    max: 100
+    max: 100,
+    scale: 1000
   }
 
 };
@@ -2746,8 +2749,11 @@ async function readPlanksControlState() {
         point.name,
       register:
         point.register,
+      rawValue:
+        raw,
       value:
-        raw
+        raw /
+        point.scale
     };
 
   }
@@ -8556,21 +8562,33 @@ h1{color:#1b5e20;margin-top:0}
           }
 
 
+          const rawValue =
+            Math.round(
+              value *
+              point.scale
+            );
+
+
           await writeSingleRegister(
             point.register,
-            value
+            rawValue
           );
 
 
-          const readBack =
+          const rawReadBack =
             await readRegister(
               point.register
             );
 
 
+          const readBack =
+            rawReadBack /
+            point.scale;
+
+
           if (
-            readBack !==
-            value
+            rawReadBack !==
+            rawValue
           ) {
 
             return sendJson(
@@ -8578,7 +8596,7 @@ h1{color:#1b5e20;margin-top:0}
               {
                 ok: false,
                 error:
-                  `Write sent but read-back mismatch on register ${point.register}: expected ${value}, got ${readBack}`
+                  `Write sent but read-back mismatch on register ${point.register}: expected raw ${rawValue} (${value}), got raw ${rawReadBack} (${readBack})`
               },
               502
             );
@@ -8595,7 +8613,11 @@ h1{color:#1b5e20;margin-top:0}
               register:
                 point.register,
               value,
+              rawValue,
               readBack,
+              rawReadBack,
+              scale:
+                point.scale,
               functionCode: 16
             }
           );
