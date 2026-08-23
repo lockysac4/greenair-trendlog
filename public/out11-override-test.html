@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Greenair OUT11 Override Test</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;margin:0;color:#222}
+.wrap{max-width:900px;margin:30px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #d5d5d5;border-radius:8px;padding:20px}
+h1{margin-top:0;color:#1b5e20}
+button{padding:12px 18px;font-weight:800;border:0;border-radius:5px;cursor:pointer;margin:5px}
+.read{background:#1565c0;color:#fff}.on{background:#1b8d3d;color:#fff}.off{background:#b71c1c;color:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:16px;border-radius:6px;min-height:220px}
+.note{background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:5px;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1>OUT11 — BOILER OVERIDE APP</h1>
+<div class="note">
+Register <strong>7121</strong>. This test changes only OUT11.
+Turning it ON may place the boiler system into app/manual override logic,
+depending on the T3000 Control Basic program.
+</div>
+
+<button class="read" onclick="readOverride()">READ OUT11</button>
+<button class="on" onclick="writeOverride(1)">OVERRIDE ON (1)</button>
+<button class="off" onclick="writeOverride(0)">OVERRIDE OFF (0)</button>
+
+<pre id="output">Ready.</pre>
+</div></div>
+
+<script>
+const output=document.getElementById("output");
+
+async function state(){
+  const r=await fetch("/api/boiler/planks",{cache:"no-store"});
+  const raw=await r.text();
+  let d=null; try{d=JSON.parse(raw)}catch{}
+  return {r,raw,d};
+}
+
+async function readOverride(){
+  output.textContent="Reading OUT11...";
+  try{
+    const x=await state();
+    const p=x.d?.controls?.appOverride;
+    output.textContent=
+      "OUT11 READ\n========================\n"+
+      "HTTP: "+x.r.status+"\n"+
+      "Register: 7121\n"+
+      "Value: "+(p?.value ?? "not returned")+"\n"+
+      "Raw value: "+(p?.rawValue ?? "not returned")+"\n"+
+      "High word: "+(p?.highWord ?? "—")+"\n"+
+      "Low word: "+(p?.lowWord ?? "—")+"\n\n"+
+      "Raw response:\n"+x.raw;
+  }catch(e){output.textContent="ERROR\n"+e.stack;}
+}
+
+async function writeOverride(v){
+  const action=v===1 ? "ENABLE" : "DISABLE";
+  if(!confirm(action+" BOILER OVERIDE APP (OUT11 / 7121)?")) return;
+
+  output.textContent="Writing OUT11 = "+v+"...";
+
+  try{
+    const before=await state();
+    const beforeVal=before.d?.controls?.appOverride?.value;
+
+    const wr=await fetch("/api/boiler/planks/write",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({control:"appOverride",value:v})
+    });
+
+    const wrRaw=await wr.text();
+
+    await new Promise(r=>setTimeout(r,1000));
+    const after1=await state();
+
+    await new Promise(r=>setTimeout(r,2000));
+    const after3=await state();
+
+    const p1=after1.d?.controls?.appOverride;
+    const p3=after3.d?.controls?.appOverride;
+
+    output.textContent=
+      "OUT11 OVERRIDE TEST\n"+
+      "==============================\n"+
+      "Register: 7121 / 7122\n"+
+      "Before value: "+beforeVal+"\n"+
+      "Requested value: "+v+"\n\n"+
+      "WRITE HTTP status: "+wr.status+"\n"+
+      "WRITE response:\n"+wrRaw+"\n\n"+
+      "After 1 sec: "+(p1?.value ?? "—")+
+      "  raw="+(p1?.rawValue ?? "—")+
+      "  words=["+(p1?.highWord ?? "—")+","+(p1?.lowWord ?? "—")+"]\n"+
+      "After 3 sec: "+(p3?.value ?? "—")+
+      "  raw="+(p3?.rawValue ?? "—")+
+      "  words=["+(p3?.highWord ?? "—")+","+(p3?.lowWord ?? "—")+"]\n\n"+
+      (wr.ok && Number(p3?.value)===v
+        ? "SUCCESS: OUT11 accepted and held the requested value."
+        : "OUT11 did not hold the requested value. Copy this result back to Friday.");
+  }catch(e){output.textContent="ERROR\n"+e.stack;}
+}
+</script>
+</body>
+</html>
