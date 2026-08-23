@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Greenair 7103 Direct Test</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;margin:0;color:#222}
+.wrap{max-width:900px;margin:30px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #d5d5d5;border-radius:8px;padding:20px}
+h1{margin-top:0;color:#1b5e20}
+button{padding:12px 18px;font-weight:800;border:0;border-radius:5px;cursor:pointer;margin:5px}
+.read{background:#1565c0;color:#fff}
+.on{background:#1b8d3d;color:#fff}
+.off{background:#b71c1c;color:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:16px;border-radius:6px;min-height:220px}
+.note{background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:5px;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<h1>Planks Pump Enable — Register 7103</h1>
+
+<div class="note">
+<strong>Direct state-change diagnostic.</strong><br>
+READ is safe. WRITE ON can start the pump. Only use WRITE ON when it is safe for the pump to operate.
+</div>
+
+<button class="read" onclick="read7103()">READ 7103</button>
+<button class="on" onclick="write7103(1)">WRITE ON (1)</button>
+<button class="off" onclick="write7103(0)">WRITE OFF (0)</button>
+
+<pre id="output">Ready.</pre>
+</div>
+</div>
+
+<script>
+const output = document.getElementById("output");
+
+async function readStateRaw() {
+  const res = await fetch("/api/boiler/planks", {cache:"no-store"});
+  const raw = await res.text();
+  let data = null;
+  try { data = JSON.parse(raw); } catch {}
+  return {res, raw, data};
+}
+
+async function read7103() {
+  output.textContent = "Reading...";
+  try {
+    const {res, raw, data} = await readStateRaw();
+    const value = data?.controls?.pumpEnable?.value;
+    output.textContent =
+      "READ 7103\n====================\n" +
+      "HTTP status: " + res.status + "\n" +
+      "Current value: " + value + "\n\n" +
+      "Raw response:\n" + raw;
+  } catch(e) {
+    output.textContent = "READ ERROR\n" + e.stack;
+  }
+}
+
+async function write7103(value) {
+  if (value === 1) {
+    if (!confirm("This may START the Planks pump. Continue with register 7103 = 1?")) return;
+  } else {
+    if (!confirm("Write register 7103 = 0 (Pump OFF)?")) return;
+  }
+
+  output.textContent = "Writing " + value + " to 7103...";
+
+  try {
+    const before = await readStateRaw();
+    const beforeValue = before.data?.controls?.pumpEnable?.value;
+
+    const writeRes = await fetch("/api/boiler/planks/write", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        control: "pumpEnable",
+        value: value
+      })
+    });
+
+    const writeRaw = await writeRes.text();
+    let writeData = null;
+    try { writeData = JSON.parse(writeRaw); } catch {}
+
+    await new Promise(r => setTimeout(r, 1000));
+
+    const after1 = await readStateRaw();
+    const after1Value = after1.data?.controls?.pumpEnable?.value;
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    const after3 = await readStateRaw();
+    const after3Value = after3.data?.controls?.pumpEnable?.value;
+
+    output.textContent =
+      "7103 DIRECT WRITE TEST\n" +
+      "==============================\n" +
+      "Before value: " + beforeValue + "\n" +
+      "Requested value: " + value + "\n\n" +
+      "WRITE HTTP status: " + writeRes.status + "\n" +
+      "WRITE response:\n" + writeRaw + "\n\n" +
+      "Read-back after 1 second: " + after1Value + "\n" +
+      "Read-back after 3 seconds: " + after3Value + "\n\n" +
+      "Interpretation:\n" +
+      (writeRes.ok && Number(after1Value) === value && Number(after3Value) === value
+        ? "SUCCESS: value changed and stayed changed."
+        : writeRes.ok && Number(after1Value) === value && Number(after3Value) !== value
+          ? "WRITE ACCEPTED, THEN RESET: controller logic is forcing the value back."
+          : writeRes.ok
+            ? "WRITE RESPONSE OK, BUT VALUE DID NOT CHANGE: likely addressing/point-write semantics."
+            : "WRITE REJECTED: inspect the write response above.");
+  } catch(e) {
+    output.textContent = "TEST ERROR\n" + e.stack;
+  }
+}
+</script>
+</body>
+</html>
