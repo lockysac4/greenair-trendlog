@@ -614,7 +614,7 @@ function setSessionCookie(
 
     "Set-Cookie",
 
-    `greenair_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_HOURS * 3600}`
+    `greenair_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}`
 
   );
 
@@ -629,7 +629,7 @@ function clearSessionCookie(
 
     "Set-Cookie",
 
-    "greenair_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0"
+    "greenair_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"
 
   );
 
