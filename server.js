@@ -1239,7 +1239,6 @@ PORT 505 / UNIT 68
 const T_BEAMS_POINTS = [
   { id: "in1", name: "T - Beams In", register: 7485, kind: "analog" },
   { id: "in2", name: "T - Beams Out", register: 7487, kind: "analog" },
-  { id: "ambient", name: "Ambient", register: 7489, kind: "analog" },
   { id: "in4", name: "T - Beams Concrete", register: 7491, kind: "analog" },
   { id: "in5", name: "T - Beams Tank", register: 7493, kind: "analog" },
   { id: "diff", name: "Ambient - Concrete Differential", register: 7503, kind: "signedAnalog" }
@@ -3268,6 +3267,40 @@ async function pollTBeams() {
           scaleTBeamsValue(
             point,
             raw
+          )
+      });
+
+    }
+
+
+    /*
+    T-BEAMS AMBIENT
+    Use the already-working Planks Ambient value.
+    This was the behaviour of the earlier working system.
+    */
+
+    const planksAmbient =
+      getLatestValue(
+        "in3"
+      );
+
+
+    if (
+      Number.isFinite(
+        Number(
+          planksAmbient
+        )
+      )
+    ) {
+
+      results.push({
+        id: "ambient",
+        name: "Ambient",
+        register: 7489,
+        source: "planks",
+        value:
+          Number(
+            planksAmbient
           )
       });
 
