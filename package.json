@@ -1,12 +1,13 @@
 {
   "name": "greenair-trendlog",
-  "version": "2.0.0",
-  "description": "Greenair TrendLog with PostgreSQL history, email reporting and multi-user login",
+  "version": "2.1.0",
+  "description": "Greenair TrendLog Modbus/BACnet monitoring and PostgreSQL history logger",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "bacstack": "^0.0.1-beta.14",
     "nodemailer": "^7.0.0",
     "pg": "^8.16.0"
   }
