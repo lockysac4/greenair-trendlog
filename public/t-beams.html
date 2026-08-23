@@ -2359,7 +2359,7 @@ async function loadLiveTrend() {
 
       await fetch(
 
-        "/api/trend",
+        "/api/tbeams/trend",
 
         {
           cache:
@@ -2448,7 +2448,7 @@ async function loadAvailableRange() {
 
       await fetch(
 
-        "/api/history/range",
+        "/api/tbeams/history/range",
 
         {
           cache:
@@ -2586,7 +2586,7 @@ async function loadHistory() {
 
     const url =
 
-      "/api/history"
+      "/api/tbeams/history"
 
       +
 
@@ -3721,7 +3721,7 @@ setLed(
 
 fetch(
 
-  "/api/state",
+  "/api/tbeams/state",
 
   {
     cache:
@@ -3761,7 +3761,7 @@ LIVE BMS STREAM
 const stream =
 
   new EventSource(
-    "/api/stream"
+    "/api/tbeams/stream"
   );
 
 
