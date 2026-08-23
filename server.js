@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const net = require("net");
 const dgram = require("dgram");
+const Bacnet = require("bacstack");
 const crypto = require("crypto");
 const { Pool } = require("pg");
 const nodemailer = require("nodemailer");
@@ -70,6 +71,15 @@ const BACNET_PORT =
     process.env.BACNET_PORT ||
     47808
   );
+
+const BACNET_DEVICE_INSTANCE =
+  110605;
+
+const BACNET_ADDRESS =
+  process.env.BACNET_ADDRESS ||
+  "193.114.114.250";
+
+
 
 
 
@@ -8273,6 +8283,515 @@ function serveProtectedStatic(
 }
 
 
+
+/*
+==================================================
+BACNET OBJECT INVENTORY
+Device 110605
+Read-only: Device.Object_List + names + present values
+==================================================
+*/
+
+const BACNET_OBJECT_TYPES = {
+  0: "Analog Input",
+  1: "Analog Output",
+  2: "Analog Value",
+  3: "Binary Input",
+  4: "Binary Output",
+  5: "Binary Value",
+  8: "Device"
+};
+
+const BACNET_PROP_OBJECT_LIST =
+  76;
+
+const BACNET_PROP_OBJECT_NAME =
+  77;
+
+const BACNET_PROP_PRESENT_VALUE =
+  85;
+
+
+function makeBacnetClient() {
+
+  return new Bacnet({
+    apduTimeout:
+      5000
+  });
+
+}
+
+
+function bacnetReadProperty(
+  client,
+  objectType,
+  objectInstance,
+  propertyId,
+  arrayIndex =
+    null
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      client.readProperty(
+        BACNET_ADDRESS,
+        objectType,
+        objectInstance,
+        propertyId,
+        arrayIndex,
+        (
+          error,
+          value
+        ) => {
+
+          if (
+            error
+          ) {
+
+            return reject(
+              error
+            );
+
+          }
+
+
+          resolve(
+            value
+          );
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+function firstBacnetValue(
+  response
+) {
+
+  if (
+    !response
+  ) {
+    return null;
+  }
+
+
+  const values =
+    response.values ||
+    response.value ||
+    [];
+
+
+  if (
+    Array.isArray(
+      values
+    )
+    &&
+    values.length
+  ) {
+
+    const first =
+      values[0];
+
+
+    if (
+      first &&
+      Object.prototype.hasOwnProperty.call(
+        first,
+        "value"
+      )
+    ) {
+
+      return first.value;
+
+    }
+
+
+    if (
+      first &&
+      Object.prototype.hasOwnProperty.call(
+        first,
+        "Value"
+      )
+    ) {
+
+      return first.Value;
+
+    }
+
+
+    return first;
+
+  }
+
+
+  return values;
+
+}
+
+
+function normalizeObjectIdentifier(
+  value
+) {
+
+  if (
+    !value
+  ) {
+    return null;
+  }
+
+
+  if (
+    Number.isInteger(
+      value.type
+    )
+    &&
+    Number.isInteger(
+      value.instance
+    )
+  ) {
+
+    return {
+      type:
+        value.type,
+      instance:
+        value.instance
+    };
+
+  }
+
+
+  if (
+    value.objectId
+    &&
+    Number.isInteger(
+      value.objectId.type
+    )
+    &&
+    Number.isInteger(
+      value.objectId.instance
+    )
+  ) {
+
+    return {
+      type:
+        value.objectId.type,
+      instance:
+        value.objectId.instance
+    };
+
+  }
+
+
+  return null;
+
+}
+
+
+async function getBacnetObjectInventory() {
+
+  const client =
+    makeBacnetClient();
+
+
+  try {
+
+    /*
+    Array index 0 of Object_List is the object count.
+    */
+
+    const countResponse =
+      await bacnetReadProperty(
+        client,
+        8,
+        BACNET_DEVICE_INSTANCE,
+        BACNET_PROP_OBJECT_LIST,
+        0
+      );
+
+
+    const countRaw =
+      firstBacnetValue(
+        countResponse
+      );
+
+
+    const count =
+      Number(
+        countRaw
+      );
+
+
+    if (
+      !Number.isInteger(
+        count
+      )
+      ||
+      count <
+      1
+      ||
+      count >
+      1000
+    ) {
+
+      throw new Error(
+        `Invalid BACnet Object_List count: ${JSON.stringify(countRaw)}`
+      );
+
+    }
+
+
+    const objects =
+      [];
+
+
+    /*
+    Read each Object_List entry individually.
+    This avoids relying on segmented-array responses.
+    */
+
+    for (
+      let index =
+        1;
+      index <=
+      count;
+      index++
+    ) {
+
+      try {
+
+        const response =
+          await bacnetReadProperty(
+            client,
+            8,
+            BACNET_DEVICE_INSTANCE,
+            BACNET_PROP_OBJECT_LIST,
+            index
+          );
+
+
+        const objectId =
+          normalizeObjectIdentifier(
+            firstBacnetValue(
+              response
+            )
+          );
+
+
+        if (
+          objectId
+        ) {
+
+          objects.push({
+            index,
+            ...objectId
+          });
+
+        }
+
+      }
+
+      catch (
+        error
+      ) {
+
+        objects.push({
+          index,
+          error:
+            error.message
+        });
+
+      }
+
+    }
+
+
+    /*
+    We only need controller output/value objects for the app.
+    Read names and present values for AO, AV, BO and BV.
+    */
+
+    const candidates =
+      objects.filter(
+        object =>
+          [
+            1,
+            2,
+            4,
+            5
+          ].includes(
+            object.type
+          )
+      );
+
+
+    const details =
+      [];
+
+
+    for (
+      const object of
+      candidates
+    ) {
+
+      const detail = {
+        type:
+          object.type,
+        typeName:
+          BACNET_OBJECT_TYPES[
+            object.type
+          ] ||
+          `Object Type ${object.type}`,
+        instance:
+          object.instance,
+        name:
+          null,
+        presentValue:
+          null,
+        nameError:
+          null,
+        valueError:
+          null
+      };
+
+
+      try {
+
+        const nameResponse =
+          await bacnetReadProperty(
+            client,
+            object.type,
+            object.instance,
+            BACNET_PROP_OBJECT_NAME
+          );
+
+
+        detail.name =
+          firstBacnetValue(
+            nameResponse
+          );
+
+      }
+
+      catch (
+        error
+      ) {
+
+        detail.nameError =
+          error.message;
+
+      }
+
+
+      try {
+
+        const valueResponse =
+          await bacnetReadProperty(
+            client,
+            object.type,
+            object.instance,
+            BACNET_PROP_PRESENT_VALUE
+          );
+
+
+        detail.presentValue =
+          firstBacnetValue(
+            valueResponse
+          );
+
+      }
+
+      catch (
+        error
+      ) {
+
+        detail.valueError =
+          error.message;
+
+      }
+
+
+      details.push(
+        detail
+      );
+
+    }
+
+
+    const likelyMatches =
+      details.filter(
+        item => {
+
+          const name =
+            String(
+              item.name ||
+              ""
+            )
+              .toLowerCase();
+
+
+          return (
+            name.includes(
+              "boiler"
+            )
+            ||
+            name.includes(
+              "pump"
+            )
+            ||
+            name.includes(
+              "over"
+            )
+            ||
+            name.includes(
+              "app"
+            )
+          );
+
+        }
+      );
+
+
+    return {
+      ok:
+        true,
+      address:
+        BACNET_ADDRESS,
+      port:
+        BACNET_PORT,
+      deviceInstance:
+        BACNET_DEVICE_INSTANCE,
+      objectCount:
+        count,
+      candidateCount:
+        details.length,
+      likelyMatches,
+      candidates:
+        details
+    };
+
+  }
+
+  finally {
+
+    try {
+      client.close();
+    }
+    catch {
+      // ignore
+    }
+
+  }
+
+}
+
 /*
 ==================================================
 BACNET/IP UNICAST WHO-IS DISCOVERY
@@ -10317,6 +10836,60 @@ h1{color:#1b5e20;margin-top:0}
 
 
         return;
+
+      }
+
+
+      /*
+      ================================================
+      BACNET OBJECT INVENTORY
+      AUTHENTICATED USERS
+      READ ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/bacnet/objects"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        try {
+
+          const inventory =
+            await getBacnetObjectInventory();
+
+
+          return sendJson(
+            response,
+            inventory,
+            200
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok:
+                false,
+              address:
+                BACNET_ADDRESS,
+              deviceInstance:
+                BACNET_DEVICE_INSTANCE,
+              error:
+                error.message
+            },
+            502
+          );
+
+        }
 
       }
 
