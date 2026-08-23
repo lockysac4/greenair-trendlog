@@ -2263,7 +2263,7 @@ function readRegister(
 
 /*
 ==================================================
-MODBUS FC06 - WRITE SINGLE HOLDING REGISTER
+MODBUS FC16 - WRITE ONE HOLDING REGISTER
 ==================================================
 */
 
@@ -2273,8 +2273,14 @@ function buildWriteSingleRequest(
   value
 ) {
 
+  /*
+  Bravo/T3000-compatible write:
+  FC16 (0x10) Write Multiple Holding Registers
+  Quantity = 1 register
+  */
+
   const request =
-    Buffer.alloc(12);
+    Buffer.alloc(15);
 
 
   request.writeUInt16BE(
@@ -2289,8 +2295,19 @@ function buildWriteSingleRequest(
   );
 
 
+  /*
+  MBAP length:
+  Unit ID (1)
+  + Function (1)
+  + Start register (2)
+  + Quantity (2)
+  + Byte count (1)
+  + Data (2)
+  = 9
+  */
+
   request.writeUInt16BE(
-    6,
+    9,
     4
   );
 
@@ -2300,7 +2317,7 @@ function buildWriteSingleRequest(
 
 
   request[7] =
-    6;
+    16;
 
 
   request.writeUInt16BE(
@@ -2310,8 +2327,18 @@ function buildWriteSingleRequest(
 
 
   request.writeUInt16BE(
-    value,
+    1,
     10
+  );
+
+
+  request[12] =
+    2;
+
+
+  request.writeUInt16BE(
+    value,
+    13
   );
 
 
@@ -2326,12 +2353,10 @@ function writeSingleRegister(
 ) {
 
   return new Promise(
-
     (
       resolve,
       reject
     ) => {
-
 
       const transaction =
         nextTransactionId();
@@ -2450,11 +2475,8 @@ function writeSingleRegister(
 
 
       socket.once(
-
         "connect",
-
         () => {
-
 
           clearTimeout(
             connectTimer
@@ -2466,7 +2488,7 @@ function writeSingleRegister(
               () => {
                 fail(
                   new Error(
-                    `Modbus write timeout Unit ${UNIT_ID} Register ${register}`
+                    `Modbus FC16 write timeout Unit ${UNIT_ID} Register ${register}`
                   )
                 );
               },
@@ -2483,16 +2505,12 @@ function writeSingleRegister(
           );
 
         }
-
       );
 
 
       socket.on(
-
         "data",
-
         chunk => {
-
 
           responseBuffer =
             Buffer.concat(
@@ -2503,6 +2521,11 @@ function writeSingleRegister(
             );
 
 
+          /*
+          Standard FC16 response is 12 bytes:
+          MBAP 7 bytes + PDU 5 bytes.
+          */
+
           if (
             responseBuffer.length <
             12
@@ -2511,16 +2534,35 @@ function writeSingleRegister(
           }
 
 
+          const length =
+            responseBuffer.readUInt16BE(
+              4
+            );
+
+
+          const completeLength =
+            6 +
+            length;
+
+
+          if (
+            responseBuffer.length <
+            completeLength
+          ) {
+            return;
+          }
+
+
           const responseTransaction =
-            responseBuffer.readUInt16BE(0);
+            responseBuffer.readUInt16BE(
+              0
+            );
 
 
           const protocolId =
-            responseBuffer.readUInt16BE(2);
-
-
-          const length =
-            responseBuffer.readUInt16BE(4);
+            responseBuffer.readUInt16BE(
+              2
+            );
 
 
           const responseUnit =
@@ -2531,11 +2573,13 @@ function writeSingleRegister(
             responseTransaction !==
             transaction
           ) {
+
             return fail(
               new Error(
                 "Transaction ID mismatch"
               )
             );
+
           }
 
 
@@ -2543,11 +2587,13 @@ function writeSingleRegister(
             protocolId !==
             0
           ) {
+
             return fail(
               new Error(
                 "Protocol ID mismatch"
               )
             );
+
           }
 
 
@@ -2555,23 +2601,13 @@ function writeSingleRegister(
             responseUnit !==
             UNIT_ID
           ) {
+
             return fail(
               new Error(
-                "Unit ID mismatch"
+                `Unit ID mismatch: expected ${UNIT_ID}, got ${responseUnit}`
               )
             );
-          }
 
-
-          if (
-            length !==
-            6
-          ) {
-            return fail(
-              new Error(
-                `Unexpected FC06 response length ${length}`
-              )
-            );
           }
 
 
@@ -2586,53 +2622,62 @@ function writeSingleRegister(
             ) !==
             0
           ) {
+
             return fail(
               new Error(
                 `Modbus exception ${responseBuffer[8]}`
               )
             );
+
           }
 
 
           if (
             functionCode !==
-            6
+            16
           ) {
+
             return fail(
               new Error(
-                "Unexpected Modbus write function"
+                `Unexpected Modbus write function ${functionCode}; expected FC16`
               )
             );
+
           }
 
 
           const echoedRegister =
-            responseBuffer.readUInt16BE(8);
+            responseBuffer.readUInt16BE(
+              8
+            );
 
 
-          const echoedValue =
-            responseBuffer.readUInt16BE(10);
+          const echoedQuantity =
+            responseBuffer.readUInt16BE(
+              10
+            );
 
 
           if (
             echoedRegister !==
             register
             ||
-            echoedValue !==
-            value
+            echoedQuantity !==
+            1
           ) {
+
             return fail(
               new Error(
-                "FC06 write verification echo mismatch"
+                `FC16 verification mismatch: register ${echoedRegister}, quantity ${echoedQuantity}`
               )
             );
+
           }
 
 
           succeed();
 
         }
-
       );
 
 
@@ -2641,7 +2686,7 @@ function writeSingleRegister(
         error => {
           fail(
             new Error(
-              `TCP/Modbus write error: ${error.message}`
+              `TCP/Modbus FC16 write error: ${error.message}`
             )
           );
         }
@@ -2656,7 +2701,7 @@ function writeSingleRegister(
           ) {
             fail(
               new Error(
-                "Connection closed before complete write response"
+                "Connection closed before complete FC16 response"
               )
             );
           }
@@ -2670,7 +2715,6 @@ function writeSingleRegister(
       );
 
     }
-
   );
 
 }
@@ -8431,7 +8475,7 @@ h1{color:#1b5e20;margin-top:0}
       PLANKS MANUAL CONTROL WRITE
       AUTHENTICATED USERS
       STRICT REGISTER ALLOW-LIST
-      FC06 ONLY
+      FC16 ONLY
       ================================================
       */
 
@@ -8551,7 +8595,8 @@ h1{color:#1b5e20;margin-top:0}
               register:
                 point.register,
               value,
-              readBack
+              readBack,
+              functionCode: 16
             }
           );
 
