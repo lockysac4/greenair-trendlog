@@ -2722,6 +2722,434 @@ function writeSingleRegister(
 
 }
 
+/*
+==================================================
+MODBUS FC06 - WRITE SINGLE HOLDING REGISTER
+PUMP ENABLE 7103 TEST ONLY
+==================================================
+*/
+
+function buildWriteFC06Request(
+  transaction,
+  register,
+  value
+) {
+
+  const request =
+    Buffer.alloc(12);
+
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  request.writeUInt16BE(
+    6,
+    4
+  );
+
+
+  request[6] =
+    UNIT_ID;
+
+
+  request[7] =
+    6;
+
+
+  request.writeUInt16BE(
+    register,
+    8
+  );
+
+
+  request.writeUInt16BE(
+    value,
+    10
+  );
+
+
+  return request;
+
+}
+
+
+function writeSingleRegisterFC06(
+  register,
+  value
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const transaction =
+        nextTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+          error instanceof Error
+          ?
+          error
+          :
+          new Error(
+            String(error)
+          )
+        );
+
+      }
+
+
+      function succeed() {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve(
+          true
+        );
+
+      }
+
+
+      connectTimer =
+        setTimeout(
+          () => {
+            fail(
+              new Error(
+                `TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`
+              )
+            );
+          },
+          7000
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+        "connect",
+        () => {
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+            setTimeout(
+              () => {
+                fail(
+                  new Error(
+                    `Modbus FC06 write timeout Unit ${UNIT_ID} Register ${register}`
+                  )
+                );
+              },
+              5000
+            );
+
+
+          socket.write(
+            buildWriteFC06Request(
+              transaction,
+              register,
+              value
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "data",
+        chunk => {
+
+          responseBuffer =
+            Buffer.concat(
+              [
+                responseBuffer,
+                chunk
+              ]
+            );
+
+
+          if (
+            responseBuffer.length <
+            12
+          ) {
+            return;
+          }
+
+
+          const length =
+            responseBuffer.readUInt16BE(
+              4
+            );
+
+
+          const completeLength =
+            6 +
+            length;
+
+
+          if (
+            responseBuffer.length <
+            completeLength
+          ) {
+            return;
+          }
+
+
+          const responseTransaction =
+            responseBuffer.readUInt16BE(
+              0
+            );
+
+
+          const protocolId =
+            responseBuffer.readUInt16BE(
+              2
+            );
+
+
+          const responseUnit =
+            responseBuffer[6];
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+
+            return fail(
+              new Error(
+                "Transaction ID mismatch"
+              )
+            );
+
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+
+            return fail(
+              new Error(
+                "Protocol ID mismatch"
+              )
+            );
+
+          }
+
+
+          if (
+            responseUnit !==
+            UNIT_ID
+          ) {
+
+            return fail(
+              new Error(
+                `Unit ID mismatch: expected ${UNIT_ID}, got ${responseUnit}`
+              )
+            );
+
+          }
+
+
+          const functionCode =
+            responseBuffer[7];
+
+
+          if (
+            (
+              functionCode &
+              0x80
+            ) !==
+            0
+          ) {
+
+            return fail(
+              new Error(
+                `Modbus exception ${responseBuffer[8]}`
+              )
+            );
+
+          }
+
+
+          if (
+            functionCode !==
+            6
+          ) {
+
+            return fail(
+              new Error(
+                `Unexpected Modbus write function ${functionCode}; expected FC06`
+              )
+            );
+
+          }
+
+
+          const echoedRegister =
+            responseBuffer.readUInt16BE(
+              8
+            );
+
+
+          const echoedValue =
+            responseBuffer.readUInt16BE(
+              10
+            );
+
+
+          if (
+            echoedRegister !==
+            register
+            ||
+            echoedValue !==
+            value
+          ) {
+
+            return fail(
+              new Error(
+                `FC06 verification mismatch: register ${echoedRegister}, value ${echoedValue}`
+              )
+            );
+
+          }
+
+
+          succeed();
+
+        }
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+          fail(
+            new Error(
+              `TCP/Modbus FC06 write error: ${error.message}`
+            )
+          );
+        }
+      );
+
+
+      socket.on(
+        "close",
+        () => {
+          if (
+            !completed
+          ) {
+            fail(
+              new Error(
+                "Connection closed before complete FC06 response"
+              )
+            );
+          }
+        }
+      );
+
+
+      socket.connect(
+        BMS_PORT,
+        BMS_HOST
+      );
+
+    }
+  );
+
+}
+
+
 
 async function readPlanksControlState() {
 
@@ -8569,10 +8997,35 @@ h1{color:#1b5e20;margin-top:0}
             );
 
 
-          await writeSingleRegister(
-            point.register,
-            rawValue
-          );
+          const writeFunction =
+            control ===
+            "pumpEnable"
+            ?
+            6
+            :
+            16;
+
+
+          if (
+            writeFunction ===
+            6
+          ) {
+
+            await writeSingleRegisterFC06(
+              point.register,
+              rawValue
+            );
+
+          }
+
+          else {
+
+            await writeSingleRegister(
+              point.register,
+              rawValue
+            );
+
+          }
 
 
           const rawReadBack =
@@ -8596,7 +9049,7 @@ h1{color:#1b5e20;margin-top:0}
               {
                 ok: false,
                 error:
-                  `Write sent but read-back mismatch on register ${point.register}: expected raw ${rawValue} (${value}), got raw ${rawReadBack} (${readBack})`
+                  `FC${String(writeFunction).padStart(2,"0")} write sent but read-back mismatch on register ${point.register}: expected raw ${rawValue} (${value}), got raw ${rawReadBack} (${readBack})`
               },
               502
             );
@@ -8618,7 +9071,8 @@ h1{color:#1b5e20;margin-top:0}
               rawReadBack,
               scale:
                 point.scale,
-              functionCode: 16
+              functionCode:
+                writeFunction
             }
           );
 
