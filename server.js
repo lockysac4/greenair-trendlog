@@ -64,6 +64,25 @@ const PORT =
   );
 
 
+const T_BEAMS_HOST =
+  process.env.T_BEAMS_HOST ||
+  "bms.biancoprecast.com.au";
+
+
+const T_BEAMS_PORT =
+  Number(
+    process.env.T_BEAMS_PORT ||
+    505
+  );
+
+
+const T_BEAMS_UNIT_ID =
+  Number(
+    process.env.T_BEAMS_UNIT_ID ||
+    68
+  );
+
+
 /*
 ==================================================
 DATABASE
@@ -1207,6 +1226,42 @@ const PLANKS_WRITE_POINTS = {
     max: 100
   }
 
+};
+
+
+/*
+==================================================
+T-BEAMS READ-ONLY MODBUS POINTS
+PORT 505 / UNIT 68
+==================================================
+*/
+
+const T_BEAMS_POINTS = [
+  { id: "in1", name: "T - Beams In", register: 7485, kind: "analog" },
+  { id: "in2", name: "T - Beams Out", register: 7487, kind: "analog" },
+  { id: "in3", name: "T - Beams IN3 Hidden", register: 7489, kind: "analog" },
+  { id: "in4", name: "T - Beams Concrete", register: 7491, kind: "analog" },
+  { id: "in5", name: "T - Beams Tank", register: 7493, kind: "analog" },
+  { id: "diff", name: "Ambient - Concrete Differential", register: 7503, kind: "signedAnalog" }
+];
+
+
+let tBeamsTransactionId = 1;
+let tBeamsPolling = false;
+let tBeamsLiveHistory = [];
+const tBeamsStreamClients = new Set();
+
+
+let tBeamsLatest = {
+  ok: false,
+  status: "starting",
+  error: null,
+  host: T_BEAMS_HOST,
+  port: T_BEAMS_PORT,
+  unitId: T_BEAMS_UNIT_ID,
+  function: 3,
+  results: [],
+  timestamp: null
 };
 
 
@@ -2656,6 +2711,731 @@ async function readPlanksControlState() {
 
 
   return result;
+
+}
+
+
+
+/*
+==================================================
+T-BEAMS MODBUS FC03 READER
+SEPARATE TCP PORT / UNIT ID
+==================================================
+*/
+
+function nextTBeamsTransactionId() {
+
+  const current =
+    tBeamsTransactionId;
+
+
+  tBeamsTransactionId++;
+
+
+  if (
+    tBeamsTransactionId >
+    65535
+  ) {
+
+    tBeamsTransactionId =
+      1;
+
+  }
+
+
+  return current;
+
+}
+
+
+function buildReadRequestFor(
+  transaction,
+  unitId,
+  register
+) {
+
+  const request =
+    Buffer.alloc(12);
+
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  request.writeUInt16BE(
+    6,
+    4
+  );
+
+
+  request[6] =
+    unitId & 0xff;
+
+
+  request[7] =
+    3;
+
+
+  request.writeUInt16BE(
+    register,
+    8
+  );
+
+
+  request.writeUInt16BE(
+    1,
+    10
+  );
+
+
+  return request;
+
+}
+
+
+function readRegisterFrom(
+  host,
+  port,
+  unitId,
+  register
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const transaction =
+        nextTBeamsTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+          error instanceof Error
+          ?
+          error
+          :
+          new Error(
+            String(error)
+          )
+        );
+
+      }
+
+
+      function succeed(
+        value
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve(
+          value
+        );
+
+      }
+
+
+      connectTimer =
+        setTimeout(
+          () => {
+            fail(
+              new Error(
+                `TCP connect timeout to ${host}:${port}`
+              )
+            );
+          },
+          7000
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+        "connect",
+        () => {
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+            setTimeout(
+              () => {
+                fail(
+                  new Error(
+                    `Modbus response timeout Unit ${unitId} Register ${register}`
+                  )
+                );
+              },
+              5000
+            );
+
+
+          socket.write(
+            buildReadRequestFor(
+              transaction,
+              unitId,
+              register
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "data",
+        chunk => {
+
+          responseBuffer =
+            Buffer.concat(
+              [
+                responseBuffer,
+                chunk
+              ]
+            );
+
+
+          if (
+            responseBuffer.length <
+            9
+          ) {
+            return;
+          }
+
+
+          const mbapLength =
+            responseBuffer.readUInt16BE(4);
+
+
+          const totalLength =
+            6 +
+            mbapLength;
+
+
+          if (
+            responseBuffer.length <
+            totalLength
+          ) {
+            return;
+          }
+
+
+          const responseTransaction =
+            responseBuffer.readUInt16BE(0);
+
+
+          const protocolId =
+            responseBuffer.readUInt16BE(2);
+
+
+          const responseUnit =
+            responseBuffer[6];
+
+
+          const functionCode =
+            responseBuffer[7];
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+            return fail(
+              new Error(
+                "Transaction ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+            return fail(
+              new Error(
+                "Protocol ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            responseUnit !==
+            unitId
+          ) {
+            return fail(
+              new Error(
+                `Unit ID mismatch: expected ${unitId}, got ${responseUnit}`
+              )
+            );
+          }
+
+
+          if (
+            (
+              functionCode &
+              0x80
+            ) !==
+            0
+          ) {
+            return fail(
+              new Error(
+                `Modbus exception ${responseBuffer[8]}`
+              )
+            );
+          }
+
+
+          if (
+            functionCode !==
+            3
+          ) {
+            return fail(
+              new Error(
+                `Unexpected Modbus function ${functionCode}`
+              )
+            );
+          }
+
+
+          const byteCount =
+            responseBuffer[8];
+
+
+          if (
+            byteCount <
+            2
+            ||
+            responseBuffer.length <
+            11
+          ) {
+            return fail(
+              new Error(
+                "Short Modbus register response"
+              )
+            );
+          }
+
+
+          succeed(
+            responseBuffer.readUInt16BE(9)
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+          fail(
+            new Error(
+              `TCP/Modbus read error: ${error.message}`
+            )
+          );
+        }
+      );
+
+
+      socket.on(
+        "close",
+        () => {
+          if (
+            !completed
+          ) {
+            fail(
+              new Error(
+                "Connection closed before complete Modbus response"
+              )
+            );
+          }
+        }
+      );
+
+
+      socket.connect(
+        port,
+        host
+      );
+
+    }
+  );
+
+}
+
+
+function signed16Value(
+  raw
+) {
+
+  return raw >=
+    0x8000
+    ?
+    raw -
+    0x10000
+    :
+    raw;
+
+}
+
+
+function scaleTBeamsValue(
+  point,
+  raw
+) {
+
+  if (
+    point.kind ===
+    "signedAnalog"
+  ) {
+
+    return (
+      signed16Value(
+        raw
+      )
+      /
+      1000
+    );
+
+  }
+
+
+  return (
+    raw /
+    1000
+  );
+
+}
+
+
+function broadcastTBeams(
+  state
+) {
+
+  const message =
+    `event: state\ndata: ${JSON.stringify(state)}\n\n`;
+
+
+  for (
+    const client
+    of tBeamsStreamClients
+  ) {
+
+    try {
+
+      client.write(
+        message
+      );
+
+    }
+
+
+    catch {
+
+      tBeamsStreamClients.delete(
+        client
+      );
+
+    }
+
+  }
+
+}
+
+
+async function pollTBeams() {
+
+  if (
+    tBeamsPolling
+  ) {
+    return;
+  }
+
+
+  tBeamsPolling =
+    true;
+
+
+  try {
+
+    const results =
+      [];
+
+
+    for (
+      const point
+      of T_BEAMS_POINTS
+    ) {
+
+      const raw =
+        await readRegisterFrom(
+          T_BEAMS_HOST,
+          T_BEAMS_PORT,
+          T_BEAMS_UNIT_ID,
+          point.register
+        );
+
+
+      results.push({
+        ...point,
+        raw,
+        value:
+          scaleTBeamsValue(
+            point,
+            raw
+          )
+      });
+
+    }
+
+
+    tBeamsLatest = {
+      ok: true,
+      status: "online",
+      error: null,
+      host: T_BEAMS_HOST,
+      port: T_BEAMS_PORT,
+      unitId: T_BEAMS_UNIT_ID,
+      function: 3,
+      results,
+      timestamp:
+        new Date()
+          .toISOString()
+    };
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    tBeamsLatest = {
+      ...tBeamsLatest,
+      ok: false,
+      status: "offline",
+      error:
+        error.message,
+      timestamp:
+        new Date()
+          .toISOString()
+    };
+
+  }
+
+
+  finally {
+
+    tBeamsPolling =
+      false;
+
+
+    broadcastTBeams(
+      tBeamsLatest
+    );
+
+  }
+
+}
+
+
+function getTBeamsLatestValue(
+  id
+) {
+
+  if (
+    !tBeamsLatest.ok
+  ) {
+    return null;
+  }
+
+
+  const result =
+    tBeamsLatest.results.find(
+      point =>
+        point.id === id
+    );
+
+
+  if (
+    !result
+  ) {
+    return null;
+  }
+
+
+  const value =
+    Number(
+      result.value
+    );
+
+
+  return Number.isFinite(
+    value
+  )
+  ?
+  value
+  :
+  null;
+
+}
+
+
+function saveTBeamsLiveSample() {
+
+  if (
+    !tBeamsLatest.ok
+  ) {
+    return;
+  }
+
+
+  const sample = {
+    timestamp:
+      new Date()
+        .toISOString(),
+    in1:
+      getTBeamsLatestValue(
+        "in1"
+      ),
+    in2:
+      getTBeamsLatestValue(
+        "in2"
+      ),
+    in3:
+      getTBeamsLatestValue(
+        "in3"
+      ),
+    in4:
+      getTBeamsLatestValue(
+        "in4"
+      ),
+    in5:
+      getTBeamsLatestValue(
+        "in5"
+      ),
+    diff:
+      getTBeamsLatestValue(
+        "diff"
+      )
+  };
+
+
+  if (
+    Object.values(
+      sample
+    )
+      .slice(1)
+      .some(
+        value =>
+          value === null
+      )
+  ) {
+    return;
+  }
+
+
+  tBeamsLiveHistory.push(
+    sample
+  );
+
+
+  if (
+    tBeamsLiveHistory.length >
+    MAX_LIVE_SAMPLES
+  ) {
+
+    tBeamsLiveHistory =
+      tBeamsLiveHistory.slice(
+        -MAX_LIVE_SAMPLES
+      );
+
+  }
 
 }
 
@@ -7492,6 +8272,274 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      T-BEAMS READ-ONLY API
+      PORT 505 / UNIT 68
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/tbeams/state"
+      ) {
+
+        return sendJson(
+          response,
+          tBeamsLatest,
+          tBeamsLatest.ok
+          ?
+          200
+          :
+          503
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/trend"
+      ) {
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            sampleIntervalMs:
+              LIVE_SAMPLE_MS,
+            count:
+              tBeamsLiveHistory.length,
+            samples:
+              tBeamsLiveHistory
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history/range"
+      ) {
+
+        const first =
+          tBeamsLiveHistory.length
+          ?
+          tBeamsLiveHistory[0].timestamp
+          :
+          null;
+
+
+        const last =
+          tBeamsLiveHistory.length
+          ?
+          tBeamsLiveHistory[
+            tBeamsLiveHistory.length - 1
+          ].timestamp
+          :
+          null;
+
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            count:
+              tBeamsLiveHistory.length,
+            first,
+            last
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history"
+      ) {
+
+        const fromText =
+          url.searchParams.get(
+            "from"
+          );
+
+
+        const toText =
+          url.searchParams.get(
+            "to"
+          );
+
+
+        if (
+          !fromText
+          ||
+          !toText
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "from and to are required"
+            },
+            400
+          );
+
+        }
+
+
+        const from =
+          new Date(
+            fromText
+          );
+
+
+        const to =
+          new Date(
+            toText
+          );
+
+
+        if (
+          Number.isNaN(
+            from.getTime()
+          )
+          ||
+          Number.isNaN(
+            to.getTime()
+          )
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "Invalid date range"
+            },
+            400
+          );
+
+        }
+
+
+        const samples =
+          tBeamsLiveHistory.filter(
+            sample => {
+
+              const time =
+                new Date(
+                  sample.timestamp
+                ).getTime();
+
+
+              return (
+                time >=
+                from.getTime()
+                &&
+                time <=
+                to.getTime()
+              );
+
+            }
+          );
+
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            count:
+              samples.length,
+            from:
+              from.toISOString(),
+            to:
+              to.toISOString(),
+            samples
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/stream"
+      ) {
+
+        response.writeHead(
+          200,
+          {
+            "Content-Type":
+              "text/event-stream",
+
+            "Cache-Control":
+              "no-cache, no-transform",
+
+            "Connection":
+              "keep-alive",
+
+            "X-Accel-Buffering":
+              "no"
+          }
+        );
+
+
+        response.write(
+          `event: state\ndata: ${JSON.stringify(tBeamsLatest)}\n\n`
+        );
+
+
+        tBeamsStreamClients.add(
+          response
+        );
+
+
+        const keepAlive =
+          setInterval(
+            () => {
+
+              try {
+
+                response.write(
+                  ": keepalive\n\n"
+                );
+
+              }
+
+
+              catch {}
+
+            },
+            15000
+          );
+
+
+        request.on(
+          "close",
+          () => {
+
+            clearInterval(
+              keepAlive
+            );
+
+
+            tBeamsStreamClients.delete(
+              response
+            );
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+      ================================================
       CURRENT BMS STATE
       ================================================
       */
@@ -8382,6 +9430,16 @@ async function startServer() {
 
 
       console.log(
+        `T-Beams BMS: ${T_BEAMS_HOST}:${T_BEAMS_PORT}`
+      );
+
+
+      console.log(
+        `T-Beams Unit ID: ${T_BEAMS_UNIT_ID}`
+      );
+
+
+      console.log(
         "Function: FC03 / READ ONLY"
       );
 
@@ -8473,6 +9531,19 @@ async function startServer() {
 
 
   /*
+  CONTINUOUS T-BEAMS POLLING
+  */
+
+  await pollTBeams();
+
+
+  setInterval(
+    pollTBeams,
+    POLL_MS
+  );
+
+
+  /*
   FIRST LIVE SAMPLE
   */
 
@@ -8482,6 +9553,18 @@ async function startServer() {
 
     5000
 
+  );
+
+
+  setTimeout(
+    saveTBeamsLiveSample,
+    6000
+  );
+
+
+  setInterval(
+    saveTBeamsLiveSample,
+    LIVE_SAMPLE_MS
   );
 
 
