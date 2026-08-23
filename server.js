@@ -7280,6 +7280,300 @@ const server =
 
       /*
       ================================================
+      PUBLIC T-BEAMS READ-ONLY API
+      These routes are intentionally available before
+      the login gate. They do NOT permit Modbus writes.
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/tbeams/state"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        return sendJson(
+          response,
+          tBeamsLatest,
+          tBeamsLatest.ok
+          ?
+          200
+          :
+          503
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/trend"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            sampleIntervalMs:
+              LIVE_SAMPLE_MS,
+            count:
+              tBeamsLiveHistory.length,
+            samples:
+              tBeamsLiveHistory
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history/range"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        const first =
+          tBeamsLiveHistory.length
+          ?
+          tBeamsLiveHistory[0].timestamp
+          :
+          null;
+
+
+        const last =
+          tBeamsLiveHistory.length
+          ?
+          tBeamsLiveHistory[
+            tBeamsLiveHistory.length - 1
+          ].timestamp
+          :
+          null;
+
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            count:
+              tBeamsLiveHistory.length,
+            first,
+            last
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        const fromText =
+          url.searchParams.get(
+            "from"
+          );
+
+
+        const toText =
+          url.searchParams.get(
+            "to"
+          );
+
+
+        if (
+          !fromText
+          ||
+          !toText
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "from and to are required"
+            },
+            400
+          );
+
+        }
+
+
+        const from =
+          new Date(
+            fromText
+          );
+
+
+        const to =
+          new Date(
+            toText
+          );
+
+
+        if (
+          Number.isNaN(
+            from.getTime()
+          )
+          ||
+          Number.isNaN(
+            to.getTime()
+          )
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "Invalid date range"
+            },
+            400
+          );
+
+        }
+
+
+        const samples =
+          tBeamsLiveHistory.filter(
+            sample => {
+
+              const time =
+                new Date(
+                  sample.timestamp
+                ).getTime();
+
+
+              return (
+                time >=
+                from.getTime()
+                &&
+                time <=
+                to.getTime()
+              );
+
+            }
+          );
+
+
+        return sendJson(
+          response,
+          {
+            ok: true,
+            count:
+              samples.length,
+            from:
+              from.toISOString(),
+            to:
+              to.toISOString(),
+            samples
+          }
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/stream"
+
+        &&
+
+        request.method ===
+        "GET"
+      ) {
+
+        response.writeHead(
+          200,
+          {
+            "Content-Type":
+              "text/event-stream",
+
+            "Cache-Control":
+              "no-cache, no-transform",
+
+            "Connection":
+              "keep-alive",
+
+            "X-Accel-Buffering":
+              "no"
+          }
+        );
+
+
+        response.write(
+          `event: state\ndata: ${JSON.stringify(tBeamsLatest)}\n\n`
+        );
+
+
+        tBeamsStreamClients.add(
+          response
+        );
+
+
+        const keepAlive =
+          setInterval(
+            () => {
+
+              try {
+
+                response.write(
+                  ": keepalive\n\n"
+                );
+
+              }
+
+
+              catch {}
+
+            },
+            15000
+          );
+
+
+        request.on(
+          "close",
+          () => {
+
+            clearInterval(
+              keepAlive
+            );
+
+
+            tBeamsStreamClients.delete(
+              response
+            );
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+      ================================================
       EVERYTHING BELOW REQUIRES LOGIN
       ================================================
       */
