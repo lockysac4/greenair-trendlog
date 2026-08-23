@@ -1227,6 +1227,14 @@ const PLANKS_WRITE_POINTS = {
     min: 0,
     max: 100,
     scale: 1000
+  },
+
+  appOverride: {
+    name: "Boiler Override App",
+    register: 7121,
+    min: 0,
+    max: 1,
+    scale: 1000
   }
 
 };
