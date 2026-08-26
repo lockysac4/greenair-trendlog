@@ -184,6 +184,86 @@ let emailTimer =
 
 /*
 ==================================================
+EMAIL ALARM SYSTEM CONFIGURATION
+==================================================
+*/
+
+const ALARM_POLL_MS =
+  Math.max(
+    5000,
+    Number(
+      process.env.ALARM_POLL_MS ||
+      10000
+    ) || 10000
+  );
+
+
+const ALARM_NOTIFY_RETRY_MS =
+  60 * 1000;
+
+
+const EMAIL_ALARM_POINTS = [
+  {
+    key: "planks_boiler_fault",
+    system: "planks",
+    systemName: "Planks",
+    alarmName: "Boiler Fault",
+    host: BMS_HOST,
+    port: BMS_PORT,
+    unitId: UNIT_ID,
+    register: 8115,
+    activeValue: 1
+  },
+  {
+    key: "planks_loss_water_flow",
+    system: "planks",
+    systemName: "Planks",
+    alarmName: "Loss of Water Flow",
+    host: BMS_HOST,
+    port: BMS_PORT,
+    unitId: UNIT_ID,
+    register: 8117,
+    activeValue: 1
+  },
+  {
+    key: "tbeams_boiler_fault",
+    system: "tbeams",
+    systemName: "T-Beams",
+    alarmName: "Boiler Fault",
+    host: T_BEAMS_HOST,
+    port: T_BEAMS_PORT,
+    unitId: T_BEAMS_UNIT_ID,
+    register: 8115,
+    activeValue: 1
+  },
+  {
+    key: "tbeams_loss_water_flow",
+    system: "tbeams",
+    systemName: "T-Beams",
+    alarmName: "Loss of Water Flow",
+    host: T_BEAMS_HOST,
+    port: T_BEAMS_PORT,
+    unitId: T_BEAMS_UNIT_ID,
+    register: 8117,
+    activeValue: 1
+  }
+];
+
+
+let alarmPolling =
+  false;
+
+
+let alarmLastPollAt =
+  null;
+
+
+let alarmLastError =
+  null;
+
+
+/*
+==================================================
 DROPBOX OAUTH CONFIGURATION
 ==================================================
 */
@@ -262,6 +342,7 @@ function consumeDropboxOAuthState(
 ==================================================
 CREATE EMAIL TRANSPORTER
 ==================================================
+*/
 
 if (
   EMAIL_USER &&
@@ -1440,6 +1521,130 @@ async function initialiseDatabase() {
         row_count INTEGER NOT NULL DEFAULT 0
 
       )
+
+    `);
+
+
+    /*
+    EMAIL ALARM RECIPIENTS
+    */
+
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS email_alarm_recipients (
+
+        id BIGSERIAL PRIMARY KEY,
+
+        name TEXT NOT NULL DEFAULT '',
+
+        email TEXT UNIQUE NOT NULL,
+
+        planks_alarms BOOLEAN NOT NULL DEFAULT TRUE,
+
+        tbeams_alarms BOOLEAN NOT NULL DEFAULT TRUE,
+
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+      )
+
+    `);
+
+
+    /*
+    PERSISTED ALARM STATE
+    Prevents duplicate alarm emails after server restarts.
+    */
+
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS email_alarm_states (
+
+        alarm_key TEXT PRIMARY KEY,
+
+        system_key TEXT NOT NULL,
+
+        system_name TEXT NOT NULL,
+
+        alarm_name TEXT NOT NULL,
+
+        host TEXT NOT NULL,
+
+        port INTEGER NOT NULL,
+
+        unit_id INTEGER NOT NULL,
+
+        register INTEGER NOT NULL,
+
+        active_value INTEGER NOT NULL DEFAULT 1,
+
+        raw_value INTEGER,
+
+        active BOOLEAN NOT NULL DEFAULT FALSE,
+
+        notified_active BOOLEAN NOT NULL DEFAULT FALSE,
+
+        last_changed_at TIMESTAMPTZ,
+
+        last_notification_attempt_at TIMESTAMPTZ,
+
+        last_email_at TIMESTAMPTZ,
+
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+      )
+
+    `);
+
+
+    /*
+    ALARM EMAIL EVENT LOG
+    */
+
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS email_alarm_events (
+
+        id BIGSERIAL PRIMARY KEY,
+
+        alarm_key TEXT NOT NULL,
+
+        system_key TEXT NOT NULL,
+
+        alarm_name TEXT NOT NULL,
+
+        unit_id INTEGER NOT NULL,
+
+        register INTEGER NOT NULL,
+
+        raw_value INTEGER,
+
+        event_type TEXT NOT NULL,
+
+        event_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+        recipients TEXT[] NOT NULL DEFAULT '{}',
+
+        sent_count INTEGER NOT NULL DEFAULT 0,
+
+        success BOOLEAN NOT NULL DEFAULT FALSE,
+
+        error TEXT
+
+      )
+
+    `);
+
+
+    await db.query(`
+
+      CREATE INDEX IF NOT EXISTS
+        email_alarm_events_event_at_idx
+
+      ON email_alarm_events(event_at)
 
     `);
 
@@ -3151,6 +3356,1441 @@ function readRegisterFrom(
 
     }
   );
+
+}
+
+
+/*
+==================================================
+EMAIL ALARM SYSTEM
+==================================================
+*/
+
+function isValidAlarmEmail(
+  email
+) {
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    .test(
+      String(email || "")
+        .trim()
+    );
+
+}
+
+
+async function getEmailAlarmRecipients(
+  system = null
+) {
+
+  if (
+    !db
+  ) {
+    return [];
+  }
+
+
+  let where =
+    "WHERE enabled = TRUE";
+
+
+  if (
+    system ===
+    "planks"
+  ) {
+    where +=
+      " AND planks_alarms = TRUE";
+  }
+
+
+  if (
+    system ===
+    "tbeams"
+  ) {
+    where +=
+      " AND tbeams_alarms = TRUE";
+  }
+
+
+  const result =
+    await db.query(
+      `
+      SELECT
+        id,
+        name,
+        email,
+        planks_alarms,
+        tbeams_alarms,
+        enabled,
+        created_at,
+        updated_at
+      FROM email_alarm_recipients
+      ${where}
+      ORDER BY lower(name), lower(email)
+      `
+    );
+
+
+  return result.rows;
+
+}
+
+
+async function listAllEmailAlarmRecipients() {
+
+  if (
+    !db
+  ) {
+    return [];
+  }
+
+
+  const result =
+    await db.query(`
+      SELECT
+        id,
+        name,
+        email,
+        planks_alarms,
+        tbeams_alarms,
+        enabled,
+        created_at,
+        updated_at
+      FROM email_alarm_recipients
+      ORDER BY lower(name), lower(email)
+    `);
+
+
+  return result.rows;
+
+}
+
+
+async function logEmailAlarmEvent(
+  point,
+  eventType,
+  rawValue,
+  recipients,
+  success,
+  error = null
+) {
+
+  if (
+    !db
+  ) {
+    return;
+  }
+
+
+  try {
+
+    await db.query(
+      `
+      INSERT INTO email_alarm_events (
+        alarm_key,
+        system_key,
+        alarm_name,
+        unit_id,
+        register,
+        raw_value,
+        event_type,
+        recipients,
+        sent_count,
+        success,
+        error
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+      )
+      `,
+      [
+        point.key,
+        point.system,
+        point.alarmName,
+        point.unitId,
+        point.register,
+        rawValue,
+        eventType,
+        recipients,
+        success
+          ? recipients.length
+          : 0,
+        success,
+        error
+      ]
+    );
+
+  }
+
+
+  catch (
+    logError
+  ) {
+
+    console.error(
+      "Alarm event log failed:",
+      logError.message
+    );
+
+  }
+
+}
+
+
+async function sendEmailAlarmNotification(
+  point,
+  active,
+  rawValue
+) {
+
+  const recipients =
+    await getEmailAlarmRecipients(
+      point.system
+    );
+
+
+  const addresses =
+    [
+      ...new Set(
+        recipients
+          .map(
+            row =>
+              String(
+                row.email || ""
+              )
+                .trim()
+                .toLowerCase()
+          )
+          .filter(Boolean)
+      )
+    ];
+
+
+  if (
+    addresses.length ===
+    0
+  ) {
+
+    return {
+      ok: false,
+      retry: true,
+      error:
+        `No enabled ${point.systemName} alarm recipients are configured`,
+      recipients: []
+    };
+
+  }
+
+
+  if (
+    !emailTransporter
+  ) {
+
+    return {
+      ok: false,
+      retry: true,
+      error:
+        "Email is not configured. Set EMAIL_USER and EMAIL_APP_PASSWORD in Render.",
+      recipients:
+        addresses
+    };
+
+  }
+
+
+  const eventType =
+    active
+    ? "ALARM"
+    : "CLEARED";
+
+
+  const occurredAt =
+    new Date();
+
+
+  const occurredText =
+    formatAdelaideDateTime(
+      occurredAt
+    );
+
+
+  const subject =
+    active
+    ? `BIANCO PRECAST ALARM - ${point.systemName} - ${point.alarmName}`
+    : `BIANCO PRECAST CLEARED - ${point.systemName} - ${point.alarmName}`;
+
+
+  const stateText =
+    active
+    ? "ACTIVE"
+    : "CLEARED / NORMAL";
+
+
+  const text =
+`BIANCO PRECAST - GREENAIR ALARM SYSTEM
+
+${eventType}: ${point.alarmName}
+System: ${point.systemName}
+State: ${stateText}
+Panel / Unit ID: ${point.unitId}
+Register: ${point.register}
+Register value: ${rawValue}
+Time: ${occurredText}
+
+${active
+  ? "Please investigate this alarm."
+  : "This alarm has returned to normal."}
+
+Greenair Controls`;
+
+
+  const headingColour =
+    active
+    ? "#b71c1c"
+    : "#1b5e20";
+
+
+  const html =
+`<!doctype html>
+<html>
+<body style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;color:#222">
+  <div style="max-width:680px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+    <div style="padding:16px 20px;background:${headingColour};color:#fff;font-size:20px;font-weight:800">
+      ${eventType}: ${point.alarmName}
+    </div>
+    <div style="padding:20px">
+      <div style="font-size:18px;font-weight:800;margin-bottom:14px">BIANCO PRECAST — ${point.systemName}</div>
+      <table style="border-collapse:collapse;width:100%;font-size:14px">
+        <tr><td style="padding:7px;border-bottom:1px solid #eee;font-weight:700">State</td><td style="padding:7px;border-bottom:1px solid #eee">${stateText}</td></tr>
+        <tr><td style="padding:7px;border-bottom:1px solid #eee;font-weight:700">Panel / Unit ID</td><td style="padding:7px;border-bottom:1px solid #eee">${point.unitId}</td></tr>
+        <tr><td style="padding:7px;border-bottom:1px solid #eee;font-weight:700">Register</td><td style="padding:7px;border-bottom:1px solid #eee">${point.register}</td></tr>
+        <tr><td style="padding:7px;border-bottom:1px solid #eee;font-weight:700">Register value</td><td style="padding:7px;border-bottom:1px solid #eee">${rawValue}</td></tr>
+        <tr><td style="padding:7px;font-weight:700">Time</td><td style="padding:7px">${occurredText}</td></tr>
+      </table>
+      <p style="margin-top:18px">${active
+        ? "Please investigate this alarm."
+        : "This alarm has returned to normal."}</p>
+      <p style="margin-top:24px;color:#666;font-size:12px">Greenair Controls — Automatic alarm notification</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+
+  try {
+
+    await emailTransporter.sendMail({
+      from:
+        `Greenair Alarm System <${EMAIL_USER}>`,
+      to:
+        EMAIL_USER,
+      bcc:
+        addresses,
+      subject,
+      text,
+      html
+    });
+
+
+    emailConnected =
+      true;
+
+
+    lastEmailError =
+      null;
+
+
+    await logEmailAlarmEvent(
+      point,
+      eventType,
+      rawValue,
+      addresses,
+      true,
+      null
+    );
+
+
+    console.log(
+      `${eventType} email sent:`,
+      point.systemName,
+      point.alarmName,
+      "to",
+      addresses.length,
+      "recipient(s)"
+    );
+
+
+    return {
+      ok: true,
+      retry: false,
+      recipients:
+        addresses
+    };
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    emailConnected =
+      false;
+
+
+    lastEmailError =
+      error.message;
+
+
+    await logEmailAlarmEvent(
+      point,
+      eventType,
+      rawValue,
+      addresses,
+      false,
+      error.message
+    );
+
+
+    console.error(
+      "Alarm email failed:",
+      point.systemName,
+      point.alarmName,
+      error.message
+    );
+
+
+    return {
+      ok: false,
+      retry: true,
+      error:
+        error.message,
+      recipients:
+        addresses
+    };
+
+  }
+
+}
+
+
+async function processEmailAlarmPoint(
+  point
+) {
+
+  const rawValue =
+    await readRegisterFrom(
+      point.host,
+      point.port,
+      point.unitId,
+      point.register
+    );
+
+
+  const active =
+    rawValue ===
+    point.activeValue;
+
+
+  const existingResult =
+    await db.query(
+      `
+      SELECT
+        active,
+        notified_active,
+        last_notification_attempt_at
+      FROM email_alarm_states
+      WHERE alarm_key = $1
+      LIMIT 1
+      `,
+      [
+        point.key
+      ]
+    );
+
+
+  if (
+    existingResult.rowCount ===
+    0
+  ) {
+
+    await db.query(
+      `
+      INSERT INTO email_alarm_states (
+        alarm_key,
+        system_key,
+        system_name,
+        alarm_name,
+        host,
+        port,
+        unit_id,
+        register,
+        active_value,
+        raw_value,
+        active,
+        notified_active,
+        last_changed_at,
+        updated_at
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,FALSE,NOW(),NOW()
+      )
+      `,
+      [
+        point.key,
+        point.system,
+        point.systemName,
+        point.alarmName,
+        point.host,
+        point.port,
+        point.unitId,
+        point.register,
+        point.activeValue,
+        rawValue,
+        active
+      ]
+    );
+
+  }
+
+
+  else {
+
+    const previousActive =
+      Boolean(
+        existingResult.rows[0]
+          .active
+      );
+
+
+    await db.query(
+      `
+      UPDATE email_alarm_states
+      SET
+        raw_value = $2,
+        active = $3,
+        last_changed_at =
+          CASE
+            WHEN active IS DISTINCT FROM $3
+            THEN NOW()
+            ELSE last_changed_at
+          END,
+        updated_at = NOW()
+      WHERE alarm_key = $1
+      `,
+      [
+        point.key,
+        rawValue,
+        active
+      ]
+    );
+
+
+    if (
+      previousActive !==
+      active
+    ) {
+
+      console.log(
+        "Alarm state changed:",
+        point.systemName,
+        point.alarmName,
+        active
+          ? "ACTIVE"
+          : "CLEARED",
+        `value=${rawValue}`
+      );
+
+    }
+
+  }
+
+
+  const stateResult =
+    await db.query(
+      `
+      SELECT
+        active,
+        notified_active,
+        last_notification_attempt_at
+      FROM email_alarm_states
+      WHERE alarm_key = $1
+      LIMIT 1
+      `,
+      [
+        point.key
+      ]
+    );
+
+
+  if (
+    stateResult.rowCount ===
+    0
+  ) {
+    return;
+  }
+
+
+  const state =
+    stateResult.rows[0];
+
+
+  const notifiedActive =
+    Boolean(
+      state.notified_active
+    );
+
+
+  if (
+    notifiedActive ===
+    active
+  ) {
+    return;
+  }
+
+
+  const lastAttempt =
+    state.last_notification_attempt_at
+    ? new Date(
+        state.last_notification_attempt_at
+      ).getTime()
+    : 0;
+
+
+  if (
+    lastAttempt
+    &&
+    Date.now() -
+      lastAttempt <
+      ALARM_NOTIFY_RETRY_MS
+  ) {
+    return;
+  }
+
+
+  await db.query(
+    `
+    UPDATE email_alarm_states
+    SET
+      last_notification_attempt_at = NOW(),
+      updated_at = NOW()
+    WHERE alarm_key = $1
+    `,
+    [
+      point.key
+    ]
+  );
+
+
+  const notification =
+    await sendEmailAlarmNotification(
+      point,
+      active,
+      rawValue
+    );
+
+
+  if (
+    notification.ok
+  ) {
+
+    await db.query(
+      `
+      UPDATE email_alarm_states
+      SET
+        notified_active = $2,
+        last_email_at = NOW(),
+        updated_at = NOW()
+      WHERE alarm_key = $1
+      `,
+      [
+        point.key,
+        active
+      ]
+    );
+
+  }
+
+}
+
+
+async function pollEmailAlarms() {
+
+  if (
+    alarmPolling
+  ) {
+    return;
+  }
+
+
+  if (
+    !db
+  ) {
+
+    alarmLastError =
+      "DATABASE_URL is not configured";
+
+    return;
+
+  }
+
+
+  alarmPolling =
+    true;
+
+
+  try {
+
+    alarmLastError =
+      null;
+
+
+    for (
+      const point
+      of EMAIL_ALARM_POINTS
+    ) {
+
+      try {
+
+        await processEmailAlarmPoint(
+          point
+        );
+
+      }
+
+
+      catch (
+        pointError
+      ) {
+
+        console.error(
+          "Alarm register read failed:",
+          point.systemName,
+          point.alarmName,
+          `Unit ${point.unitId}`,
+          `Register ${point.register}`,
+          pointError.message
+        );
+
+
+        alarmLastError =
+          `${point.systemName} ${point.alarmName}: ${pointError.message}`;
+
+      }
+
+    }
+
+
+    alarmLastPollAt =
+      new Date();
+
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    alarmLastError =
+      error.message;
+
+
+    console.error(
+      "Email alarm poll failed:",
+      error.message
+    );
+
+  }
+
+
+  finally {
+
+    alarmPolling =
+      false;
+
+  }
+
+}
+
+
+async function emailAlarmRecipientsApi(
+  request,
+  response
+) {
+
+  const master =
+    await requireMasterUser(
+      request,
+      response
+    );
+
+
+  if (
+    !master
+  ) {
+    return;
+  }
+
+
+  if (
+    !db
+  ) {
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error:
+          "DATABASE_URL is not configured"
+      },
+      503
+    );
+
+  }
+
+
+  if (
+    request.method ===
+    "GET"
+  ) {
+
+    const recipients =
+      await listAllEmailAlarmRecipients();
+
+
+    return sendJson(
+      response,
+      {
+        ok: true,
+        recipients
+      }
+    );
+
+  }
+
+
+  if (
+    request.method !==
+    "POST"
+  ) {
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error:
+          "Method not allowed"
+      },
+      405
+    );
+
+  }
+
+
+  try {
+
+    const body =
+      await readJsonBody(
+        request,
+        131072
+      );
+
+
+    const source =
+      Array.isArray(
+        body.recipients
+      )
+      ? body.recipients
+      : [];
+
+
+    if (
+      source.length >
+      100
+    ) {
+
+      return sendJson(
+        response,
+        {
+          ok: false,
+          error:
+            "Maximum 100 email recipients"
+        },
+        400
+      );
+
+    }
+
+
+    const recipients =
+      [];
+
+
+    const seen =
+      new Set();
+
+
+    for (
+      const item
+      of source
+    ) {
+
+      const name =
+        String(
+          item.name || ""
+        )
+          .trim()
+          .slice(0, 120);
+
+
+      const email =
+        String(
+          item.email || ""
+        )
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        !name
+        &&
+        !email
+      ) {
+        continue;
+      }
+
+
+      if (
+        !isValidAlarmEmail(
+          email
+        )
+      ) {
+
+        return sendJson(
+          response,
+          {
+            ok: false,
+            error:
+              `Invalid email address: ${email || "blank email"}`
+          },
+          400
+        );
+
+      }
+
+
+      if (
+        seen.has(
+          email
+        )
+      ) {
+
+        return sendJson(
+          response,
+          {
+            ok: false,
+            error:
+              `Duplicate email address: ${email}`
+          },
+          400
+        );
+
+      }
+
+
+      seen.add(
+        email
+      );
+
+
+      recipients.push({
+        name,
+        email,
+        planksAlarms:
+          Boolean(
+            item.planksAlarms
+          ),
+        tbeamsAlarms:
+          Boolean(
+            item.tbeamsAlarms
+          ),
+        enabled:
+          Boolean(
+            item.enabled
+          )
+      });
+
+    }
+
+
+    const client =
+      await db.connect();
+
+
+    try {
+
+      await client.query(
+        "BEGIN"
+      );
+
+
+      await client.query(`
+        DELETE FROM email_alarm_recipients
+      `);
+
+
+      for (
+        const recipient
+        of recipients
+      ) {
+
+        await client.query(
+          `
+          INSERT INTO email_alarm_recipients (
+            name,
+            email,
+            planks_alarms,
+            tbeams_alarms,
+            enabled,
+            updated_at
+          )
+          VALUES ($1,$2,$3,$4,$5,NOW())
+          `,
+          [
+            recipient.name,
+            recipient.email,
+            recipient.planksAlarms,
+            recipient.tbeamsAlarms,
+            recipient.enabled
+          ]
+        );
+
+      }
+
+
+      await client.query(
+        "COMMIT"
+      );
+
+    }
+
+
+    catch (
+      error
+    ) {
+
+      await client.query(
+        "ROLLBACK"
+      );
+
+      throw error;
+
+    }
+
+
+    finally {
+
+      client.release();
+
+    }
+
+
+    console.log(
+      "Email alarm recipients saved:",
+      recipients.length,
+      "by",
+      master.username
+    );
+
+
+    const saved =
+      await listAllEmailAlarmRecipients();
+
+
+    return sendJson(
+      response,
+      {
+        ok: true,
+        recipients:
+          saved
+      }
+    );
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error:
+          error.message
+      },
+      500
+    );
+
+  }
+
+}
+
+
+async function emailAlarmStatusApi(
+  request,
+  response
+) {
+
+  const master =
+    await requireMasterUser(
+      request,
+      response
+    );
+
+
+  if (
+    !master
+  ) {
+    return;
+  }
+
+
+  let states =
+    [];
+
+
+  let recipientCount =
+    0;
+
+
+  if (
+    db
+  ) {
+
+    try {
+
+      const stateResult =
+        await db.query(`
+          SELECT
+            alarm_key,
+            system_key,
+            system_name,
+            alarm_name,
+            unit_id,
+            register,
+            active_value,
+            raw_value,
+            active,
+            notified_active,
+            last_changed_at,
+            last_email_at,
+            updated_at
+          FROM email_alarm_states
+          ORDER BY system_key, alarm_name
+        `);
+
+
+      states =
+        stateResult.rows;
+
+
+      const countResult =
+        await db.query(`
+          SELECT COUNT(*)::int AS count
+          FROM email_alarm_recipients
+          WHERE enabled = TRUE
+        `);
+
+
+      recipientCount =
+        Number(
+          countResult.rows[0]
+            .count || 0
+        );
+
+    }
+
+
+    catch (
+      error
+    ) {
+
+      alarmLastError =
+        error.message;
+
+    }
+
+  }
+
+
+  const stateByKey =
+    new Map(
+      states.map(
+        row => [
+          row.alarm_key,
+          row
+        ]
+      )
+    );
+
+
+  const alarms =
+    EMAIL_ALARM_POINTS.map(
+      point => {
+
+        const state =
+          stateByKey.get(
+            point.key
+          );
+
+
+        return {
+          key:
+            point.key,
+          system:
+            point.system,
+          systemName:
+            point.systemName,
+          alarmName:
+            point.alarmName,
+          unitId:
+            point.unitId,
+          register:
+            point.register,
+          activeValue:
+            point.activeValue,
+          rawValue:
+            state
+            ? state.raw_value
+            : null,
+          active:
+            state
+            ? Boolean(
+                state.active
+              )
+            : null,
+          notified:
+            state
+            ? Boolean(
+                state.notified_active
+              ) ===
+              Boolean(
+                state.active
+              )
+            : false,
+          lastChangedAt:
+            state
+            ? state.last_changed_at
+            : null,
+          lastEmailAt:
+            state
+            ? state.last_email_at
+            : null,
+          updatedAt:
+            state
+            ? state.updated_at
+            : null
+        };
+
+      }
+    );
+
+
+  return sendJson(
+    response,
+    {
+      ok: true,
+      databaseConfigured:
+        Boolean(db),
+      emailConfigured,
+      emailConnected,
+      emailUser:
+        EMAIL_USER
+        ? EMAIL_USER
+        : null,
+      recipientCount,
+      pollMs:
+        ALARM_POLL_MS,
+      lastPollAt:
+        alarmLastPollAt,
+      lastError:
+        alarmLastError,
+      emailError:
+        lastEmailError,
+      alarms
+    }
+  );
+
+}
+
+
+async function emailAlarmTestApi(
+  request,
+  response
+) {
+
+  const master =
+    await requireMasterUser(
+      request,
+      response
+    );
+
+
+  if (
+    !master
+  ) {
+    return;
+  }
+
+
+  if (
+    !emailTransporter
+  ) {
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error:
+          "Email is not configured. Set EMAIL_USER and EMAIL_APP_PASSWORD in Render."
+      },
+      503
+    );
+
+  }
+
+
+  try {
+
+    const recipients =
+      await getEmailAlarmRecipients();
+
+
+    const addresses =
+      [
+        ...new Set(
+          recipients
+            .map(
+              row =>
+                String(
+                  row.email || ""
+                )
+                  .trim()
+                  .toLowerCase()
+            )
+            .filter(Boolean)
+        )
+      ];
+
+
+    if (
+      addresses.length ===
+      0
+    ) {
+
+      return sendJson(
+        response,
+        {
+          ok: false,
+          error:
+            "Save at least one enabled email recipient first"
+        },
+        400
+      );
+
+    }
+
+
+    const nowText =
+      formatAdelaideDateTime(
+        new Date()
+      );
+
+
+    await emailTransporter.sendMail({
+      from:
+        `Greenair Alarm System <${EMAIL_USER}>`,
+      to:
+        EMAIL_USER,
+      bcc:
+        addresses,
+      subject:
+        "Greenair Alarm System - Test Email",
+      text:
+`BIANCO PRECAST - GREENAIR ALARM SYSTEM
+
+This is a test email from the Email Alarm Register.
+
+Time: ${nowText}
+Recipients: ${addresses.length}
+
+If you received this message, the Greenair alarm email sender is working.`,
+      html:
+`<div style="font-family:Arial,Helvetica,sans-serif;max-width:650px;margin:auto">
+  <h2 style="color:#1b5e20">Greenair Alarm System — Test Email</h2>
+  <p>This is a test email from the Bianco Precast Email Alarm Register.</p>
+  <p><strong>Time:</strong> ${nowText}</p>
+  <p>If you received this message, the Greenair alarm email sender is working.</p>
+</div>`
+    });
+
+
+    emailConnected =
+      true;
+
+
+    lastEmailError =
+      null;
+
+
+    console.log(
+      "Alarm test email sent to",
+      addresses.length,
+      "recipient(s) by",
+      master.username
+    );
+
+
+    return sendJson(
+      response,
+      {
+        ok: true,
+        message:
+          "Test email sent",
+        recipientCount:
+          addresses.length
+      }
+    );
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    emailConnected =
+      false;
+
+
+    lastEmailError =
+      error.message;
+
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error:
+          error.message
+      },
+      502
+    );
+
+  }
 
 }
 
@@ -8234,6 +9874,52 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      EMAIL ALARM REGISTER PAGE
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/email-alarm-register"
+        ||
+        url.pathname ===
+        "/email-alarm-register.html"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          response.writeHead(
+            403,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8",
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+
+          return response.end(
+            "Master access required"
+          );
+
+        }
+
+
+        return servePublicFile(
+          response,
+          "email-alarm-register.html"
+        );
+
+      }
+
+
+      /*
+      ================================================
       LIST USERS
       MASTER ONLY
       ================================================
@@ -8378,6 +10064,66 @@ h1{color:#1b5e20;margin-top:0}
 
       }
 
+
+
+      /*
+      ================================================
+      EMAIL ALARM RECIPIENT REGISTER
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/email-alarms/recipients"
+        &&
+        (
+          request.method ===
+          "GET"
+          ||
+          request.method ===
+          "POST"
+        )
+      ) {
+
+        return emailAlarmRecipientsApi(
+          request,
+          response
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/email-alarms/status"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        return emailAlarmStatusApi(
+          request,
+          response
+        );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/email-alarms/test"
+        &&
+        request.method ===
+        "POST"
+      ) {
+
+        return emailAlarmTestApi(
+          request,
+          response
+        );
+
+      }
 
 
       /*
@@ -9774,6 +11520,16 @@ async function startServer() {
 
 
       console.log(
+        `Email alarm poll: ${ALARM_POLL_MS / 1000} seconds`
+      );
+
+
+      console.log(
+        "Alarm points: Planks U69 8115/8117, T-Beams U68 8115/8117"
+      );
+
+
+      console.log(
         "Function: FC03 / READ ONLY"
       );
 
@@ -9874,6 +11630,24 @@ async function startServer() {
   setInterval(
     pollTBeams,
     POLL_MS
+  );
+
+
+  /*
+  EMAIL ALARM MONITOR
+  Planks Unit 69 and T-Beams Unit 68.
+  0 = normal, 1 = alarm.
+  */
+
+  setTimeout(
+    pollEmailAlarms,
+    3000
+  );
+
+
+  setInterval(
+    pollEmailAlarms,
+    ALARM_POLL_MS
   );
 
 
