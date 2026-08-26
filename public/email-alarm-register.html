@@ -2,28 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Greenair TrendLog - Email Alarm Register</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f4f3;color:#222}
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 18px;background:white;border-bottom:1px solid #d6d6d6}
-.brand{display:flex;align-items:center;gap:12px}.brand-logo{display:block;width:160px;max-height:52px;object-fit:contain}
-.brand-text{display:flex;flex-direction:column}.bianco{color:#f57c00;font-size:20px;font-weight:900}.greenair{color:#1b5e20;font-size:14px;font-weight:800}
-.top-actions{display:flex;gap:8px;flex-wrap:wrap}.top-actions a,.top-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border:1px solid #ccc;border-radius:5px;background:white;color:#222;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer}
-.top-actions .back{background:#082847;color:white;border-color:#082847}.top-actions .logout{background:#b71c1c;color:white;border-color:#b71c1c}
-.wrap{max-width:1180px;margin:24px auto;padding:0 16px}.panel{background:white;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:18px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid #d6d6d6}
+.brand{display:flex;align-items:center;gap:12px}.brand-logo{display:block;width:160px;max-height:52px;object-fit:contain}.brand-text{display:flex;flex-direction:column}.bianco{color:#f57c00;font-size:20px;font-weight:900}.greenair{color:#1b5e20;font-size:14px;font-weight:800}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}.top-actions a,.top-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border:1px solid #ccc;border-radius:5px;background:#fff;color:#222;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer}.top-actions .back{background:#082847;color:#fff;border-color:#082847}.top-actions .logout{background:#b71c1c;color:#fff;border-color:#b71c1c}
+.wrap{max-width:1180px;margin:24px auto;padding:0 16px}.panel{background:#fff;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:18px}
 h1,h2{margin-top:0}h1{margin-bottom:6px;font-size:22px}h2{font-size:17px;margin-bottom:8px}.sub{color:#666;font-size:12px}.intro{margin-top:14px;color:#555;font-size:13px;line-height:1.5}
-.status-banner{display:flex;align-items:center;gap:10px;margin-top:16px;padding:10px 12px;border:1px solid #f0c36d;border-radius:6px;background:#fff8e8;color:#7a4d00;font-size:12px;font-weight:800}.status-dot{width:9px;height:9px;border-radius:50%;background:#ef6c00;flex:0 0 auto}
+.status-banner{display:flex;align-items:flex-start;gap:10px;margin-top:16px;padding:10px 12px;border:1px solid #c8c8c8;border-radius:6px;background:#f7f7f7;color:#444;font-size:12px;font-weight:800;line-height:1.4}.status-banner.good{border-color:#9ccc9c;background:#eff8ef;color:#1b5e20}.status-banner.warn{border-color:#f0c36d;background:#fff8e8;color:#7a4d00}.status-banner.bad{border-color:#e2a0a0;background:#fff0f0;color:#8b1a1a}.status-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:0 0 auto;margin-top:3px}.good .status-dot{background:#2e7d32}.warn .status-dot{background:#ef6c00}.bad .status-dot{background:#c62828}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}.section-head p{margin:0;color:#666;font-size:12px}
-.add-button{min-height:38px;padding:0 15px;border:0;border-radius:5px;background:#1b5e20;color:white;font-size:12px;font-weight:900;cursor:pointer}
+.add-button,.save-button,.test-button{min-height:38px;padding:0 15px;border:0;border-radius:5px;color:#fff;font-size:12px;font-weight:900;cursor:pointer}.add-button{background:#1b5e20}.save-button{background:#1565c0}.test-button{background:#6a1b9a}.add-button:disabled,.save-button:disabled,.test-button:disabled{opacity:.5;cursor:not-allowed}
 .table-wrap{overflow-x:auto;border:1px solid #e2e2e2;border-radius:6px}table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:10px;border-bottom:1px solid #e8e8e8;text-align:left;font-size:12px;vertical-align:middle}th{background:#f7f7f7;font-weight:900;color:#333}tbody tr:last-child td{border-bottom:0}
-.cell-input{width:100%;min-width:150px;height:38px;padding:0 10px;border:1px solid #bbb;border-radius:5px;background:white;font-size:13px}.email-input{min-width:240px}
-.alarm-check{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-weight:700}.alarm-check input{width:17px;height:17px;accent-color:#1b5e20}
-.remove-button{min-height:34px;padding:0 10px;border:1px solid #b71c1c;border-radius:5px;background:white;color:#b71c1c;font-size:11px;font-weight:800;cursor:pointer}.remove-button:hover{background:#fff2f2}
-.footer-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}.not-saved{margin-right:auto;color:#777;font-size:11px}.save-button{min-height:38px;padding:0 16px;border:0;border-radius:5px;background:#bdbdbd;color:#666;font-size:12px;font-weight:900;cursor:not-allowed}
-.example-note{padding:12px;border-left:4px solid #1565c0;background:#f4f8ff;color:#445;font-size:12px;line-height:1.5}
-@media(max-width:760px){.topbar{align-items:flex-start;flex-direction:column}.brand-logo{width:140px}.section-head{align-items:flex-start}.wrap{margin-top:14px}.panel{padding:14px}}
+.cell-input{width:100%;min-width:150px;height:38px;padding:0 10px;border:1px solid #bbb;border-radius:5px;background:#fff;font-size:13px}.cell-input.invalid{border-color:#c62828;background:#fff5f5}.email-input{min-width:240px}.alarm-check{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-weight:700}.alarm-check input{width:17px;height:17px;accent-color:#1b5e20}.remove-button{min-height:34px;padding:0 10px;border:1px solid #b71c1c;border-radius:5px;background:#fff;color:#b71c1c;font-size:11px;font-weight:800;cursor:pointer}.remove-button:hover{background:#fff2f2}
+.footer-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}.save-status{margin-right:auto;color:#666;font-size:11px;min-height:16px}.save-status.good{color:#1b5e20;font-weight:800}.save-status.bad{color:#b71c1c;font-weight:800}
+.alarm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.alarm-card{border:1px solid #ddd;border-radius:7px;padding:14px;background:#fafafa}.alarm-card.active{border-color:#d32f2f;background:#fff1f1}.alarm-card.normal{border-color:#8fbd91;background:#f2faf2}.alarm-card.unknown{border-color:#d0d0d0;background:#fafafa}.alarm-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.alarm-name{font-size:15px;font-weight:900}.alarm-system{font-size:11px;color:#666;margin-top:2px}.alarm-state{padding:4px 8px;border-radius:999px;background:#ddd;font-size:10px;font-weight:900;white-space:nowrap}.active .alarm-state{background:#c62828;color:#fff}.normal .alarm-state{background:#2e7d32;color:#fff}.alarm-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.meta-box{background:#fff;border:1px solid #e5e5e5;border-radius:5px;padding:8px}.meta-label{font-size:9px;color:#777;text-transform:uppercase;font-weight:800}.meta-value{font-size:13px;font-weight:900;margin-top:3px}.small-note{font-size:11px;color:#666;line-height:1.5}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#555}.legend strong{color:#222}
+@media(max-width:760px){.topbar{align-items:flex-start;flex-direction:column}.brand-logo{width:140px}.section-head{align-items:flex-start}.wrap{margin-top:14px}.panel{padding:14px}.alarm-grid{grid-template-columns:1fr}.footer-actions{justify-content:stretch}.footer-actions button{flex:1}.save-status{flex-basis:100%;margin-right:0}}
 </style>
 </head>
 <body>
@@ -43,15 +39,15 @@ h1,h2{margin-top:0}h1{margin-bottom:6px;font-size:22px}h2{font-size:17px;margin-
   <div class="panel">
     <h1>Email Alarm Register</h1>
     <div id="currentUser" class="sub">Checking Master account...</div>
-    <div class="intro">Add the people who will receive alarm emails from the Bianco Precast monitoring system. Each recipient can be assigned to Planks alarms, T-Beams alarms, or both.</div>
-    <div class="status-banner"><span class="status-dot"></span>LAYOUT ONLY — email addresses are not being saved and alarm emails are not being sent yet.</div>
+    <div class="intro">Manage who receives automatic Bianco Precast alarm emails. Recipients can be assigned to Planks alarms, T-Beams alarms, or both.</div>
+    <div id="systemStatus" class="status-banner"><span class="status-dot"></span><span>Checking database, email sender and alarm monitor...</span></div>
   </div>
 
   <div class="panel">
     <div class="section-head">
       <div>
         <h2 style="margin-bottom:4px">Alarm Email Recipients</h2>
-        <p>Add one row for each person who should receive alarm notifications.</p>
+        <p>Recipients are saved permanently in the TrendLog PostgreSQL database.</p>
       </div>
       <button id="addRecipientButton" class="add-button" type="button">+ Add Email Recipient</button>
     </div>
@@ -68,39 +64,38 @@ h1,h2{margin-top:0}h1{margin-bottom:6px;font-size:22px}h2{font-size:17px;margin-
             <th>Action</th>
           </tr>
         </thead>
-        <tbody id="recipientBody">
-          <tr class="recipient-row">
-            <td><input class="cell-input" type="text" placeholder="e.g. Locky Weeks" autocomplete="off"></td>
-            <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
-            <td><label class="alarm-check"><input type="checkbox" checked> Receive</label></td>
-            <td><label class="alarm-check"><input type="checkbox" checked> Receive</label></td>
-            <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
-            <td><button class="remove-button" type="button">Remove</button></td>
-          </tr>
-          <tr class="recipient-row">
-            <td><input class="cell-input" type="text" placeholder="Recipient name" autocomplete="off"></td>
-            <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
-            <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
-            <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
-            <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
-            <td><button class="remove-button" type="button">Remove</button></td>
-          </tr>
-        </tbody>
+        <tbody id="recipientBody"></tbody>
       </table>
     </div>
 
     <div class="footer-actions">
-      <div class="not-saved">Changes on this page are temporary until we connect the register to the server.</div>
-      <button class="save-button" type="button" disabled title="Server saving will be added in the next stage">Save Email Register</button>
+      <div id="saveStatus" class="save-status">Loading saved recipients...</div>
+      <button id="testButton" class="test-button" type="button">Send Test Email</button>
+      <button id="saveButton" class="save-button" type="button">Save Email Register</button>
     </div>
   </div>
 
   <div class="panel">
-    <h2>How this will work</h2>
-    <div class="example-note">
-      <strong>Planks Alarms</strong> will control whether that email receives Planks alarm notifications.<br>
-      <strong>T-Beams Alarms</strong> will control whether that email receives T-Beams alarm notifications.<br>
-      <strong>Enabled</strong> will allow an address to be temporarily switched off without deleting it.
+    <div class="section-head">
+      <div>
+        <h2 style="margin-bottom:4px">Live Alarm Monitor</h2>
+        <p>Alarm value <strong>1 = ACTIVE</strong>. Value <strong>0 = NORMAL</strong>.</p>
+      </div>
+      <div id="lastPoll" class="sub">Waiting for first alarm poll...</div>
+    </div>
+    <div id="alarmGrid" class="alarm-grid"></div>
+    <div class="legend">
+      <span><strong>Planks:</strong> Panel / Unit 69</span>
+      <span><strong>T-Beams:</strong> Panel / Unit 68</span>
+      <span><strong>Boiler Fault:</strong> Register 8115</span>
+      <span><strong>Loss of Water Flow:</strong> Register 8117</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Alarm Email Behaviour</h2>
+    <div class="small-note">
+      An email is sent when an alarm changes from <strong>0 to 1</strong>. The same active alarm is not repeatedly emailed while it remains at 1. When the register returns from <strong>1 to 0</strong>, a <strong>CLEARED</strong> email is sent. Alarm notification state is stored in PostgreSQL so a Render restart does not resend an alarm that has already been notified.
     </div>
   </div>
 </div>
@@ -108,68 +103,134 @@ h1,h2{margin-top:0}h1{margin-bottom:6px;font-size:22px}h2{font-size:17px;margin-
 <script>
 const recipientBody=document.getElementById('recipientBody');
 const addRecipientButton=document.getElementById('addRecipientButton');
+const saveButton=document.getElementById('saveButton');
+const testButton=document.getElementById('testButton');
+const saveStatus=document.getElementById('saveStatus');
+const systemStatus=document.getElementById('systemStatus');
+const alarmGrid=document.getElementById('alarmGrid');
+const lastPoll=document.getElementById('lastPoll');
 
-function bindRemoveButtons(){
-  recipientBody.querySelectorAll('.remove-button').forEach(button=>{
-    if(button.dataset.bound==='1')return;
-    button.dataset.bound='1';
-    button.addEventListener('click',()=>{
-      const rows=recipientBody.querySelectorAll('.recipient-row');
-      if(rows.length<=1){
-        const row=button.closest('.recipient-row');
-        row.querySelectorAll('input[type="text"],input[type="email"]').forEach(input=>input.value='');
-        row.querySelectorAll('input[type="checkbox"]').forEach((input,index)=>input.checked=index===2);
-        return;
-      }
-      button.closest('.recipient-row').remove();
-    });
-  });
+function esc(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));}
+function formatTime(value){if(!value)return '—';const date=new Date(value);if(Number.isNaN(date.getTime()))return '—';return date.toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
+
+async function fetchJson(url,options={}){
+  const response=await fetch(url,{cache:'no-store',...options});
+  let data={};
+  try{data=await response.json();}catch{}
+  if(!response.ok){if(response.status===401)location.href='/login';throw new Error(data.error||`Request failed (${response.status})`);}
+  return data;
 }
 
-addRecipientButton.addEventListener('click',()=>{
+function recipientRow(data={}){
   const row=document.createElement('tr');
   row.className='recipient-row';
   row.innerHTML=`
-    <td><input class="cell-input" type="text" placeholder="Recipient name" autocomplete="off"></td>
-    <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
-    <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
-    <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
-    <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
+    <td><input class="cell-input recipient-name" type="text" maxlength="120" placeholder="Recipient name" autocomplete="off" value="${esc(data.name||'')}"></td>
+    <td><input class="cell-input email-input recipient-email" type="email" maxlength="254" placeholder="name@example.com" autocomplete="off" value="${esc(data.email||'')}"></td>
+    <td><label class="alarm-check"><input class="recipient-planks" type="checkbox" ${data.planks_alarms!==false?'checked':''}> Receive</label></td>
+    <td><label class="alarm-check"><input class="recipient-tbeams" type="checkbox" ${data.tbeams_alarms!==false?'checked':''}> Receive</label></td>
+    <td><label class="alarm-check"><input class="recipient-enabled" type="checkbox" ${data.enabled!==false?'checked':''}> Active</label></td>
     <td><button class="remove-button" type="button">Remove</button></td>`;
-  recipientBody.appendChild(row);
-  bindRemoveButtons();
-  row.querySelector('input').focus();
+  row.querySelector('.remove-button').addEventListener('click',()=>{row.remove();if(!recipientBody.children.length)recipientBody.appendChild(recipientRow({planks_alarms:true,tbeams_alarms:true,enabled:true}));markChanged();});
+  row.querySelectorAll('input').forEach(input=>input.addEventListener('input',markChanged));
+  return row;
+}
+
+function markChanged(){saveStatus.className='save-status';saveStatus.textContent='Unsaved changes';}
+
+function renderRecipients(recipients){recipientBody.innerHTML='';const list=Array.isArray(recipients)?recipients:[];if(!list.length){recipientBody.appendChild(recipientRow({planks_alarms:true,tbeams_alarms:true,enabled:true}));return;}list.forEach(item=>recipientBody.appendChild(recipientRow(item)));}
+
+function collectRecipients(){
+  const rows=[...recipientBody.querySelectorAll('.recipient-row')];
+  const recipients=[];
+  let invalid=false;
+  rows.forEach(row=>{
+    const name=row.querySelector('.recipient-name').value.trim();
+    const emailInput=row.querySelector('.recipient-email');
+    const email=emailInput.value.trim().toLowerCase();
+    emailInput.classList.remove('invalid');
+    if(!name&&!email)return;
+    if(!email||!emailInput.checkValidity()){emailInput.classList.add('invalid');invalid=true;return;}
+    recipients.push({name,email,planksAlarms:row.querySelector('.recipient-planks').checked,tbeamsAlarms:row.querySelector('.recipient-tbeams').checked,enabled:row.querySelector('.recipient-enabled').checked});
+  });
+  if(invalid)throw new Error('Please correct the highlighted email address.');
+  const emails=recipients.map(r=>r.email);if(new Set(emails).size!==emails.length)throw new Error('The same email address is listed more than once.');
+  return recipients;
+}
+
+function renderSystemStatus(data){
+  systemStatus.className='status-banner';
+  let message='';
+  if(!data.databaseConfigured){systemStatus.classList.add('bad');message='Database is not configured — recipients and alarm state cannot be saved.';}
+  else if(!data.emailConfigured){systemStatus.classList.add('warn');message='Database ready, but email is not configured. Add EMAIL_USER and EMAIL_APP_PASSWORD in Render.';}
+  else if(!data.emailConnected){systemStatus.classList.add('warn');message=`Email is configured but not currently verified${data.emailError?`: ${data.emailError}`:''}.`;}
+  else{systemStatus.classList.add('good');message=`Alarm system ready — email sender connected, ${data.recipientCount} enabled recipient${data.recipientCount===1?'':'s'}, polling every ${Math.round(data.pollMs/1000)} seconds.`;}
+  systemStatus.querySelector('span:last-child').textContent=message;
+  lastPoll.textContent=data.lastPollAt?`Last alarm poll: ${formatTime(data.lastPollAt)}`:'Waiting for first alarm poll...';
+}
+
+function renderAlarms(alarms){
+  alarmGrid.innerHTML='';
+  (Array.isArray(alarms)?alarms:[]).forEach(alarm=>{
+    const card=document.createElement('div');
+    const state=alarm.active===true?'active':alarm.active===false?'normal':'unknown';
+    const stateText=alarm.active===true?'ALARM ACTIVE':alarm.active===false?'NORMAL':'WAITING';
+    card.className=`alarm-card ${state}`;
+    card.innerHTML=`
+      <div class="alarm-title"><div><div class="alarm-name">${esc(alarm.alarmName)}</div><div class="alarm-system">${esc(alarm.systemName)}</div></div><div class="alarm-state">${stateText}</div></div>
+      <div class="alarm-meta">
+        <div class="meta-box"><div class="meta-label">Panel / Unit</div><div class="meta-value">${esc(alarm.unitId)}</div></div>
+        <div class="meta-box"><div class="meta-label">Register</div><div class="meta-value">${esc(alarm.register)}</div></div>
+        <div class="meta-box"><div class="meta-label">Value</div><div class="meta-value">${alarm.rawValue===null||alarm.rawValue===undefined?'—':esc(alarm.rawValue)}</div></div>
+      </div>
+      <div class="small-note" style="margin-top:10px">Last change: ${formatTime(alarm.lastChangedAt)}${alarm.lastEmailAt?` · Last email: ${formatTime(alarm.lastEmailAt)}`:''}</div>`;
+    alarmGrid.appendChild(card);
+  });
+}
+
+async function loadRecipients(){
+  try{const data=await fetchJson('/api/email-alarms/recipients');renderRecipients(data.recipients);saveStatus.className='save-status good';saveStatus.textContent=`Loaded ${data.recipients.length} saved recipient${data.recipients.length===1?'':'s'}.`;}
+  catch(error){renderRecipients([]);saveStatus.className='save-status bad';saveStatus.textContent=error.message;}
+}
+
+async function loadStatus(){
+  try{const data=await fetchJson('/api/email-alarms/status');renderSystemStatus(data);renderAlarms(data.alarms);}
+  catch(error){systemStatus.className='status-banner bad';systemStatus.querySelector('span:last-child').textContent=error.message;}
+}
+
+addRecipientButton.addEventListener('click',()=>{const row=recipientRow({planks_alarms:true,tbeams_alarms:true,enabled:true});recipientBody.appendChild(row);row.querySelector('.recipient-name').focus();markChanged();});
+
+saveButton.addEventListener('click',async()=>{
+  try{
+    const recipients=collectRecipients();
+    saveButton.disabled=true;testButton.disabled=true;saveStatus.className='save-status';saveStatus.textContent='Saving email register...';
+    const data=await fetchJson('/api/email-alarms/recipients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients})});
+    renderRecipients(data.recipients);saveStatus.className='save-status good';saveStatus.textContent=`Saved ${data.recipients.length} recipient${data.recipients.length===1?'':'s'} successfully.`;await loadStatus();
+  }catch(error){saveStatus.className='save-status bad';saveStatus.textContent=error.message;}
+  finally{saveButton.disabled=false;testButton.disabled=false;}
 });
 
-bindRemoveButtons();
+testButton.addEventListener('click',async()=>{
+  try{
+    testButton.disabled=true;saveButton.disabled=true;saveStatus.className='save-status';saveStatus.textContent='Sending test email to enabled recipients...';
+    const data=await fetchJson('/api/email-alarms/test',{method:'POST'});
+    saveStatus.className='save-status good';saveStatus.textContent=`Test email sent to ${data.recipientCount} recipient${data.recipientCount===1?'':'s'}.`;
+    await loadStatus();
+  }catch(error){saveStatus.className='save-status bad';saveStatus.textContent=error.message;}
+  finally{testButton.disabled=false;saveButton.disabled=false;}
+});
 
-async function fetchJson(url,options={}){
-  const response=await fetch(url,options);
-  const data=await response.json();
-  if(!response.ok){
-    if(response.status===401)location.href='/login';
-    throw new Error(data.error||'Request failed');
-  }
-  return data;
-}
+document.getElementById('logoutButton').addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST'});}catch{}location.href='/login';});
 
 (async()=>{
   try{
     const data=await fetchJson('/api/auth/me');
-    if(data.user.role!=='master'){
-      document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";
-      return;
-    }
+    if(data.user.role!=='master'){document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";return;}
     document.getElementById('currentUser').textContent=`Logged in as ${data.user.username} — Master Administrator`;
-  }catch{
-    location.href='/login';
-  }
+    await Promise.all([loadRecipients(),loadStatus()]);
+    setInterval(loadStatus,5000);
+  }catch{location.href='/login';}
 })();
-
-document.getElementById('logoutButton').addEventListener('click',async()=>{
-  try{await fetch('/api/auth/logout',{method:'POST'})}catch{}
-  location.href='/login';
-});
 </script>
 </body>
 </html>
