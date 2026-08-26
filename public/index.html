@@ -13,6 +13,7 @@
 <title>Bianco Precast - Greenair TrendLog</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
 
@@ -3337,101 +3338,175 @@ window.addEventListener(
 
 
 /* ==================================================
-PNG EXPORT
+PNG EXPORT - FULL PRINT PAGE
 ================================================== */
+
+function collectPrintCss() {
+
+  let css = "";
+
+  for (const sheet of document.styleSheets) {
+
+    let rules;
+
+    try {
+      rules = sheet.cssRules;
+    }
+    catch {
+      continue;
+    }
+
+    for (const rule of rules) {
+
+      if (
+        rule.type === CSSRule.MEDIA_RULE &&
+        String(rule.conditionText || "").toLowerCase().includes("print")
+      ) {
+
+        for (const innerRule of rule.cssRules) {
+          css += innerRule.cssText + "\n";
+        }
+
+      }
+
+    }
+
+  }
+
+  return css;
+
+}
+
+
+async function exportFullPrintPagePng() {
+
+  if (typeof html2canvas !== "function") {
+    alert("PNG export library did not load. Refresh the page and try again.");
+    return;
+  }
+
+  pngButton.disabled = true;
+
+  preparePrintChart();
+
+  const printStyle =
+    document.createElement("style");
+
+  printStyle.id =
+    "png-print-layout-style";
+
+  printStyle.textContent =
+    collectPrintCss() + `
+
+      html, body {
+        width: 414mm !important;
+        height: 291mm !important;
+        min-height: 291mm !important;
+        max-height: 291mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        overflow: hidden !important;
+      }
+    `;
+
+  document.head.appendChild(
+    printStyle
+  );
+
+  try {
+
+    await new Promise(
+      resolve =>
+        requestAnimationFrame(
+          () =>
+            requestAnimationFrame(resolve)
+        )
+    );
+
+    chart.resize();
+    chart.update("none");
+
+    await new Promise(
+      resolve => setTimeout(resolve, 150)
+    );
+
+    const captureWidth =
+      Math.ceil(
+        document.documentElement.scrollWidth
+      );
+
+    const captureHeight =
+      Math.ceil(
+        document.documentElement.scrollHeight
+      );
+
+    const fullPageCanvas =
+      await html2canvas(
+        document.body,
+        {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          width: captureWidth,
+          height: captureHeight,
+          windowWidth: captureWidth,
+          windowHeight: captureHeight
+        }
+      );
+
+    const link =
+      document.createElement("a");
+
+    link.download =
+      "Bianco_Planks_Trend_Full_Page.png";
+
+    link.href =
+      fullPageCanvas.toDataURL(
+        "image/png"
+      );
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+    link.remove();
+
+  }
+  catch (error) {
+
+    console.error(
+      "Full-page PNG export failed:",
+      error
+    );
+
+    alert(
+      "Unable to create the PNG. Please refresh the page and try again."
+    );
+
+  }
+  finally {
+
+    printStyle.remove();
+
+    restoreNormalChart();
+
+    pngButton.disabled = false;
+
+  }
+
+}
+
 
 pngButton.addEventListener(
 
   "click",
 
-  () => {
-
-    preparePrintChart();
-
-
-    setTimeout(
-
-      () => {
-
-        chart.resize();
-        chart.update("none");
-
-
-        const sourceCanvas =
-          document.getElementById(
-            "trendChart"
-          );
-
-
-        const exportCanvas =
-          document.createElement(
-            "canvas"
-          );
-
-
-        exportCanvas.width =
-          sourceCanvas.width;
-
-        exportCanvas.height =
-          sourceCanvas.height;
-
-
-        const context =
-          exportCanvas.getContext(
-            "2d"
-          );
-
-
-        context.fillStyle =
-          "#ffffff";
-
-        context.fillRect(
-          0,
-          0,
-          exportCanvas.width,
-          exportCanvas.height
-        );
-
-
-        context.drawImage(
-          sourceCanvas,
-          0,
-          0
-        );
-
-
-        const link =
-          document.createElement(
-            "a"
-          );
-
-
-        link.download =
-          "Bianco_Planks_Trend.png";
-
-        link.href =
-          exportCanvas.toDataURL(
-            "image/png"
-          );
-
-
-        document.body.appendChild(
-          link
-        );
-
-        link.click();
-        link.remove();
-
-
-        restoreNormalChart();
-
-      },
-
-      150
-
-    );
-
-  }
+  exportFullPrintPagePng
 
 );
 
