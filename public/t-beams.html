@@ -269,6 +269,14 @@ TOOLBAR
 }
 
 
+.png-button {
+  background: #2e7d32 !important;
+  color: white !important;
+  border-color: #2e7d32 !important;
+  font-weight: 800;
+}
+
+
 .user-button {
   background: #1565c0 !important;
   color: white !important;
@@ -681,11 +689,7 @@ PRINT - ONE A3 LANDSCAPE PAGE
 
 
   .greenair-title {
-    font-size: 11pt !important;
-
-    line-height: 1 !important;
-
-    margin-top: 1mm !important;
+    display: none !important;
   }
 
 
@@ -770,7 +774,8 @@ PRINT - ONE A3 LANDSCAPE PAGE
 
   /* DON'T PRINT PRINT BUTTON */
 
-  #printButton {
+  #printButton,
+  #pngButton {
     display: none !important;
   }
 
@@ -1181,6 +1186,15 @@ TOOLBAR
 
 
   <button
+    id="pngButton"
+    class="png-button"
+    type="button"
+  >
+    PNG
+  </button>
+
+
+  <button
     id="exportButton"
     class="export-button"
     type="button"
@@ -1463,6 +1477,12 @@ const canvas =
 const printButton =
   document.getElementById(
     "printButton"
+  );
+
+
+const pngButton =
+  document.getElementById(
+    "pngButton"
   );
 
 
@@ -3275,6 +3295,106 @@ window.addEventListener(
   () => {
 
     restoreNormalChart();
+
+  }
+
+);
+
+
+/* ==================================================
+PNG EXPORT
+================================================== */
+
+pngButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    preparePrintChart();
+
+
+    setTimeout(
+
+      () => {
+
+        chart.resize();
+        chart.update("none");
+
+
+        const sourceCanvas =
+          document.getElementById(
+            "trendChart"
+          );
+
+
+        const exportCanvas =
+          document.createElement(
+            "canvas"
+          );
+
+
+        exportCanvas.width =
+          sourceCanvas.width;
+
+        exportCanvas.height =
+          sourceCanvas.height;
+
+
+        const context =
+          exportCanvas.getContext(
+            "2d"
+          );
+
+
+        context.fillStyle =
+          "#ffffff";
+
+        context.fillRect(
+          0,
+          0,
+          exportCanvas.width,
+          exportCanvas.height
+        );
+
+
+        context.drawImage(
+          sourceCanvas,
+          0,
+          0
+        );
+
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.download =
+          "Bianco_TBeams_Trend.png";
+
+        link.href =
+          exportCanvas.toDataURL(
+            "image/png"
+          );
+
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+
+
+        restoreNormalChart();
+
+      },
+
+      150
+
+    );
 
   }
 
