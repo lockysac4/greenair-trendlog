@@ -252,6 +252,14 @@ TOOLBAR
 }
 
 
+.png-button {
+  background: #2e7d32 !important;
+  color: white !important;
+  border-color: #2e7d32 !important;
+  font-weight: 800;
+}
+
+
 .user-button {
   background: #1565c0 !important;
   color: white !important;
@@ -657,11 +665,7 @@ PRINT - ONE A3 LANDSCAPE PAGE
 
 
   .greenair-title {
-    font-size: 11pt !important;
-
-    line-height: 1 !important;
-
-    margin-top: 1mm !important;
+    display: none !important;
   }
 
 
@@ -746,7 +750,8 @@ PRINT - ONE A3 LANDSCAPE PAGE
 
   /* DON'T PRINT PRINT BUTTON */
 
-  #printButton {
+  #printButton,
+  #pngButton {
     display: none !important;
   }
 
@@ -805,6 +810,15 @@ PRINT - ONE A3 LANDSCAPE PAGE
     break-before: avoid !important;
     break-after: avoid !important;
     break-inside: avoid !important;
+  }
+
+
+
+
+  /* DO NOT SHOW AMBIENT - CONCRETE DIFFERENTIAL ON PRINT */
+
+  .point-row[data-id="diff"] {
+    display: none !important;
   }
 
 
@@ -1136,6 +1150,15 @@ TOOLBAR
     type="button"
   >
     Print
+  </button>
+
+
+  <button
+    id="pngButton"
+    class="png-button"
+    type="button"
+  >
+    PNG
   </button>
 
 
@@ -1477,6 +1500,12 @@ const canvas =
 const printButton =
   document.getElementById(
     "printButton"
+  );
+
+
+const pngButton =
+  document.getElementById(
+    "pngButton"
   );
 
 
@@ -2966,6 +2995,38 @@ PRINT AXIS
 
 function preparePrintChart() {
 
+  /*
+  PRINT / PNG OUTPUT:
+  HIDE AMBIENT - CONCRETE DIFFERENTIAL ONLY.
+  NORMAL ON-SCREEN GRAPH IS UNCHANGED.
+  */
+
+  const differentialIndex =
+
+    POINTS.findIndex(
+
+      point =>
+        point.id ===
+        "diff"
+
+    );
+
+
+  if (
+    differentialIndex >=
+    0
+  ) {
+
+    chart.setDatasetVisibility(
+
+      differentialIndex,
+
+      false
+
+    );
+
+  }
+
   const samples =
     visibleSamples();
 
@@ -3128,6 +3189,9 @@ RESTORE AFTER PRINT
 
 function restoreNormalChart() {
 
+  /* Restore exactly what the operator had selected on screen. */
+  updateVisibility();
+
   delete chart.options.scales.x.min;
 
   delete chart.options.scales.x.max;
@@ -3266,6 +3330,106 @@ window.addEventListener(
   () => {
 
     restoreNormalChart();
+
+  }
+
+);
+
+
+/* ==================================================
+PNG EXPORT
+================================================== */
+
+pngButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    preparePrintChart();
+
+
+    setTimeout(
+
+      () => {
+
+        chart.resize();
+        chart.update("none");
+
+
+        const sourceCanvas =
+          document.getElementById(
+            "trendChart"
+          );
+
+
+        const exportCanvas =
+          document.createElement(
+            "canvas"
+          );
+
+
+        exportCanvas.width =
+          sourceCanvas.width;
+
+        exportCanvas.height =
+          sourceCanvas.height;
+
+
+        const context =
+          exportCanvas.getContext(
+            "2d"
+          );
+
+
+        context.fillStyle =
+          "#ffffff";
+
+        context.fillRect(
+          0,
+          0,
+          exportCanvas.width,
+          exportCanvas.height
+        );
+
+
+        context.drawImage(
+          sourceCanvas,
+          0,
+          0
+        );
+
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.download =
+          "Bianco_Planks_Trend.png";
+
+        link.href =
+          exportCanvas.toDataURL(
+            "image/png"
+          );
+
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+
+
+        restoreNormalChart();
+
+      },
+
+      150
+
+    );
 
   }
 
