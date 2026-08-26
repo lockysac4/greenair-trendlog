@@ -86,8 +86,8 @@ input[type=range]{width:100%}
 
       <div class="row">
         <div>
-          <div class="name">Boiler Enable</div>
-          <div class="meta">OUT1 • Holding Register 7101 • OFF=0 / ON=1</div>
+          <div class="name">Boiler Override</div>
+          <div class="meta">Holding Register 8115 • OFF=0 / ON=1</div>
         </div>
         <div class="btns">
           <button id="boilerOn" class="ctrl on" onclick="chooseBinary('boilerEnable',1)">ON</button>
@@ -97,8 +97,8 @@ input[type=range]{width:100%}
 
       <div class="row">
         <div>
-          <div class="name">Pump Enable</div>
-          <div class="meta">OUT2 • Holding Register 7103 • OFF=0 / ON=1</div>
+          <div class="name">Pump Override</div>
+          <div class="meta">Holding Register 8113 • OFF=0 / ON=1</div>
         </div>
         <div class="btns">
           <button id="pumpOn" class="ctrl on" onclick="chooseBinary('pumpEnable',1)">ON</button>
@@ -118,7 +118,7 @@ input[type=range]{width:100%}
       </div>
 
       <div class="actions">
-        <div class="notice">Changes are written only after confirmation. The server restricts writes to registers 7101, 7103, 7117 and 8111. AUTO returns control to the BMS program. Register 8111 is shared as the AUTO/MANUAL command for both Planks and T-Beams.</div>
+        <div class="notice">Changes are written only after confirmation. The server restricts writes to registers 8115, 8113, 7117 and 8111. AUTO returns control to the BMS program. Register 8111 is shared as the AUTO/MANUAL command for both Planks and T-Beams.</div>
         <div>
           <button class="refresh" onclick="loadControls()">Refresh</button>
           <button id="applyBtn" class="apply" onclick="applyChanges()" disabled>APPLY PLANKS CONTROLS</button>
@@ -261,8 +261,8 @@ async function applyChanges() {
   }
 
   if (desired.appOverride === 1) {
-    if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Enable"]);
-    if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Enable"]);
+    if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Override"]);
+    if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Override"]);
     if (desired.secondaryPump !== current.secondaryPump) changes.push(["secondaryPump", desired.secondaryPump, "Secondary Pump"]);
   }
 
