@@ -1319,6 +1319,47 @@ const PLANKS_WRITE_POINTS = {
 
 /*
 ==================================================
+T-BEAMS MANUAL CONTROL WRITE POINTS
+PORT 505 / UNIT 68
+STRICT ALLOW-LIST
+==================================================
+*/
+
+const T_BEAMS_WRITE_POINTS = {
+
+  boilerEnable: {
+    name: "T-Beams Boiler Override",
+    register: 8115,
+    min: 0,
+    max: 1
+  },
+
+  pumpEnable: {
+    name: "T-Beams Pump Override",
+    register: 8113,
+    min: 0,
+    max: 1
+  },
+
+  secondaryPump: {
+    name: "T-Beams Secondary Pump",
+    register: 7117,
+    min: 0,
+    max: 100
+  },
+
+  appOverride: {
+    name: "T-Beams AUTO / MANUAL",
+    register: 8111,
+    min: 0,
+    max: 1
+  }
+
+};
+
+
+/*
+==================================================
 T-BEAMS READ-ONLY MODBUS POINTS
 PORT 505 / UNIT 68
 ==================================================
@@ -4792,6 +4833,441 @@ If you received this message, the Greenair alarm email sender is working.`,
     );
 
   }
+
+}
+
+
+/*
+==================================================
+GENERIC MODBUS FC06 WRITER
+USED BY T-BEAMS PORT 505 / UNIT 68
+==================================================
+*/
+
+function buildWriteSingleRequestFor(
+  transaction,
+  unitId,
+  register,
+  value
+) {
+
+  const request =
+    Buffer.alloc(12);
+
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  request.writeUInt16BE(
+    6,
+    4
+  );
+
+
+  request[6] =
+    unitId & 0xff;
+
+
+  request[7] =
+    6;
+
+
+  request.writeUInt16BE(
+    register,
+    8
+  );
+
+
+  request.writeUInt16BE(
+    value,
+    10
+  );
+
+
+  return request;
+
+}
+
+
+function writeSingleRegisterTo(
+  host,
+  port,
+  unitId,
+  register,
+  value
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const transaction =
+        nextTBeamsTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+          error instanceof Error
+          ?
+          error
+          :
+          new Error(
+            String(error)
+          )
+        );
+
+      }
+
+
+      function succeed() {
+
+        if (
+          completed
+        ) {
+          return;
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve(
+          true
+        );
+
+      }
+
+
+      connectTimer =
+        setTimeout(
+          () => {
+            fail(
+              new Error(
+                `TCP connect timeout to ${host}:${port}`
+              )
+            );
+          },
+          7000
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+        "connect",
+        () => {
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+            setTimeout(
+              () => {
+                fail(
+                  new Error(
+                    `Modbus write response timeout Unit ${unitId} Register ${register}`
+                  )
+                );
+              },
+              5000
+            );
+
+
+          socket.write(
+            buildWriteSingleRequestFor(
+              transaction,
+              unitId,
+              register,
+              value
+            )
+          );
+
+        }
+      );
+
+
+      socket.on(
+        "data",
+        chunk => {
+
+          responseBuffer =
+            Buffer.concat(
+              [
+                responseBuffer,
+                chunk
+              ]
+            );
+
+
+          if (
+            responseBuffer.length <
+            12
+          ) {
+            return;
+          }
+
+
+          const responseTransaction =
+            responseBuffer.readUInt16BE(0);
+
+
+          const protocolId =
+            responseBuffer.readUInt16BE(2);
+
+
+          const responseUnit =
+            responseBuffer[6];
+
+
+          const functionCode =
+            responseBuffer[7];
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+            return fail(
+              new Error(
+                "Transaction ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+            return fail(
+              new Error(
+                "Protocol ID mismatch"
+              )
+            );
+          }
+
+
+          if (
+            responseUnit !==
+            unitId
+          ) {
+            return fail(
+              new Error(
+                `Unit ID mismatch: expected ${unitId}, got ${responseUnit}`
+              )
+            );
+          }
+
+
+          if (
+            (
+              functionCode &
+              0x80
+            ) !==
+            0
+          ) {
+            return fail(
+              new Error(
+                `Modbus exception ${responseBuffer[8]}`
+              )
+            );
+          }
+
+
+          if (
+            functionCode !==
+            6
+          ) {
+            return fail(
+              new Error(
+                `Unexpected Modbus function ${functionCode}`
+              )
+            );
+          }
+
+
+          const echoedRegister =
+            responseBuffer.readUInt16BE(8);
+
+
+          const echoedValue =
+            responseBuffer.readUInt16BE(10);
+
+
+          if (
+            echoedRegister !==
+            register
+            ||
+            echoedValue !==
+            value
+          ) {
+            return fail(
+              new Error(
+                `Modbus FC06 echo mismatch on register ${register}`
+              )
+            );
+          }
+
+
+          succeed();
+
+        }
+      );
+
+
+      socket.on(
+        "error",
+        error => {
+          fail(
+            new Error(
+              `TCP/Modbus write error: ${error.message}`
+            )
+          );
+        }
+      );
+
+
+      socket.on(
+        "close",
+        () => {
+          if (
+            !completed
+          ) {
+            fail(
+              new Error(
+                "Connection closed before complete Modbus write response"
+              )
+            );
+          }
+        }
+      );
+
+
+      socket.connect(
+        port,
+        host
+      );
+
+    }
+  );
+
+}
+
+
+async function readTBeamsControlState() {
+
+  const result = {};
+
+
+  for (
+    const [
+      id,
+      point
+    ]
+    of Object.entries(
+      T_BEAMS_WRITE_POINTS
+    )
+  ) {
+
+    const raw =
+      await readRegisterFrom(
+        T_BEAMS_HOST,
+        T_BEAMS_PORT,
+        T_BEAMS_UNIT_ID,
+        point.register
+      );
+
+
+    result[id] = {
+      name:
+        point.name,
+      register:
+        point.register,
+      value:
+        raw
+    };
+
+  }
+
+
+  return result;
 
 }
 
@@ -10582,6 +11058,244 @@ h1{color:#1b5e20;margin-top:0}
 
 
         return;
+
+      }
+
+
+      /*
+      ================================================
+      T-BEAMS MANUAL CONTROL STATE
+      AUTHENTICATED USERS
+      PORT 505 / UNIT 68
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/boiler/tbeams"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        try {
+
+          const controls =
+            await readTBeamsControlState();
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              host: T_BEAMS_HOST,
+              port: T_BEAMS_PORT,
+              unitId: T_BEAMS_UNIT_ID,
+              controls
+            }
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            502
+          );
+
+        }
+
+      }
+
+
+      /*
+      ================================================
+      T-BEAMS MANUAL CONTROL WRITE
+      AUTHENTICATED USERS
+      STRICT REGISTER ALLOW-LIST
+      FC06 ONLY
+      PORT 505 / UNIT 68
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/boiler/tbeams/write"
+        &&
+        request.method ===
+        "POST"
+      ) {
+
+        try {
+
+          const body =
+            await readJsonBody(
+              request
+            );
+
+
+          const control =
+            String(
+              body.control || ""
+            );
+
+
+          const point =
+            T_BEAMS_WRITE_POINTS[
+              control
+            ];
+
+
+          if (
+            !point
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error: "Control is not allowed"
+              },
+              400
+            );
+
+          }
+
+
+          const value =
+            Number(
+              body.value
+            );
+
+
+          if (
+            !Number.isInteger(
+              value
+            )
+            ||
+            value <
+              point.min
+            ||
+            value >
+              point.max
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error:
+                  `${point.name} must be an integer from ${point.min} to ${point.max}`
+              },
+              400
+            );
+
+          }
+
+
+          await writeSingleRegisterTo(
+            T_BEAMS_HOST,
+            T_BEAMS_PORT,
+            T_BEAMS_UNIT_ID,
+            point.register,
+            value
+          );
+
+
+          const readBack =
+            await readRegisterFrom(
+              T_BEAMS_HOST,
+              T_BEAMS_PORT,
+              T_BEAMS_UNIT_ID,
+              point.register
+            );
+
+
+          if (
+            readBack !==
+            value
+          ) {
+
+            return sendJson(
+              response,
+              {
+                ok: false,
+                error:
+                  `Write sent but read-back mismatch on T-Beams Unit ${T_BEAMS_UNIT_ID} register ${point.register}: expected ${value}, got ${readBack}`
+              },
+              502
+            );
+
+          }
+
+
+          console.log(
+            "T-Beams manual control write:",
+            {
+              user:
+                authUser.username,
+              unitId:
+                T_BEAMS_UNIT_ID,
+              port:
+                T_BEAMS_PORT,
+              control,
+              register:
+                point.register,
+              value,
+              readBack
+            }
+          );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              control,
+              name:
+                point.name,
+              unitId:
+                T_BEAMS_UNIT_ID,
+              port:
+                T_BEAMS_PORT,
+              register:
+                point.register,
+              value,
+              readBack
+            }
+          );
+
+        }
+
+
+        catch (
+          error
+        ) {
+
+          console.error(
+            "T-Beams manual control write failed:",
+            error.message
+          );
+
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            502
+          );
+
+        }
 
       }
 
