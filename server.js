@@ -801,6 +801,76 @@ async function initialiseAuthentication() {
 
 
   /*
+  MANUAL OVERRIDE AUDIT LOG
+  Immutable operational history of authenticated override writes.
+  */
+
+  await db.query(`
+
+    CREATE TABLE IF NOT EXISTS manual_override_audit (
+
+      id BIGSERIAL PRIMARY KEY,
+
+      user_id BIGINT,
+
+      username TEXT NOT NULL,
+
+      user_role TEXT NOT NULL,
+
+      system_key TEXT NOT NULL,
+
+      system_name TEXT NOT NULL,
+
+      host TEXT NOT NULL,
+
+      port INTEGER NOT NULL,
+
+      unit_id INTEGER NOT NULL,
+
+      control_key TEXT NOT NULL,
+
+      control_name TEXT NOT NULL,
+
+      register INTEGER NOT NULL,
+
+      old_value INTEGER,
+
+      requested_value INTEGER NOT NULL,
+
+      readback_value INTEGER,
+
+      success BOOLEAN NOT NULL DEFAULT FALSE,
+
+      error TEXT,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+    )
+
+  `);
+
+
+  await db.query(`
+
+    CREATE INDEX IF NOT EXISTS
+      manual_override_audit_created_at_idx
+
+    ON manual_override_audit(created_at DESC)
+
+  `);
+
+
+  await db.query(`
+
+    CREATE INDEX IF NOT EXISTS
+      manual_override_audit_username_idx
+
+    ON manual_override_audit(lower(username))
+
+  `);
+
+
+  /*
   CREATE MASTER ACCOUNT
   */
 
@@ -7665,6 +7735,278 @@ async function requireMasterUser(
 
 /*
 ==================================================
+MANUAL OVERRIDE AUDIT
+==================================================
+*/
+
+async function recordManualOverrideAudit({
+  authUser,
+  systemKey,
+  systemName,
+  host,
+  port,
+  unitId,
+  controlKey,
+  controlName,
+  register,
+  oldValue,
+  requestedValue,
+  readBackValue,
+  success,
+  error
+}) {
+
+  if (
+    !db
+    ||
+    !authUser
+  ) {
+
+    return;
+
+  }
+
+
+  try {
+
+    await db.query(
+      `
+      INSERT INTO manual_override_audit (
+        user_id,
+        username,
+        user_role,
+        system_key,
+        system_name,
+        host,
+        port,
+        unit_id,
+        control_key,
+        control_name,
+        register,
+        old_value,
+        requested_value,
+        readback_value,
+        success,
+        error
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
+      )
+      `,
+      [
+        authUser.id || null,
+        String(authUser.username || "Unknown"),
+        String(authUser.role || "user"),
+        systemKey,
+        systemName,
+        host,
+        port,
+        unitId,
+        controlKey,
+        controlName,
+        register,
+        Number.isInteger(oldValue) ? oldValue : null,
+        requestedValue,
+        Number.isInteger(readBackValue) ? readBackValue : null,
+        Boolean(success),
+        error ? String(error).slice(0, 2000) : null
+      ]
+    );
+
+  }
+
+  catch (
+    auditError
+  ) {
+
+    console.error(
+      "Manual override audit insert failed:",
+      auditError.message
+    );
+
+  }
+
+}
+
+
+async function manualOverrideLogApi(
+  request,
+  response,
+  url
+) {
+
+  const master =
+    await requireMasterUser(
+      request,
+      response
+    );
+
+
+  if (
+    !master
+  ) {
+
+    return;
+
+  }
+
+
+  try {
+
+    const requestedLimit =
+      Number.parseInt(
+        url.searchParams.get("limit") || "100",
+        10
+      );
+
+
+    const limit =
+      Number.isFinite(requestedLimit)
+      ? Math.min(500, Math.max(1, requestedLimit))
+      : 100;
+
+
+    const system =
+      String(
+        url.searchParams.get("system") || ""
+      ).trim().toLowerCase();
+
+
+    const username =
+      String(
+        url.searchParams.get("username") || ""
+      ).trim();
+
+
+    const successText =
+      String(
+        url.searchParams.get("success") || ""
+      ).trim().toLowerCase();
+
+
+    const where = [];
+    const values = [];
+
+
+    if (
+      system === "planks"
+      ||
+      system === "tbeams"
+    ) {
+
+      values.push(system);
+      where.push(
+        `system_key = $${values.length}`
+      );
+
+    }
+
+
+    if (
+      username
+    ) {
+
+      values.push(`%${username}%`);
+      where.push(
+        `username ILIKE $${values.length}`
+      );
+
+    }
+
+
+    if (
+      successText === "true"
+      ||
+      successText === "false"
+    ) {
+
+      values.push(
+        successText === "true"
+      );
+
+      where.push(
+        `success = $${values.length}`
+      );
+
+    }
+
+
+    values.push(limit);
+
+
+    const whereSql =
+      where.length
+      ? `WHERE ${where.join(" AND ")}`
+      : "";
+
+
+    const result =
+      await db.query(
+        `
+        SELECT
+          id,
+          username,
+          user_role,
+          system_key,
+          system_name,
+          host,
+          port,
+          unit_id,
+          control_key,
+          control_name,
+          register,
+          old_value,
+          requested_value,
+          readback_value,
+          success,
+          error,
+          created_at
+        FROM manual_override_audit
+        ${whereSql}
+        ORDER BY created_at DESC, id DESC
+        LIMIT $${values.length}
+        `,
+        values
+      );
+
+
+    return sendJson(
+      response,
+      {
+        ok: true,
+        count: result.rowCount,
+        entries: result.rows
+      }
+    );
+
+  }
+
+  catch (
+    error
+  ) {
+
+    console.error(
+      "Manual override log read failed:",
+      error.message
+    );
+
+
+    return sendJson(
+      response,
+      {
+        ok: false,
+        error: error.message
+      },
+      500
+    );
+
+  }
+
+}
+
+
+/*
+==================================================
 LIST USERS
 MASTER ONLY
 ==================================================
@@ -10357,6 +10699,76 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      MANUAL OVERRIDE AUDIT PAGE
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/manual-override-log"
+        ||
+        url.pathname ===
+        "/manual-override-log.html"
+      ) {
+
+        if (
+          authUser.role !==
+          "master"
+        ) {
+
+          response.writeHead(
+            403,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8",
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+
+          return response.end(
+            "Master access required"
+          );
+
+        }
+
+
+        return servePublicFile(
+          response,
+          "manual-override-log.html"
+        );
+
+      }
+
+
+      /*
+      ================================================
+      MANUAL OVERRIDE AUDIT API
+      MASTER ONLY
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/manual-override-log"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        return manualOverrideLogApi(
+          request,
+          response,
+          url
+        );
+
+      }
+
+
+      /*
+      ================================================
       LIST USERS
       MASTER ONLY
       ================================================
@@ -10622,18 +11034,23 @@ h1{color:#1b5e20;margin-top:0}
       AUTHENTICATED USERS
       STRICT REGISTER ALLOW-LIST
       FC06 ONLY
+      AUDITED
       ================================================
       */
 
       if (
         url.pathname ===
         "/api/boiler/planks/write"
-
         &&
-
         request.method ===
         "POST"
       ) {
+
+        let auditControl = "";
+        let auditPoint = null;
+        let auditOldValue = null;
+        let auditRequestedValue = null;
+
 
         try {
 
@@ -10702,6 +11119,17 @@ h1{color:#1b5e20;margin-top:0}
           }
 
 
+          auditControl = control;
+          auditPoint = point;
+          auditRequestedValue = value;
+
+
+          auditOldValue =
+            await readRegister(
+              point.register
+            );
+
+
           await writeSingleRegister(
             point.register,
             value
@@ -10719,17 +11147,56 @@ h1{color:#1b5e20;margin-top:0}
             value
           ) {
 
+            const mismatchError =
+              `Write sent but read-back mismatch on register ${point.register}: expected ${value}, got ${readBack}`;
+
+
+            await recordManualOverrideAudit({
+              authUser,
+              systemKey: "planks",
+              systemName: "Planks",
+              host: BMS_HOST,
+              port: BMS_PORT,
+              unitId: UNIT_ID,
+              controlKey: control,
+              controlName: point.name,
+              register: point.register,
+              oldValue: auditOldValue,
+              requestedValue: value,
+              readBackValue: readBack,
+              success: false,
+              error: mismatchError
+            });
+
+
             return sendJson(
               response,
               {
                 ok: false,
-                error:
-                  `Write sent but read-back mismatch on register ${point.register}: expected ${value}, got ${readBack}`
+                error: mismatchError
               },
               502
             );
 
           }
+
+
+          await recordManualOverrideAudit({
+            authUser,
+            systemKey: "planks",
+            systemName: "Planks",
+            host: BMS_HOST,
+            port: BMS_PORT,
+            unitId: UNIT_ID,
+            controlKey: control,
+            controlName: point.name,
+            register: point.register,
+            oldValue: auditOldValue,
+            requestedValue: value,
+            readBackValue: readBack,
+            success: true,
+            error: null
+          });
 
 
           console.log(
@@ -10740,6 +11207,8 @@ h1{color:#1b5e20;margin-top:0}
               control,
               register:
                 point.register,
+              oldValue:
+                auditOldValue,
               value,
               readBack
             }
@@ -10755,6 +11224,8 @@ h1{color:#1b5e20;margin-top:0}
                 point.name,
               register:
                 point.register,
+              oldValue:
+                auditOldValue,
               value,
               readBack
             }
@@ -10766,6 +11237,34 @@ h1{color:#1b5e20;margin-top:0}
         catch (
           error
         ) {
+
+          if (
+            auditPoint
+            &&
+            Number.isInteger(
+              auditRequestedValue
+            )
+          ) {
+
+            await recordManualOverrideAudit({
+              authUser,
+              systemKey: "planks",
+              systemName: "Planks",
+              host: BMS_HOST,
+              port: BMS_PORT,
+              unitId: UNIT_ID,
+              controlKey: auditControl,
+              controlName: auditPoint.name,
+              register: auditPoint.register,
+              oldValue: auditOldValue,
+              requestedValue: auditRequestedValue,
+              readBackValue: null,
+              success: false,
+              error: error.message
+            });
+
+          }
+
 
           console.error(
             "Planks manual control write failed:",
@@ -11116,6 +11615,7 @@ h1{color:#1b5e20;margin-top:0}
       STRICT REGISTER ALLOW-LIST
       FC06 ONLY
       PORT 505 / UNIT 68
+      AUDITED
       ================================================
       */
 
@@ -11126,6 +11626,12 @@ h1{color:#1b5e20;margin-top:0}
         request.method ===
         "POST"
       ) {
+
+        let auditControl = "";
+        let auditPoint = null;
+        let auditOldValue = null;
+        let auditRequestedValue = null;
+
 
         try {
 
@@ -11194,6 +11700,20 @@ h1{color:#1b5e20;margin-top:0}
           }
 
 
+          auditControl = control;
+          auditPoint = point;
+          auditRequestedValue = value;
+
+
+          auditOldValue =
+            await readRegisterFrom(
+              T_BEAMS_HOST,
+              T_BEAMS_PORT,
+              T_BEAMS_UNIT_ID,
+              point.register
+            );
+
+
           await writeSingleRegisterTo(
             T_BEAMS_HOST,
             T_BEAMS_PORT,
@@ -11217,17 +11737,56 @@ h1{color:#1b5e20;margin-top:0}
             value
           ) {
 
+            const mismatchError =
+              `Write sent but read-back mismatch on T-Beams Unit ${T_BEAMS_UNIT_ID} register ${point.register}: expected ${value}, got ${readBack}`;
+
+
+            await recordManualOverrideAudit({
+              authUser,
+              systemKey: "tbeams",
+              systemName: "T-Beams",
+              host: T_BEAMS_HOST,
+              port: T_BEAMS_PORT,
+              unitId: T_BEAMS_UNIT_ID,
+              controlKey: control,
+              controlName: point.name,
+              register: point.register,
+              oldValue: auditOldValue,
+              requestedValue: value,
+              readBackValue: readBack,
+              success: false,
+              error: mismatchError
+            });
+
+
             return sendJson(
               response,
               {
                 ok: false,
-                error:
-                  `Write sent but read-back mismatch on T-Beams Unit ${T_BEAMS_UNIT_ID} register ${point.register}: expected ${value}, got ${readBack}`
+                error: mismatchError
               },
               502
             );
 
           }
+
+
+          await recordManualOverrideAudit({
+            authUser,
+            systemKey: "tbeams",
+            systemName: "T-Beams",
+            host: T_BEAMS_HOST,
+            port: T_BEAMS_PORT,
+            unitId: T_BEAMS_UNIT_ID,
+            controlKey: control,
+            controlName: point.name,
+            register: point.register,
+            oldValue: auditOldValue,
+            requestedValue: value,
+            readBackValue: readBack,
+            success: true,
+            error: null
+          });
 
 
           console.log(
@@ -11242,6 +11801,8 @@ h1{color:#1b5e20;margin-top:0}
               control,
               register:
                 point.register,
+              oldValue:
+                auditOldValue,
               value,
               readBack
             }
@@ -11261,6 +11822,8 @@ h1{color:#1b5e20;margin-top:0}
                 T_BEAMS_PORT,
               register:
                 point.register,
+              oldValue:
+                auditOldValue,
               value,
               readBack
             }
@@ -11272,6 +11835,34 @@ h1{color:#1b5e20;margin-top:0}
         catch (
           error
         ) {
+
+          if (
+            auditPoint
+            &&
+            Number.isInteger(
+              auditRequestedValue
+            )
+          ) {
+
+            await recordManualOverrideAudit({
+              authUser,
+              systemKey: "tbeams",
+              systemName: "T-Beams",
+              host: T_BEAMS_HOST,
+              port: T_BEAMS_PORT,
+              unitId: T_BEAMS_UNIT_ID,
+              controlKey: auditControl,
+              controlName: auditPoint.name,
+              register: auditPoint.register,
+              oldValue: auditOldValue,
+              requestedValue: auditRequestedValue,
+              readBackValue: null,
+              success: false,
+              error: error.message
+            });
+
+          }
+
 
           console.error(
             "T-Beams manual control write failed:",
