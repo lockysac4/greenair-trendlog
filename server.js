@@ -1341,13 +1341,6 @@ const T_BEAMS_WRITE_POINTS = {
     max: 1
   },
 
-  secondaryPump: {
-    name: "T-Beams Secondary Pump",
-    register: 7117,
-    min: 0,
-    max: 100
-  },
-
   appOverride: {
     name: "T-Beams AUTO / MANUAL",
     register: 8111,
