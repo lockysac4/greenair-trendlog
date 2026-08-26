@@ -30,6 +30,9 @@ h1{margin:0 0 5px;font-size:27px}
 button.ctrl{height:38px;min-width:100px;border:1px solid #b9c1c6;border-radius:5px;background:#fff;font-weight:900;cursor:pointer}
 button.ctrl.selected.on{background:#1b8d3d;color:#fff;border-color:#1b8d3d}
 button.ctrl.selected.off{background:#b71c1c;color:#fff;border-color:#b71c1c}
+button.ctrl.selected.auto{background:#1565c0;color:#fff;border-color:#1565c0}
+button.ctrl.selected.manual{background:#ef6c00;color:#fff;border-color:#ef6c00}
+button.ctrl:disabled{opacity:.42;cursor:not-allowed}
 .sliderbox{display:grid;grid-template-columns:minmax(220px,1fr) 90px;gap:12px;align-items:center}
 input[type=range]{width:100%}
 .percent{font-size:22px;font-weight:900;color:#1565c0;text-align:center;border:1px solid #ccd5dc;border-radius:5px;padding:7px;background:#f8fafb}
@@ -72,6 +75,17 @@ input[type=range]{width:100%}
 
       <div class="row">
         <div>
+          <div class="name">Control Mode</div>
+          <div class="meta">Holding Register 8111 • AUTO=0 / MANUAL=1</div>
+        </div>
+        <div class="btns">
+          <button id="autoMode" class="ctrl auto" onclick="chooseMode(0)">AUTO</button>
+          <button id="manualMode" class="ctrl manual" onclick="chooseMode(1)">MANUAL</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
           <div class="name">Boiler Enable</div>
           <div class="meta">OUT1 • Holding Register 7101 • OFF=0 / ON=1</div>
         </div>
@@ -104,7 +118,7 @@ input[type=range]{width:100%}
       </div>
 
       <div class="actions">
-        <div class="notice">Changes are written only after confirmation. The server restricts writes to registers 7101, 7103 and 7117.</div>
+        <div class="notice">Changes are written only after confirmation. The server restricts writes to registers 7101, 7103, 7117 and 8111. AUTO returns control to the BMS program. Register 8111 is shared as the AUTO/MANUAL command for both Planks and T-Beams.</div>
         <div>
           <button class="refresh" onclick="loadControls()">Refresh</button>
           <button id="applyBtn" class="apply" onclick="applyChanges()" disabled>APPLY PLANKS CONTROLS</button>
@@ -129,20 +143,43 @@ function showMessage(text, ok) {
 
 function updateButtons() {
   if (!desired) return;
+
+  const manual = desired.appOverride === 1;
+  document.getElementById("autoMode").classList.toggle("selected", !manual);
+  document.getElementById("manualMode").classList.toggle("selected", manual);
+
   document.getElementById("boilerOn").classList.toggle("selected", desired.boilerEnable === 1);
   document.getElementById("boilerOff").classList.toggle("selected", desired.boilerEnable === 0);
   document.getElementById("pumpOn").classList.toggle("selected", desired.pumpEnable === 1);
   document.getElementById("pumpOff").classList.toggle("selected", desired.pumpEnable === 0);
+
+  document.getElementById("boilerOn").disabled = !loaded || !manual;
+  document.getElementById("boilerOff").disabled = !loaded || !manual;
+  document.getElementById("pumpOn").disabled = !loaded || !manual;
+  document.getElementById("pumpOff").disabled = !loaded || !manual;
+  document.getElementById("secondarySlider").disabled = !loaded || !manual;
+}
+
+function chooseMode(value) {
+  if (!loaded || !desired) return;
+  desired.appOverride = value;
+  updateButtons();
+  showMessage(
+    value === 0
+      ? "AUTO selected. Apply changes to return control to the BMS program using register 8111."
+      : "MANUAL selected. Apply changes to enable MANUAL control using register 8111.",
+    true
+  );
 }
 
 function chooseBinary(id, value) {
-  if (!loaded || !desired) return;
+  if (!loaded || !desired || desired.appOverride !== 1) return;
   desired[id] = value;
   updateButtons();
 }
 
 document.getElementById("secondarySlider").addEventListener("input", event => {
-  if (!desired) return;
+  if (!desired || desired.appOverride !== 1) return;
   desired.secondaryPump = Number(event.target.value);
   document.getElementById("secondaryValue").textContent = desired.secondaryPump;
 });
@@ -169,7 +206,8 @@ async function loadControls() {
     current = {
       boilerEnable: Number(data.controls.boilerEnable.value),
       pumpEnable: Number(data.controls.pumpEnable.value),
-      secondaryPump: Number(data.controls.secondaryPump.value)
+      secondaryPump: Number(data.controls.secondaryPump.value),
+      appOverride: Number(data.controls.appOverride.value)
     };
 
     desired = {...current};
@@ -180,7 +218,7 @@ async function loadControls() {
 
     loaded = true;
     document.getElementById("applyBtn").disabled = false;
-    document.getElementById("secondarySlider").disabled = false;
+    updateButtons();
     document.getElementById("connection").textContent = "CONNECTED";
     document.getElementById("lastRead").textContent = new Date().toLocaleString("en-AU");
     showMessage("Current Planks output values loaded.", true);
@@ -215,9 +253,18 @@ async function applyChanges() {
   if (!loaded || !desired || !current) return;
 
   const changes = [];
-  if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Enable"]);
-  if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Enable"]);
-  if (desired.secondaryPump !== current.secondaryPump) changes.push(["secondaryPump", desired.secondaryPump, "Secondary Pump"]);
+
+  // Mode is always written first when entering MANUAL, and is the only
+  // write required when returning to AUTO.
+  if (desired.appOverride !== current.appOverride) {
+    changes.push(["appOverride", desired.appOverride, "Control Mode"]);
+  }
+
+  if (desired.appOverride === 1) {
+    if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Enable"]);
+    if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Enable"]);
+    if (desired.secondaryPump !== current.secondaryPump) changes.push(["secondaryPump", desired.secondaryPump, "Secondary Pump"]);
+  }
 
   if (!changes.length) {
     showMessage("No changes to apply.", true);
@@ -225,6 +272,7 @@ async function applyChanges() {
   }
 
   const summary = changes.map(([id,value,name]) => {
+    if (id === "appOverride") return `${name}: ${value === 0 ? "AUTO" : "MANUAL"}`;
     if (id === "secondaryPump") return `${name}: ${value}%`;
     return `${name}: ${value === 1 ? "ON" : "OFF"}`;
   }).join("\n");
@@ -249,7 +297,7 @@ async function applyChanges() {
   } finally {
     if (loaded) {
       apply.disabled = false;
-      document.getElementById("secondarySlider").disabled = false;
+      updateButtons();
     }
   }
 }
