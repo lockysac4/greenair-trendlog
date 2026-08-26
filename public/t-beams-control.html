@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bianco Precast - T-Beams Override</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;color:#222}
+.top{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #d6d6d6;padding:12px 18px}
+.brand .bianco{color:#f57c00;font-size:21px;font-weight:900;letter-spacing:1px}
+.brand .greenair{color:#1b5e20;font-size:16px;font-weight:800;margin-top:2px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav button{height:34px;border:1px solid #c7c7c7;border-radius:4px;background:#fff;padding:0 13px;font-weight:800;cursor:pointer}
+.nav .active{background:#ef6c00;color:#fff;border-color:#ef6c00}
+.wrap{max-width:980px;margin:24px auto;padding:0 16px 40px}
+h1{margin:0 0 5px;font-size:27px}
+.sub{color:#666;margin-bottom:18px}
+.statusbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #d4d4d4;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.statusbar strong{color:#1b5e20}
+.panel{background:#fff;border:1px solid #d4d4d4;border-radius:8px;overflow:hidden}
+.panel-head{background:#082847;color:#fff;padding:11px 15px;font-weight:900}
+.controls{padding:5px 18px 18px}
+.row{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:center;padding:18px 0;border-bottom:1px solid #e3e3e3}
+.row:last-child{border-bottom:0}
+.name{font-weight:900}
+.meta{font-size:11px;color:#777;margin-top:4px}
+.btns{display:flex;gap:9px;flex-wrap:wrap}
+button.ctrl{height:38px;min-width:100px;border:1px solid #b9c1c6;border-radius:5px;background:#fff;font-weight:900;cursor:pointer}
+button.ctrl.selected.on{background:#1b8d3d;color:#fff;border-color:#1b8d3d}
+button.ctrl.selected.off{background:#b71c1c;color:#fff;border-color:#b71c1c}
+button.ctrl.selected.auto{background:#1565c0;color:#fff;border-color:#1565c0}
+button.ctrl.selected.manual{background:#ef6c00;color:#fff;border-color:#ef6c00}
+button.ctrl:disabled{opacity:.42;cursor:not-allowed}
+.sliderbox{display:grid;grid-template-columns:minmax(220px,1fr) 90px;gap:12px;align-items:center}
+input[type=range]{width:100%}
+.percent{font-size:22px;font-weight:900;color:#1565c0;text-align:center;border:1px solid #ccd5dc;border-radius:5px;padding:7px;background:#f8fafb}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.apply{height:42px;border:0;border-radius:5px;background:#ef6c00;color:#fff;font-weight:900;padding:0 22px;cursor:pointer}
+.apply:disabled{opacity:.45;cursor:not-allowed}
+.refresh{height:38px;border:1px solid #bbb;border-radius:5px;background:#fff;font-weight:800;padding:0 15px;cursor:pointer}
+.notice{font-size:13px;color:#8a4b00}
+.message{margin-top:14px;padding:10px 12px;border-radius:5px;display:none}
+.message.ok{display:block;background:#e8f5e9;color:#176d2d;border:1px solid #b7dfbd}
+.message.bad{display:block;background:#ffebee;color:#a31324;border:1px solid #efbbc1}
+@media(max-width:650px){.row{grid-template-columns:1fr}.sliderbox{grid-template-columns:1fr 75px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">
+    <div class="bianco">BIANCO PRECAST</div>
+    <div class="greenair">GREENAIR TRENDLOG</div>
+  </div>
+  <div class="nav">
+    <button onclick="location.href='/'">Planks</button>
+    <button onclick="location.href='/t-beams.html'">T-Beams</button>
+    <button onclick="location.href='/boiler-control.html'">Planks Override</button>
+    <button class="active">T-Beams Override</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>T-Beams Boiler / Pump Override</h1>
+  <div class="sub">Authenticated operator controls • Modbus TCP Port 505 • Unit 68</div>
+
+  <div class="statusbar">
+    <span>Controller: <strong id="connection">LOADING…</strong></span>
+    <span>Last read: <strong id="lastRead">—</strong></span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">T-BEAMS MANUAL OUTPUTS</div>
+    <div class="controls">
+
+      <div class="row">
+        <div>
+          <div class="name">Control Mode</div>
+          <div class="meta">Holding Register 8111 • AUTO=0 / MANUAL=1</div>
+        </div>
+        <div class="btns">
+          <button id="autoMode" class="ctrl auto" onclick="chooseMode(0)">AUTO</button>
+          <button id="manualMode" class="ctrl manual" onclick="chooseMode(1)">MANUAL</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="name">Boiler Override</div>
+          <div class="meta">Holding Register 8115 • OFF=0 / ON=1</div>
+        </div>
+        <div class="btns">
+          <button id="boilerOn" class="ctrl on" onclick="chooseBinary('boilerEnable',1)">ON</button>
+          <button id="boilerOff" class="ctrl off" onclick="chooseBinary('boilerEnable',0)">OFF</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="name">Pump Override</div>
+          <div class="meta">Holding Register 8113 • OFF=0 / ON=1</div>
+        </div>
+        <div class="btns">
+          <button id="pumpOn" class="ctrl on" onclick="chooseBinary('pumpEnable',1)">ON</button>
+          <button id="pumpOff" class="ctrl off" onclick="chooseBinary('pumpEnable',0)">OFF</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="name">Secondary Pump</div>
+          <div class="meta">OUT9 • Holding Register 7117 • 0–100%</div>
+        </div>
+        <div class="sliderbox">
+          <input id="secondarySlider" type="range" min="0" max="100" step="1" value="0" disabled>
+          <div class="percent"><span id="secondaryValue">0</span>%</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="notice">Changes are written only after confirmation. The server restricts this page to T-Beams Unit 68 on Port 505 and registers 8115, 8113, 7117 and 8111 only. AUTO returns control to the BMS program.</div>
+        <div>
+          <button class="refresh" onclick="loadControls()">Refresh</button>
+          <button id="applyBtn" class="apply" onclick="applyChanges()" disabled>APPLY T-BEAMS CONTROLS</button>
+        </div>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let current = null;
+let desired = null;
+let loaded = false;
+
+function showMessage(text, ok) {
+  const el = document.getElementById("message");
+  el.textContent = text;
+  el.className = "message " + (ok ? "ok" : "bad");
+}
+
+function updateButtons() {
+  if (!desired) return;
+
+  const manual = desired.appOverride === 1;
+  document.getElementById("autoMode").classList.toggle("selected", !manual);
+  document.getElementById("manualMode").classList.toggle("selected", manual);
+
+  document.getElementById("boilerOn").classList.toggle("selected", desired.boilerEnable === 1);
+  document.getElementById("boilerOff").classList.toggle("selected", desired.boilerEnable === 0);
+  document.getElementById("pumpOn").classList.toggle("selected", desired.pumpEnable === 1);
+  document.getElementById("pumpOff").classList.toggle("selected", desired.pumpEnable === 0);
+
+  document.getElementById("boilerOn").disabled = !loaded || !manual;
+  document.getElementById("boilerOff").disabled = !loaded || !manual;
+  document.getElementById("pumpOn").disabled = !loaded || !manual;
+  document.getElementById("pumpOff").disabled = !loaded || !manual;
+  document.getElementById("secondarySlider").disabled = !loaded || !manual;
+}
+
+function chooseMode(value) {
+  if (!loaded || !desired) return;
+  desired.appOverride = value;
+  updateButtons();
+  showMessage(
+    value === 0
+      ? "AUTO selected. Apply changes to return control to the BMS program using register 8111."
+      : "MANUAL selected. Apply changes to enable MANUAL control using register 8111.",
+    true
+  );
+}
+
+function chooseBinary(id, value) {
+  if (!loaded || !desired || desired.appOverride !== 1) return;
+  desired[id] = value;
+  updateButtons();
+}
+
+document.getElementById("secondarySlider").addEventListener("input", event => {
+  if (!desired || desired.appOverride !== 1) return;
+  desired.secondaryPump = Number(event.target.value);
+  document.getElementById("secondaryValue").textContent = desired.secondaryPump;
+});
+
+async function loadControls() {
+  loaded = false;
+  document.getElementById("applyBtn").disabled = true;
+  document.getElementById("secondarySlider").disabled = true;
+  document.getElementById("connection").textContent = "LOADING…";
+
+  try {
+    const response = await fetch("/api/boiler/tbeams", {cache:"no-store"});
+    const data = await response.json();
+
+    if (response.status === 401) {
+      location.href = "/login";
+      return;
+    }
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Unable to read T-Beams controls");
+    }
+
+    current = {
+      boilerEnable: Number(data.controls.boilerEnable.value),
+      pumpEnable: Number(data.controls.pumpEnable.value),
+      secondaryPump: Number(data.controls.secondaryPump.value),
+      appOverride: Number(data.controls.appOverride.value)
+    };
+
+    desired = {...current};
+
+    document.getElementById("secondarySlider").value = Math.max(0, Math.min(100, desired.secondaryPump));
+    document.getElementById("secondaryValue").textContent = Math.max(0, Math.min(100, desired.secondaryPump));
+    updateButtons();
+
+    loaded = true;
+    document.getElementById("applyBtn").disabled = false;
+    updateButtons();
+    document.getElementById("connection").textContent = "CONNECTED";
+    document.getElementById("lastRead").textContent = new Date().toLocaleString("en-AU");
+    showMessage("Current T-Beams output values loaded.", true);
+  } catch (error) {
+    document.getElementById("connection").textContent = "OFFLINE";
+    showMessage(error.message, false);
+  }
+}
+
+async function writeControl(control, value) {
+  const response = await fetch("/api/boiler/tbeams/write", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({control, value})
+  });
+
+  const data = await response.json();
+
+  if (response.status === 401) {
+    location.href = "/login";
+    throw new Error("Login required");
+  }
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "Modbus write failed");
+  }
+
+  return data;
+}
+
+async function applyChanges() {
+  if (!loaded || !desired || !current) return;
+
+  const changes = [];
+
+  // Mode is always written first when entering MANUAL, and is the only
+  // write required when returning to AUTO.
+  if (desired.appOverride !== current.appOverride) {
+    changes.push(["appOverride", desired.appOverride, "Control Mode"]);
+  }
+
+  if (desired.appOverride === 1) {
+    if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Override"]);
+    if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Override"]);
+    if (desired.secondaryPump !== current.secondaryPump) changes.push(["secondaryPump", desired.secondaryPump, "Secondary Pump"]);
+  }
+
+  if (!changes.length) {
+    showMessage("No changes to apply.", true);
+    return;
+  }
+
+  const summary = changes.map(([id,value,name]) => {
+    if (id === "appOverride") return `${name}: ${value === 0 ? "AUTO" : "MANUAL"}`;
+    if (id === "secondaryPump") return `${name}: ${value}%`;
+    return `${name}: ${value === 1 ? "ON" : "OFF"}`;
+  }).join("\n");
+
+  if (!confirm("Write these T-Beams controls to Panel 68?\n\n" + summary)) return;
+
+  const apply = document.getElementById("applyBtn");
+  apply.disabled = true;
+  document.getElementById("secondarySlider").disabled = true;
+  showMessage("Writing and verifying Modbus values…", true);
+
+  try {
+    for (const [control, value] of changes) {
+      await writeControl(control, value);
+    }
+
+    await loadControls();
+    showMessage("T-Beams controls written and verified successfully.", true);
+  } catch (error) {
+    showMessage("Write failed: " + error.message + ". Refreshing actual controller values.", false);
+    setTimeout(loadControls, 1000);
+  } finally {
+    if (loaded) {
+      apply.disabled = false;
+      updateButtons();
+    }
+  }
+}
+
+loadControls();
+</script>
+</body>
+</html>
