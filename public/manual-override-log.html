@@ -33,7 +33,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f4f3;color:#2
   <div class="panel">
     <h1>Manual Override Audit Log</h1>
     <div id="currentUser" class="note">Checking Master account...</div>
-    <p class="note">This records authenticated manual-control writes for Planks and T-Beams. Entries include the user, system, control, register, previous value, requested value, controller read-back, result and timestamp.</p>
+    <p class="note">This records authenticated manual-control writes for Planks and T-Beams. Entries include the user, system, point name, previous value, requested value, controller read-back, result and timestamp.</p>
   </div>
 
   <div class="panel">
@@ -55,8 +55,8 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f4f3;color:#2
   <div class="panel">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Date / Time</th><th>User</th><th>System</th><th>Panel</th><th>Control</th><th>Register</th><th>Previous</th><th>Requested</th><th>Confirmed</th><th>Result</th><th>Error</th></tr></thead>
-        <tbody id="logBody"><tr><td class="loading" colspan="11">Loading audit log...</td></tr></tbody>
+        <thead><tr><th>Date / Time</th><th>User</th><th>System</th><th>Panel</th><th>Point Name</th><th>Previous</th><th>Requested</th><th>Confirmed</th><th>Result</th><th>Error</th></tr></thead>
+        <tbody id="logBody"><tr><td class="loading" colspan="10">Loading audit log...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -79,6 +79,24 @@ const logoutButton=document.getElementById("logoutButton");
 function escapeHtml(value){return String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 function formatDate(value){if(!value)return "—";return new Date(value).toLocaleString("en-AU",{timeZone:"Australia/Adelaide",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false})}
 function formatValue(entry,value){if(value===null||value===undefined)return "—";const n=Number(value);if(entry.control_key==="appOverride")return n===1?"MANUAL (1)":"AUTO (0)";if(entry.control_key==="pumpEnable"||entry.control_key==="boilerEnable")return n===1?"ON (1)":"OFF (0)";if(entry.control_key==="secondaryPump")return `${n}%`;return String(value)}
+function pointName(entry){
+  const system=String(entry.system_key||"").toLowerCase();
+  const control=String(entry.control_key||"");
+  const names={
+    planks:{
+      appOverride:"Planks AUTO / MANUAL",
+      pumpEnable:"Planks Pump Override",
+      boilerEnable:"Planks Boiler Override",
+      secondaryPump:"Planks Secondary Pump"
+    },
+    tbeams:{
+      appOverride:"T-Beams AUTO / MANUAL",
+      pumpEnable:"T-Beams Pump Override",
+      boilerEnable:"T-Beams Boiler Override"
+    }
+  };
+  return names[system]?.[control]||entry.control_name||control||"Unknown Point";
+}
 async function fetchJson(url,options={}){const response=await fetch(url,options);let data={};try{data=await response.json()}catch{}if(!response.ok){if(response.status===401)window.location.href="/login";throw new Error(data.error||"Request failed")}return data}
 
 async function checkMaster(){const data=await fetchJson("/api/auth/me");if(!data.user||data.user.role!=="master"){document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";return false}currentUser.textContent=`Logged in as ${data.user.username} — Master Administrator`;return true}
@@ -89,14 +107,13 @@ async function loadLog(){
   try{
     const data=await fetchJson(`/api/manual-override-log?${params.toString()}`);const entries=Array.isArray(data.entries)?data.entries:[];
     shownCount.textContent=entries.length;successCount.textContent=entries.filter(x=>x.success).length;failedCount.textContent=entries.filter(x=>!x.success).length;
-    if(!entries.length){logBody.innerHTML='<tr><td class="empty" colspan="11">No manual override activity has been logged yet.</td></tr>';statusBox.textContent="No entries found.";return}
+    if(!entries.length){logBody.innerHTML='<tr><td class="empty" colspan="10">No manual override activity has been logged yet.</td></tr>';statusBox.textContent="No entries found.";return}
     logBody.innerHTML=entries.map(entry=>`<tr>
       <td>${escapeHtml(formatDate(entry.created_at))}</td>
       <td class="user">${escapeHtml(entry.username)}</td>
       <td class="system">${escapeHtml(entry.system_name)}</td>
       <td>Unit ${escapeHtml(entry.unit_id)}<br><span class="muted">Port ${escapeHtml(entry.port)}</span></td>
-      <td>${escapeHtml(entry.control_name)}</td>
-      <td>${escapeHtml(entry.register)}</td>
+      <td><strong>${escapeHtml(pointName(entry))}</strong></td>
       <td>${escapeHtml(formatValue(entry,entry.old_value))}</td>
       <td>${escapeHtml(formatValue(entry,entry.requested_value))}</td>
       <td>${escapeHtml(formatValue(entry,entry.readback_value))}</td>
@@ -104,7 +121,7 @@ async function loadLog(){
       <td class="error">${escapeHtml(entry.error||"—")}</td>
     </tr>`).join("");
     statusBox.className="status good";statusBox.textContent=`Loaded ${entries.length} audit entr${entries.length===1?"y":"ies"}.`;
-  }catch(error){logBody.innerHTML=`<tr><td class="empty" colspan="11">${escapeHtml(error.message)}</td></tr>`;statusBox.className="status bad";statusBox.textContent=error.message}
+  }catch(error){logBody.innerHTML=`<tr><td class="empty" colspan="10">${escapeHtml(error.message)}</td></tr>`;statusBox.className="status bad";statusBox.textContent=error.message}
   finally{refreshButton.disabled=false}
 }
 
