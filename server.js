@@ -1206,15 +1206,15 @@ STRICT ALLOW-LIST
 const PLANKS_WRITE_POINTS = {
 
   boilerEnable: {
-    name: "Planks Boiler Enable",
-    register: 7101,
+    name: "Boiler Override",
+    register: 8115,
     min: 0,
     max: 1
   },
 
   pumpEnable: {
-    name: "Planks Pump Enable",
-    register: 7103,
+    name: "Pump Override",
+    register: 8113,
     min: 0,
     max: 1
   },
