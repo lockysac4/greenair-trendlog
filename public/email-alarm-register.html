@@ -10,11 +10,20 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f4f3;color:#2
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 18px;background:white;border-bottom:1px solid #d6d6d6}
 .brand{display:flex;align-items:center;gap:12px}.brand-logo{display:block;width:160px;max-height:52px;object-fit:contain}
 .brand-text{display:flex;flex-direction:column}.bianco{color:#f57c00;font-size:20px;font-weight:900}.greenair{color:#1b5e20;font-size:14px;font-weight:800}
-.top-actions{display:flex;gap:8px;flex-wrap:wrap}.top-actions a,.top-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 12px;border:1px solid #ccc;border-radius:5px;background:white;color:#222;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}.top-actions a,.top-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border:1px solid #ccc;border-radius:5px;background:white;color:#222;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer}
 .top-actions .back{background:#082847;color:white;border-color:#082847}.top-actions .logout{background:#b71c1c;color:white;border-color:#b71c1c}
-.wrap{max-width:1100px;margin:24px auto;padding:0 16px}.panel{background:white;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:18px}
-h1{margin:0 0 6px;font-size:22px}.sub{color:#666;font-size:13px}.placeholder{margin-top:16px;padding:18px;border:1px dashed #c9c9c9;border-radius:6px;background:#fafafa;color:#555}
-@media(max-width:760px){.topbar{align-items:flex-start;flex-direction:column}.brand-logo{width:140px}}
+.wrap{max-width:1180px;margin:24px auto;padding:0 16px}.panel{background:white;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:18px}
+h1,h2{margin-top:0}h1{margin-bottom:6px;font-size:22px}h2{font-size:17px;margin-bottom:8px}.sub{color:#666;font-size:12px}.intro{margin-top:14px;color:#555;font-size:13px;line-height:1.5}
+.status-banner{display:flex;align-items:center;gap:10px;margin-top:16px;padding:10px 12px;border:1px solid #f0c36d;border-radius:6px;background:#fff8e8;color:#7a4d00;font-size:12px;font-weight:800}.status-dot{width:9px;height:9px;border-radius:50%;background:#ef6c00;flex:0 0 auto}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}.section-head p{margin:0;color:#666;font-size:12px}
+.add-button{min-height:38px;padding:0 15px;border:0;border-radius:5px;background:#1b5e20;color:white;font-size:12px;font-weight:900;cursor:pointer}
+.table-wrap{overflow-x:auto;border:1px solid #e2e2e2;border-radius:6px}table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:10px;border-bottom:1px solid #e8e8e8;text-align:left;font-size:12px;vertical-align:middle}th{background:#f7f7f7;font-weight:900;color:#333}tbody tr:last-child td{border-bottom:0}
+.cell-input{width:100%;min-width:150px;height:38px;padding:0 10px;border:1px solid #bbb;border-radius:5px;background:white;font-size:13px}.email-input{min-width:240px}
+.alarm-check{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-weight:700}.alarm-check input{width:17px;height:17px;accent-color:#1b5e20}
+.remove-button{min-height:34px;padding:0 10px;border:1px solid #b71c1c;border-radius:5px;background:white;color:#b71c1c;font-size:11px;font-weight:800;cursor:pointer}.remove-button:hover{background:#fff2f2}
+.footer-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}.not-saved{margin-right:auto;color:#777;font-size:11px}.save-button{min-height:38px;padding:0 16px;border:0;border-radius:5px;background:#bdbdbd;color:#666;font-size:12px;font-weight:900;cursor:not-allowed}
+.example-note{padding:12px;border-left:4px solid #1565c0;background:#f4f8ff;color:#445;font-size:12px;line-height:1.5}
+@media(max-width:760px){.topbar{align-items:flex-start;flex-direction:column}.brand-logo{width:140px}.section-head{align-items:flex-start}.wrap{margin-top:14px}.panel{padding:14px}}
 </style>
 </head>
 <body>
@@ -29,17 +38,138 @@ h1{margin:0 0 6px;font-size:22px}.sub{color:#666;font-size:13px}.placeholder{mar
     <button id="logoutButton" class="logout" type="button">Logout</button>
   </div>
 </div>
+
 <div class="wrap">
   <div class="panel">
     <h1>Email Alarm Register</h1>
     <div id="currentUser" class="sub">Checking Master account...</div>
-    <div class="placeholder">Email alarm register configuration page created. We can add the register numbers, alarm conditions, recipients, delays and email messages here next.</div>
+    <div class="intro">Add the people who will receive alarm emails from the Bianco Precast monitoring system. Each recipient can be assigned to Planks alarms, T-Beams alarms, or both.</div>
+    <div class="status-banner"><span class="status-dot"></span>LAYOUT ONLY — email addresses are not being saved and alarm emails are not being sent yet.</div>
+  </div>
+
+  <div class="panel">
+    <div class="section-head">
+      <div>
+        <h2 style="margin-bottom:4px">Alarm Email Recipients</h2>
+        <p>Add one row for each person who should receive alarm notifications.</p>
+      </div>
+      <button id="addRecipientButton" class="add-button" type="button">+ Add Email Recipient</button>
+    </div>
+
+    <div class="table-wrap">
+      <table aria-label="Email alarm recipients">
+        <thead>
+          <tr>
+            <th style="width:22%">Name</th>
+            <th style="width:32%">Email Address</th>
+            <th>Planks Alarms</th>
+            <th>T-Beams Alarms</th>
+            <th>Enabled</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recipientBody">
+          <tr class="recipient-row">
+            <td><input class="cell-input" type="text" placeholder="e.g. Locky Weeks" autocomplete="off"></td>
+            <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
+            <td><label class="alarm-check"><input type="checkbox" checked> Receive</label></td>
+            <td><label class="alarm-check"><input type="checkbox" checked> Receive</label></td>
+            <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
+            <td><button class="remove-button" type="button">Remove</button></td>
+          </tr>
+          <tr class="recipient-row">
+            <td><input class="cell-input" type="text" placeholder="Recipient name" autocomplete="off"></td>
+            <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
+            <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
+            <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
+            <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
+            <td><button class="remove-button" type="button">Remove</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer-actions">
+      <div class="not-saved">Changes on this page are temporary until we connect the register to the server.</div>
+      <button class="save-button" type="button" disabled title="Server saving will be added in the next stage">Save Email Register</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>How this will work</h2>
+    <div class="example-note">
+      <strong>Planks Alarms</strong> will control whether that email receives Planks alarm notifications.<br>
+      <strong>T-Beams Alarms</strong> will control whether that email receives T-Beams alarm notifications.<br>
+      <strong>Enabled</strong> will allow an address to be temporarily switched off without deleting it.
+    </div>
   </div>
 </div>
+
 <script>
-async function fetchJson(url,options={}){const response=await fetch(url,options);const data=await response.json();if(!response.ok){if(response.status===401)location.href='/login';throw new Error(data.error||'Request failed')}return data}
-(async()=>{try{const data=await fetchJson('/api/auth/me');if(data.user.role!=='master'){document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";return}document.getElementById('currentUser').textContent=`Logged in as ${data.user.username} — Master Administrator`}catch{location.href='/login'}})();
-document.getElementById('logoutButton').addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST'})}catch{}location.href='/login'});
+const recipientBody=document.getElementById('recipientBody');
+const addRecipientButton=document.getElementById('addRecipientButton');
+
+function bindRemoveButtons(){
+  recipientBody.querySelectorAll('.remove-button').forEach(button=>{
+    if(button.dataset.bound==='1')return;
+    button.dataset.bound='1';
+    button.addEventListener('click',()=>{
+      const rows=recipientBody.querySelectorAll('.recipient-row');
+      if(rows.length<=1){
+        const row=button.closest('.recipient-row');
+        row.querySelectorAll('input[type="text"],input[type="email"]').forEach(input=>input.value='');
+        row.querySelectorAll('input[type="checkbox"]').forEach((input,index)=>input.checked=index===2);
+        return;
+      }
+      button.closest('.recipient-row').remove();
+    });
+  });
+}
+
+addRecipientButton.addEventListener('click',()=>{
+  const row=document.createElement('tr');
+  row.className='recipient-row';
+  row.innerHTML=`
+    <td><input class="cell-input" type="text" placeholder="Recipient name" autocomplete="off"></td>
+    <td><input class="cell-input email-input" type="email" placeholder="name@example.com" autocomplete="off"></td>
+    <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
+    <td><label class="alarm-check"><input type="checkbox"> Receive</label></td>
+    <td><label class="alarm-check"><input type="checkbox" checked> Active</label></td>
+    <td><button class="remove-button" type="button">Remove</button></td>`;
+  recipientBody.appendChild(row);
+  bindRemoveButtons();
+  row.querySelector('input').focus();
+});
+
+bindRemoveButtons();
+
+async function fetchJson(url,options={}){
+  const response=await fetch(url,options);
+  const data=await response.json();
+  if(!response.ok){
+    if(response.status===401)location.href='/login';
+    throw new Error(data.error||'Request failed');
+  }
+  return data;
+}
+
+(async()=>{
+  try{
+    const data=await fetchJson('/api/auth/me');
+    if(data.user.role!=='master'){
+      document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";
+      return;
+    }
+    document.getElementById('currentUser').textContent=`Logged in as ${data.user.username} — Master Administrator`;
+  }catch{
+    location.href='/login';
+  }
+})();
+
+document.getElementById('logoutButton').addEventListener('click',async()=>{
+  try{await fetch('/api/auth/logout',{method:'POST'})}catch{}
+  location.href='/login';
+});
 </script>
 </body>
 </html>
