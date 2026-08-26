@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Greenair TrendLog - Manual Override Log</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f4f3;color:#222}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid #d6d6d6}
+.brand{display:flex;align-items:center;gap:12px}.brand-logo{display:block;width:160px;max-height:52px;object-fit:contain}.brand-text{display:flex;flex-direction:column}.bianco{color:#f57c00;font-size:20px;font-weight:900}.greenair{color:#1b5e20;font-size:14px;font-weight:800}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}.top-actions a,.top-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 12px;border:1px solid #ccc;border-radius:5px;background:#fff;color:#222;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer}.top-actions .management{background:#1b5e20;color:#fff;border-color:#1b5e20}.top-actions .logout{background:#b71c1c;color:#fff;border-color:#b71c1c}
+.wrap{max-width:1450px;margin:22px auto;padding:0 16px}.panel{background:#fff;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:16px}h1,h2{margin-top:0}h1{font-size:22px}h2{font-size:17px}.note{font-size:12px;color:#666;line-height:1.5}
+.filters{display:grid;grid-template-columns:180px 1fr 180px 130px auto;gap:10px;align-items:end}.field label{display:block;margin-bottom:5px;font-size:11px;font-weight:900;text-transform:uppercase;color:#555}.field input,.field select{width:100%;height:38px;border:1px solid #bbb;border-radius:5px;padding:0 9px;background:#fff;font-size:13px}.primary{height:38px;padding:0 16px;border:0;border-radius:5px;background:#1b5e20;color:#fff;font-weight:800;cursor:pointer}
+.summary{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.summary-card{min-width:145px;padding:10px 12px;border:1px solid #e1e1e1;border-radius:6px;background:#fafafa}.summary-card strong{display:block;font-size:20px}.summary-card span{font-size:11px;color:#666;font-weight:800}.table-wrap{overflow:auto;max-height:68vh;border:1px solid #e2e2e2;border-radius:6px}table{width:100%;border-collapse:collapse;min-width:1180px;background:#fff}th,td{padding:9px 8px;border-bottom:1px solid #e9e9e9;text-align:left;font-size:11px;vertical-align:top}th{position:sticky;top:0;background:#f7f7f7;font-weight:900;z-index:1}.user{font-weight:900}.system{font-weight:900}.ok{color:#1b5e20;font-weight:900}.failed{color:#b00020;font-weight:900}.muted{color:#777}.error{max-width:310px;white-space:normal;color:#b00020}.loading{text-align:center;padding:28px;color:#666;font-weight:700}.empty{text-align:center;padding:28px;color:#666}.status{min-height:18px;margin-top:8px;font-size:12px;font-weight:700}.status.bad{color:#b00020}.status.good{color:#1b5e20}
+@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}.topbar{align-items:flex-start;flex-direction:column}.brand-logo{width:140px}}@media(max-width:560px){.filters{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="/greenair-logo.png" alt="Greenair">
+    <div class="brand-text"><div class="bianco">BIANCO PRECAST</div><div class="greenair">GREENAIR TRENDLOG</div></div>
+  </div>
+  <div class="top-actions">
+    <a class="management" href="/admin">User Management</a>
+    <a href="/">TrendLog</a>
+    <button id="logoutButton" class="logout" type="button">Logout</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel">
+    <h1>Manual Override Audit Log</h1>
+    <div id="currentUser" class="note">Checking Master account...</div>
+    <p class="note">This records authenticated manual-control writes for Planks and T-Beams. Entries include the user, system, control, register, previous value, requested value, controller read-back, result and timestamp.</p>
+  </div>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="field"><label for="systemFilter">System</label><select id="systemFilter"><option value="">All Systems</option><option value="planks">Planks</option><option value="tbeams">T-Beams</option></select></div>
+      <div class="field"><label for="usernameFilter">Username</label><input id="usernameFilter" type="text" placeholder="All users"></div>
+      <div class="field"><label for="resultFilter">Result</label><select id="resultFilter"><option value="">All Results</option><option value="true">Successful</option><option value="false">Failed</option></select></div>
+      <div class="field"><label for="limitFilter">Rows</label><select id="limitFilter"><option>50</option><option selected>100</option><option>250</option><option>500</option></select></div>
+      <button id="refreshButton" class="primary" type="button">Refresh Log</button>
+    </div>
+    <div class="summary">
+      <div class="summary-card"><strong id="shownCount">0</strong><span>ROWS SHOWN</span></div>
+      <div class="summary-card"><strong id="successCount">0</strong><span>SUCCESSFUL</span></div>
+      <div class="summary-card"><strong id="failedCount">0</strong><span>FAILED</span></div>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date / Time</th><th>User</th><th>System</th><th>Panel</th><th>Control</th><th>Register</th><th>Previous</th><th>Requested</th><th>Confirmed</th><th>Result</th><th>Error</th></tr></thead>
+        <tbody id="logBody"><tr><td class="loading" colspan="11">Loading audit log...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const currentUser=document.getElementById("currentUser");
+const systemFilter=document.getElementById("systemFilter");
+const usernameFilter=document.getElementById("usernameFilter");
+const resultFilter=document.getElementById("resultFilter");
+const limitFilter=document.getElementById("limitFilter");
+const refreshButton=document.getElementById("refreshButton");
+const logBody=document.getElementById("logBody");
+const shownCount=document.getElementById("shownCount");
+const successCount=document.getElementById("successCount");
+const failedCount=document.getElementById("failedCount");
+const statusBox=document.getElementById("status");
+const logoutButton=document.getElementById("logoutButton");
+
+function escapeHtml(value){return String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function formatDate(value){if(!value)return "—";return new Date(value).toLocaleString("en-AU",{timeZone:"Australia/Adelaide",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false})}
+function formatValue(entry,value){if(value===null||value===undefined)return "—";const n=Number(value);if(entry.control_key==="appOverride")return n===1?"MANUAL (1)":"AUTO (0)";if(entry.control_key==="pumpEnable"||entry.control_key==="boilerEnable")return n===1?"ON (1)":"OFF (0)";if(entry.control_key==="secondaryPump")return `${n}%`;return String(value)}
+async function fetchJson(url,options={}){const response=await fetch(url,options);let data={};try{data=await response.json()}catch{}if(!response.ok){if(response.status===401)window.location.href="/login";throw new Error(data.error||"Request failed")}return data}
+
+async function checkMaster(){const data=await fetchJson("/api/auth/me");if(!data.user||data.user.role!=="master"){document.body.innerHTML="<h2 style='font-family:Arial;padding:30px'>Master access required</h2>";return false}currentUser.textContent=`Logged in as ${data.user.username} — Master Administrator`;return true}
+
+async function loadLog(){
+  refreshButton.disabled=true;statusBox.className="status";statusBox.textContent="Loading...";
+  const params=new URLSearchParams();params.set("limit",limitFilter.value);if(systemFilter.value)params.set("system",systemFilter.value);if(usernameFilter.value.trim())params.set("username",usernameFilter.value.trim());if(resultFilter.value)params.set("success",resultFilter.value);
+  try{
+    const data=await fetchJson(`/api/manual-override-log?${params.toString()}`);const entries=Array.isArray(data.entries)?data.entries:[];
+    shownCount.textContent=entries.length;successCount.textContent=entries.filter(x=>x.success).length;failedCount.textContent=entries.filter(x=>!x.success).length;
+    if(!entries.length){logBody.innerHTML='<tr><td class="empty" colspan="11">No manual override activity has been logged yet.</td></tr>';statusBox.textContent="No entries found.";return}
+    logBody.innerHTML=entries.map(entry=>`<tr>
+      <td>${escapeHtml(formatDate(entry.created_at))}</td>
+      <td class="user">${escapeHtml(entry.username)}</td>
+      <td class="system">${escapeHtml(entry.system_name)}</td>
+      <td>Unit ${escapeHtml(entry.unit_id)}<br><span class="muted">Port ${escapeHtml(entry.port)}</span></td>
+      <td>${escapeHtml(entry.control_name)}</td>
+      <td>${escapeHtml(entry.register)}</td>
+      <td>${escapeHtml(formatValue(entry,entry.old_value))}</td>
+      <td>${escapeHtml(formatValue(entry,entry.requested_value))}</td>
+      <td>${escapeHtml(formatValue(entry,entry.readback_value))}</td>
+      <td class="${entry.success?"ok":"failed"}">${entry.success?"SUCCESS":"FAILED"}</td>
+      <td class="error">${escapeHtml(entry.error||"—")}</td>
+    </tr>`).join("");
+    statusBox.className="status good";statusBox.textContent=`Loaded ${entries.length} audit entr${entries.length===1?"y":"ies"}.`;
+  }catch(error){logBody.innerHTML=`<tr><td class="empty" colspan="11">${escapeHtml(error.message)}</td></tr>`;statusBox.className="status bad";statusBox.textContent=error.message}
+  finally{refreshButton.disabled=false}
+}
+
+refreshButton.addEventListener("click",loadLog);systemFilter.addEventListener("change",loadLog);resultFilter.addEventListener("change",loadLog);limitFilter.addEventListener("change",loadLog);usernameFilter.addEventListener("keydown",event=>{if(event.key==="Enter")loadLog()});
+logoutButton.addEventListener("click",async()=>{try{await fetch("/api/auth/logout",{method:"POST"})}catch{}window.location.href="/login"});
+(async()=>{try{if(await checkMaster())await loadLog()}catch(error){statusBox.className="status bad";statusBox.textContent=error.message}})();
+</script>
+</body>
+</html>
