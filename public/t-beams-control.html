@@ -106,20 +106,8 @@ input[type=range]{width:100%}
           <button id="pumpOff" class="ctrl off" onclick="chooseBinary('pumpEnable',0)">OFF</button>
         </div>
       </div>
-
-      <div class="row">
-        <div>
-          <div class="name">Secondary Pump</div>
-          <div class="meta">OUT9 • Holding Register 7117 • 0–100%</div>
-        </div>
-        <div class="sliderbox">
-          <input id="secondarySlider" type="range" min="0" max="100" step="1" value="0" disabled>
-          <div class="percent"><span id="secondaryValue">0</span>%</div>
-        </div>
-      </div>
-
       <div class="actions">
-        <div class="notice">Changes are written only after confirmation. The server restricts this page to T-Beams Unit 68 on Port 505 and registers 8115, 8113, 7117 and 8111 only. AUTO returns control to the BMS program.</div>
+        <div class="notice">Changes are written only after confirmation. The server restricts this page to T-Beams Unit 68 on Port 505 and registers 8115, 8113 and 8111 only. AUTO returns control to the BMS program.</div>
         <div>
           <button class="refresh" onclick="loadControls()">Refresh</button>
           <button id="applyBtn" class="apply" onclick="applyChanges()" disabled>APPLY T-BEAMS CONTROLS</button>
@@ -158,7 +146,6 @@ function updateButtons() {
   document.getElementById("boilerOff").disabled = !loaded || !manual;
   document.getElementById("pumpOn").disabled = !loaded || !manual;
   document.getElementById("pumpOff").disabled = !loaded || !manual;
-  document.getElementById("secondarySlider").disabled = !loaded || !manual;
 }
 
 function chooseMode(value) {
@@ -179,16 +166,10 @@ function chooseBinary(id, value) {
   updateButtons();
 }
 
-document.getElementById("secondarySlider").addEventListener("input", event => {
-  if (!desired || desired.appOverride !== 1) return;
-  desired.secondaryPump = Number(event.target.value);
-  document.getElementById("secondaryValue").textContent = desired.secondaryPump;
-});
 
 async function loadControls() {
   loaded = false;
   document.getElementById("applyBtn").disabled = true;
-  document.getElementById("secondarySlider").disabled = true;
   document.getElementById("connection").textContent = "LOADING…";
 
   try {
@@ -207,14 +188,11 @@ async function loadControls() {
     current = {
       boilerEnable: Number(data.controls.boilerEnable.value),
       pumpEnable: Number(data.controls.pumpEnable.value),
-      secondaryPump: Number(data.controls.secondaryPump.value),
       appOverride: Number(data.controls.appOverride.value)
     };
 
     desired = {...current};
 
-    document.getElementById("secondarySlider").value = Math.max(0, Math.min(100, desired.secondaryPump));
-    document.getElementById("secondaryValue").textContent = Math.max(0, Math.min(100, desired.secondaryPump));
     updateButtons();
 
     loaded = true;
@@ -264,7 +242,6 @@ async function applyChanges() {
   if (desired.appOverride === 1) {
     if (desired.boilerEnable !== current.boilerEnable) changes.push(["boilerEnable", desired.boilerEnable, "Boiler Override"]);
     if (desired.pumpEnable !== current.pumpEnable) changes.push(["pumpEnable", desired.pumpEnable, "Pump Override"]);
-    if (desired.secondaryPump !== current.secondaryPump) changes.push(["secondaryPump", desired.secondaryPump, "Secondary Pump"]);
   }
 
   if (!changes.length) {
@@ -274,7 +251,6 @@ async function applyChanges() {
 
   const summary = changes.map(([id,value,name]) => {
     if (id === "appOverride") return `${name}: ${value === 0 ? "AUTO" : "MANUAL"}`;
-    if (id === "secondaryPump") return `${name}: ${value}%`;
     return `${name}: ${value === 1 ? "ON" : "OFF"}`;
   }).join("\n");
 
@@ -282,7 +258,6 @@ async function applyChanges() {
 
   const apply = document.getElementById("applyBtn");
   apply.disabled = true;
-  document.getElementById("secondarySlider").disabled = true;
   showMessage("Writing and verifying Modbus values…", true);
 
   try {
