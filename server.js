@@ -1312,7 +1312,7 @@ const POINTS = [
       7491,
 
     kind:
-      "analog"
+      "signed32Analog"
   },
 
 
@@ -5655,6 +5655,68 @@ function signed16(
 
 /*
 ==================================================
+SIGNED 32-BIT LOW-WORD-FIRST ANALOG
+USED BY PLANKS CONCRETE 7491 + 7492
+==================================================
+*/
+
+function signed32LowHigh(
+  lowWord,
+  highWord
+) {
+
+  const unsigned =
+    (Number(highWord) * 65536)
+    +
+    Number(lowWord);
+
+
+  return unsigned >=
+    2147483648
+    ?
+    unsigned -
+      4294967296
+    :
+    unsigned;
+
+}
+
+
+async function readSigned32Analog(
+  register
+) {
+
+  const lowWord =
+    await readRegister(
+      register
+    );
+
+
+  const highWord =
+    await readRegister(
+      register + 1
+    );
+
+
+  return {
+    raw: [
+      lowWord,
+      highWord
+    ],
+    value:
+      signed32LowHigh(
+        lowWord,
+        highWord
+      )
+      /
+      1000
+  };
+
+}
+
+
+/*
+==================================================
 SCALE VALUE
 ==================================================
 */
@@ -5725,6 +5787,35 @@ async function pollBms() {
       const point
       of POINTS
     ) {
+
+      if (
+        point.kind ===
+        "signed32Analog"
+      ) {
+
+        const reading =
+          await readSigned32Analog(
+            point.register
+          );
+
+
+        results.push({
+
+          ...point,
+
+          raw:
+            reading.raw,
+
+          value:
+            reading.value
+
+        });
+
+
+        continue;
+
+      }
+
 
       const raw =
 
