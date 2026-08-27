@@ -2581,7 +2581,7 @@ function readRegister(
 /*
 ==================================================
 PLANKS CONCRETE - TWO REGISTER SIGNED 32-BIT READ
-ONLY IN4 / REGISTER 7491 + 7492 USES THIS PATH.
+ONLY IN4 / REGISTER 7490 + 7491 USES THIS PATH.
 AMBIENT AND ALL OTHER PLANKS POINTS KEEP THEIR
 ORIGINAL SINGLE-REGISTER READ METHOD.
 ==================================================
@@ -2622,7 +2622,7 @@ function readPlanksConcrete32() {
     socket.once("connect", () => {
       clearTimeout(connectTimer);
       responseTimer = setTimeout(() => {
-        fail(new Error(`Modbus response timeout Unit ${UNIT_ID} Registers 7491-7492`));
+        fail(new Error(`Modbus response timeout Unit ${UNIT_ID} Registers 7490-7491`));
       }, 5000);
 
       const request = Buffer.alloc(12);
@@ -2631,7 +2631,7 @@ function readPlanksConcrete32() {
       request.writeUInt16BE(6, 4);
       request[6] = UNIT_ID;
       request[7] = 3;
-      request.writeUInt16BE(7491, 8);
+      request.writeUInt16BE(7490, 8);
       request.writeUInt16BE(2, 10);
       socket.write(request);
     });
@@ -2665,13 +2665,14 @@ function readPlanksConcrete32() {
 
       // FC03 response for two registers = function + byteCount + 4 data bytes.
       if (pdu.length !== 6 || pdu[1] !== 4) {
-        return fail(new Error("Unexpected FC03 two-register response for Planks Concrete"));
+        return fail(new Error("Unexpected FC03 two-register response for Planks Concrete 7490-7491"));
       }
 
       // T3000/Greenair format proven on greenair-live:
-      // register 7491 = LOW word, register 7492 = HIGH word.
-      const lowWord = pdu.readUInt16BE(2);
-      const highWord = pdu.readUInt16BE(4);
+      // T3000 stores this 32-bit point with the HIGH/sign word first.
+      // register 7490 = HIGH/sign word, register 7491 = LOW word.
+      const highWord = pdu.readUInt16BE(2);
+      const lowWord = pdu.readUInt16BE(4);
       const unsigned32 = highWord * 65536 + lowWord;
       const signedRaw = unsigned32 >= 0x80000000
         ? unsigned32 - 0x100000000
