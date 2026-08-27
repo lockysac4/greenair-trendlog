@@ -1536,6 +1536,15 @@ let nextArchiveAt =
 
 let archiveTimer =
   null;
+
+
+let lastTBeamsArchiveAt =
+  null;
+
+
+let lastTBeamsArchiveError =
+  null;
+
 /*
 ==================================================
 DATABASE SETUP
@@ -1599,6 +1608,46 @@ async function initialiseDatabase() {
       trend_history_recorded_at_idx
 
       ON trend_history(recorded_at)
+
+    `);
+
+
+    /*
+    T-BEAMS PERMANENT TREND HISTORY TABLE
+    Mirrors the proven Planks one-minute PostgreSQL logger.
+    */
+
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS tbeams_trend_history (
+
+        id BIGSERIAL PRIMARY KEY,
+
+        recorded_at TIMESTAMPTZ NOT NULL,
+
+        tbeams_in DOUBLE PRECISION NOT NULL,
+
+        tbeams_out DOUBLE PRECISION NOT NULL,
+
+        ambient DOUBLE PRECISION NOT NULL,
+
+        tbeams_concrete DOUBLE PRECISION NOT NULL,
+
+        tbeams_tank DOUBLE PRECISION NOT NULL,
+
+        ambient_concrete_diff DOUBLE PRECISION NOT NULL
+
+      )
+
+    `);
+
+
+    await db.query(`
+
+      CREATE INDEX IF NOT EXISTS
+      tbeams_trend_history_recorded_at_idx
+
+      ON tbeams_trend_history(recorded_at)
 
     `);
 
@@ -1788,6 +1837,47 @@ async function initialiseDatabase() {
         new Date(
 
           previousArchive.rows[0]
+            .last_archive
+
+        );
+
+    }
+
+
+    /*
+    RECOVER LAST T-BEAMS ARCHIVE
+    */
+
+    const previousTBeamsArchive =
+
+      await db.query(`
+
+        SELECT
+
+          MAX(recorded_at)
+          AS last_archive
+
+        FROM tbeams_trend_history
+
+      `);
+
+
+    if (
+
+      previousTBeamsArchive.rows[0]
+
+      &&
+
+      previousTBeamsArchive.rows[0]
+        .last_archive
+
+    ) {
+
+      lastTBeamsArchiveAt =
+
+        new Date(
+
+          previousTBeamsArchive.rows[0]
             .last_archive
 
         );
@@ -6384,6 +6474,228 @@ async function archiveTrendSample(
 
 /*
 ==================================================
+ARCHIVE T-BEAMS ONE-MINUTE HISTORY
+Replicates the working Planks permanent logger.
+==================================================
+*/
+
+async function archiveTBeamsTrendSample(
+  recordedAt
+) {
+
+  if (
+    !db
+  ) {
+
+    lastTBeamsArchiveError =
+      "DATABASE_URL not configured";
+
+    return false;
+
+  }
+
+
+  if (
+    !tBeamsLatest.ok
+  ) {
+
+    lastTBeamsArchiveError =
+      "T-Beams BMS offline at archive time";
+
+    return false;
+
+  }
+
+
+  const values = {
+
+    in1:
+      getTBeamsLatestValue("in1"),
+
+    in2:
+      getTBeamsLatestValue("in2"),
+
+    ambient:
+      getTBeamsLatestValue("ambient"),
+
+    in4:
+      getTBeamsLatestValue("in4"),
+
+    in5:
+      getTBeamsLatestValue("in5"),
+
+    diff:
+      getTBeamsLatestValue("diff")
+
+  };
+
+
+  if (
+
+    Object.values(
+      values
+    ).some(
+
+      value =>
+        value === null
+
+    )
+
+  ) {
+
+    lastTBeamsArchiveError =
+      "T-Beams values unavailable";
+
+    return false;
+
+  }
+
+
+  try {
+
+    const existing =
+
+      await db.query(
+
+        `
+
+        SELECT id
+
+        FROM tbeams_trend_history
+
+        WHERE recorded_at = $1
+
+        LIMIT 1
+
+        `,
+
+        [
+          recordedAt
+        ]
+
+      );
+
+
+    if (
+      existing.rowCount ===
+      0
+    ) {
+
+      await db.query(
+
+        `
+
+        INSERT INTO tbeams_trend_history (
+
+          recorded_at,
+
+          tbeams_in,
+
+          tbeams_out,
+
+          ambient,
+
+          tbeams_concrete,
+
+          tbeams_tank,
+
+          ambient_concrete_diff
+
+        )
+
+        VALUES (
+
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7
+
+        )
+
+        `,
+
+        [
+
+          recordedAt,
+
+          values.in1,
+
+          values.in2,
+
+          values.ambient,
+
+          values.in4,
+
+          values.in5,
+
+          values.diff
+
+        ]
+
+      );
+
+    }
+
+
+    databaseConnected =
+      true;
+
+
+    lastTBeamsArchiveAt =
+      recordedAt;
+
+
+    lastTBeamsArchiveError =
+      null;
+
+
+    console.log(
+
+      "T-Beams 1-minute trend history saved:",
+
+      recordedAt.toISOString()
+
+    );
+
+
+    return true;
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    databaseConnected =
+      false;
+
+
+    lastTBeamsArchiveError =
+      error.message;
+
+
+    console.error(
+
+      "T-Beams history save failed:",
+
+      error.message
+
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+/*
+==================================================
 SCHEDULE 1-MINUTE LOGGER
 ==================================================
 */
@@ -6416,6 +6728,11 @@ function scheduleNextArchive() {
       async () => {
 
         await archiveTrendSample(
+          next
+        );
+
+
+        await archiveTBeamsTrendSample(
           next
         );
 
@@ -6507,6 +6824,148 @@ async function queryHistory(
 
 
   return result.rows;
+
+}
+
+
+/*
+==================================================
+QUERY T-BEAMS PERMANENT HISTORY
+Returns the same sample field names used by the
+existing T-Beams trend page.
+==================================================
+*/
+
+async function queryTBeamsHistory(
+  from,
+  to
+) {
+
+  if (
+    !db
+  ) {
+
+    throw new Error(
+      "Database not configured"
+    );
+
+  }
+
+
+  const result =
+
+    await db.query(
+
+      `
+
+      SELECT
+
+        recorded_at,
+
+        tbeams_in,
+
+        tbeams_out,
+
+        ambient,
+
+        tbeams_concrete,
+
+        tbeams_tank,
+
+        ambient_concrete_diff
+
+      FROM tbeams_trend_history
+
+      WHERE
+
+        recorded_at >= $1
+
+      AND
+
+        recorded_at <= $2
+
+      ORDER BY
+
+        recorded_at ASC
+
+      `,
+
+      [
+        from,
+        to
+      ]
+
+    );
+
+
+  return result.rows.map(
+    row => ({
+      timestamp:
+        new Date(row.recorded_at).toISOString(),
+      in1:
+        Number(row.tbeams_in),
+      in2:
+        Number(row.tbeams_out),
+      ambient:
+        Number(row.ambient),
+      in4:
+        Number(row.tbeams_concrete),
+      in5:
+        Number(row.tbeams_tank),
+      diff:
+        Number(row.ambient_concrete_diff)
+    })
+  );
+
+}
+
+
+async function queryTBeamsHistoryRange() {
+
+  if (
+    !db
+  ) {
+
+    throw new Error(
+      "Database not configured"
+    );
+
+  }
+
+
+  const result =
+
+    await db.query(`
+
+      SELECT
+
+        COUNT(*)::INTEGER AS count,
+
+        MIN(recorded_at) AS first,
+
+        MAX(recorded_at) AS last
+
+      FROM tbeams_trend_history
+
+    `);
+
+
+  const row =
+    result.rows[0] || {};
+
+
+  return {
+    count:
+      Number(row.count || 0),
+    first:
+      row.first
+      ? new Date(row.first).toISOString()
+      : null,
+    last:
+      row.last
+      ? new Date(row.last).toISOString()
+      : null
+  };
 
 }
 
@@ -9953,37 +10412,38 @@ const server =
         "GET"
       ) {
 
-        const first =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[0].timestamp
-          :
-          null;
+        try {
+
+          const range =
+            await queryTBeamsHistoryRange();
 
 
-        const last =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[
-            tBeamsLiveHistory.length - 1
-          ].timestamp
-          :
-          null;
+          return sendJson(
+            response,
+            {
+              ok: true,
+              ...range
+            }
+          );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              tBeamsLiveHistory.length,
-            first,
-            last
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -10061,44 +10521,65 @@ const server =
         }
 
 
-        const samples =
-          tBeamsLiveHistory.filter(
-            sample => {
+        if (
+          from >
+          to
+        ) {
 
-              const time =
-                new Date(
-                  sample.timestamp
-                ).getTime();
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "From must be before To"
+            },
+            400
+          );
+
+        }
 
 
-              return (
-                time >=
-                from.getTime()
-                &&
-                time <=
-                to.getTime()
-              );
+        try {
 
+          const samples =
+            await queryTBeamsHistory(
+              from,
+              to
+            );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              count:
+                samples.length,
+              from:
+                from.toISOString(),
+              to:
+                to.toISOString(),
+              samples
             }
           );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              samples.length,
-            from:
-              from.toISOString(),
-            to:
-              to.toISOString(),
-            samples
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -11484,43 +11965,54 @@ h1{color:#1b5e20;margin-top:0}
       if (
         url.pathname ===
         "/api/tbeams/history/range"
+
+        &&
+
+        request.method ===
+        "GET"
       ) {
 
-        const first =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[0].timestamp
-          :
-          null;
+        try {
+
+          const range =
+            await queryTBeamsHistoryRange();
 
 
-        const last =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[
-            tBeamsLiveHistory.length - 1
-          ].timestamp
-          :
-          null;
+          return sendJson(
+            response,
+            {
+              ok: true,
+              ...range
+            }
+          );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              tBeamsLiveHistory.length,
-            first,
-            last
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
         "/api/tbeams/history"
+
+        &&
+
+        request.method ===
+        "GET"
       ) {
 
         const fromText =
@@ -11589,44 +12081,65 @@ h1{color:#1b5e20;margin-top:0}
         }
 
 
-        const samples =
-          tBeamsLiveHistory.filter(
-            sample => {
+        if (
+          from >
+          to
+        ) {
 
-              const time =
-                new Date(
-                  sample.timestamp
-                ).getTime();
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "From must be before To"
+            },
+            400
+          );
+
+        }
 
 
-              return (
-                time >=
-                from.getTime()
-                &&
-                time <=
-                to.getTime()
-              );
+        try {
 
+          const samples =
+            await queryTBeamsHistory(
+              from,
+              to
+            );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              count:
+                samples.length,
+              from:
+                from.toISOString(),
+              to:
+                to.toISOString(),
+              samples
             }
           );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              samples.length,
-            from:
-              from.toISOString(),
-            to:
-              to.toISOString(),
-            samples
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -12461,6 +12974,20 @@ h1{color:#1b5e20;margin-top:0}
               null,
 
             lastArchiveError,
+
+            lastTBeamsArchiveAt:
+
+              lastTBeamsArchiveAt
+
+              ?
+
+              lastTBeamsArchiveAt.toISOString()
+
+              :
+
+              null,
+
+            lastTBeamsArchiveError,
 
             emailConfigured,
 
