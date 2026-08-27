@@ -1312,7 +1312,7 @@ const POINTS = [
       7491,
 
     kind:
-      "signed32Analog"
+      "analog"
   },
 
 
@@ -1990,592 +1990,125 @@ MODBUS REQUEST
 
 function buildReadRequest(
   transaction,
-  register
+  register,
+  quantity = 1
 ) {
 
-  const request =
-    Buffer.alloc(12);
-
-
-  /*
-  TRANSACTION ID
-  */
-
-  request.writeUInt16BE(
-    transaction,
-    0
-  );
-
-
-  /*
-  PROTOCOL ID
-  */
-
-  request.writeUInt16BE(
-    0,
-    2
-  );
-
-
-  /*
-  LENGTH
-  */
-
-  request.writeUInt16BE(
-    6,
-    4
-  );
-
-
-  /*
-  UNIT ID
-  */
-
-  request[6] =
-    UNIT_ID;
-
-
-  /*
-  FUNCTION 03
-  */
-
-  request[7] =
-    3;
-
-
-  /*
-  REGISTER
-  */
-
-  request.writeUInt16BE(
-    register,
-    8
-  );
-
-
-  /*
-  QUANTITY
-  */
-
-  request.writeUInt16BE(
-    1,
-    10
-  );
-
-
+  const request = Buffer.alloc(12);
+  request.writeUInt16BE(transaction, 0);
+  request.writeUInt16BE(0, 2);
+  request.writeUInt16BE(6, 4);
+  request[6] = UNIT_ID;
+  request[7] = 3;
+  request.writeUInt16BE(register, 8);
+  request.writeUInt16BE(quantity, 10);
   return request;
-
 }
+
 /*
 ==================================================
-READ MODBUS REGISTER
+READ MODBUS HOLDING REGISTERS
+Supports one or more consecutive FC03 registers.
+Same proven method used by greenair-live.
 ==================================================
 */
-
-function readRegister(
-  register
-) {
-
-  return new Promise(
-
-    (
-      resolve,
-      reject
-    ) => {
-
-
-      const transaction =
-        nextTransactionId();
-
-
-      const socket =
-        new net.Socket();
-
-
-      let completed =
-        false;
-
-
-      let responseBuffer =
-        Buffer.alloc(0);
-
-
-      let connectTimer =
-        null;
-
-
-      let responseTimer =
-        null;
-
-
-      function fail(
-        error
-      ) {
-
-        if (
-          completed
-        ) {
-
-          return;
-
-        }
-
-
-        completed =
-          true;
-
-
-        clearTimeout(
-          connectTimer
-        );
-
-
-        clearTimeout(
-          responseTimer
-        );
-
-
-        socket.destroy();
-
-
-        reject(
-
-          error instanceof Error
-
-          ?
-
-          error
-
-          :
-
-          new Error(
-            String(error)
-          )
-
-        );
-
-      }
-
-
-      function succeed(
-        value
-      ) {
-
-        if (
-          completed
-        ) {
-
-          return;
-
-        }
-
-
-        completed =
-          true;
-
-
-        clearTimeout(
-          connectTimer
-        );
-
-
-        clearTimeout(
-          responseTimer
-        );
-
-
-        socket.end();
-
-
-        resolve(
-          value
-        );
-
-      }
-
-
-      connectTimer =
-
-        setTimeout(
-
-          () => {
-
-            fail(
-
-              new Error(
-
-                `TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`
-
-              )
-
-            );
-
-          },
-
-          7000
-
-        );
-
-
-      socket.setNoDelay(
-        true
-      );
-
-
-      socket.once(
-
-        "connect",
-
-        () => {
-
-
-          clearTimeout(
-            connectTimer
-          );
-
-
-          responseTimer =
-
-            setTimeout(
-
-              () => {
-
-                fail(
-
-                  new Error(
-
-                    `Modbus response timeout Unit ${UNIT_ID} Register ${register}`
-
-                  )
-
-                );
-
-              },
-
-              5000
-
-            );
-
-
-          socket.write(
-
-            buildReadRequest(
-
-              transaction,
-
-              register
-
-            )
-
-          );
-
-        }
-
-      );
-
-
-      socket.on(
-
-        "data",
-
-        chunk => {
-
-
-          responseBuffer =
-
-            Buffer.concat(
-
-              [
-                responseBuffer,
-                chunk
-              ]
-
-            );
-
-
-          if (
-            responseBuffer.length <
-            7
-          ) {
-
-            return;
-
-          }
-
-
-          const responseTransaction =
-
-            responseBuffer
-              .readUInt16BE(0);
-
-
-          const protocolId =
-
-            responseBuffer
-              .readUInt16BE(2);
-
-
-          const length =
-
-            responseBuffer
-              .readUInt16BE(4);
-
-
-          const responseUnit =
-
-            responseBuffer[6];
-
-
-          if (
-            length < 2 ||
-            length > 254
-          ) {
-
-            return fail(
-
-              new Error(
-
-                `Invalid Modbus response length ${length}`
-
-              )
-
-            );
-
-          }
-
-
-          const completeLength =
-
-            6 +
-            length;
-
-
-          if (
-            responseBuffer.length <
-            completeLength
-          ) {
-
-            return;
-
-          }
-
-
-          if (
-            responseTransaction !==
-            transaction
-          ) {
-
-            return fail(
-
-              new Error(
-                "Transaction ID mismatch"
-              )
-
-            );
-
-          }
-
-
-          if (
-            protocolId !==
-            0
-          ) {
-
-            return fail(
-
-              new Error(
-                "Protocol ID mismatch"
-              )
-
-            );
-
-          }
-
-
-          if (
-            responseUnit !==
-            UNIT_ID
-          ) {
-
-            return fail(
-
-              new Error(
-                "Unit ID mismatch"
-              )
-
-            );
-
-          }
-
-
-          const pdu =
-
-            responseBuffer.subarray(
-
-              7,
-
-              completeLength
-
-            );
-
-
-          if (
-            pdu.length <
-            2
-          ) {
-
-            return fail(
-
-              new Error(
-                "Short Modbus response"
-              )
-
-            );
-
-          }
-
-
-          const functionCode =
-            pdu[0];
-
-
-          if (
-
-            (
-              functionCode &
-              0x80
-            ) !== 0
-
-          ) {
-
-            return fail(
-
-              new Error(
-
-                `Modbus exception ${pdu[1]}`
-
-              )
-
-            );
-
-          }
-
-
-          if (
-            functionCode !==
-            3
-          ) {
-
-            return fail(
-
-              new Error(
-                "Unexpected Modbus function"
-              )
-
-            );
-
-          }
-
-
-          if (
-
-            pdu.length !==
-            4
-
-            ||
-
-            pdu[1] !==
-            2
-
-          ) {
-
-            return fail(
-
-              new Error(
-                "Unexpected FC03 response"
-              )
-
-            );
-
-          }
-
-
-          const value =
-
-            pdu.readUInt16BE(
-              2
-            );
-
-
-          succeed(
-            value
-          );
-
-        }
-
-      );
-
-
-      socket.on(
-
-        "error",
-
-        error => {
-
-          fail(
-
-            new Error(
-
-              `TCP/Modbus error: ${error.message}`
-
-            )
-
-          );
-
-        }
-
-      );
-
-
-      socket.on(
-
-        "close",
-
-        () => {
-
-          if (
-            !completed
-          ) {
-
-            fail(
-
-              new Error(
-                "Connection closed before complete response"
-              )
-
-            );
-
-          }
-
-        }
-
-      );
-
-
-      socket.connect(
-
-        BMS_PORT,
-
-        BMS_HOST
-
-      );
-
+function readRegisters(register, quantity = 1) {
+  return new Promise((resolve, reject) => {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 125) {
+      return reject(new Error(`Invalid Modbus quantity ${quantity}`));
     }
 
-  );
+    const transaction = nextTransactionId();
+    const socket = new net.Socket();
+    let completed = false;
+    let responseBuffer = Buffer.alloc(0);
+    let connectTimer = null;
+    let responseTimer = null;
 
+    const fail = error => {
+      if (completed) return;
+      completed = true;
+      clearTimeout(connectTimer);
+      clearTimeout(responseTimer);
+      socket.destroy();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
+    const succeed = values => {
+      if (completed) return;
+      completed = true;
+      clearTimeout(connectTimer);
+      clearTimeout(responseTimer);
+      socket.end();
+      resolve(values);
+    };
+
+    connectTimer = setTimeout(
+      () => fail(new Error(`TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`)),
+      7000
+    );
+
+    socket.setNoDelay(true);
+
+    socket.once("connect", () => {
+      clearTimeout(connectTimer);
+      responseTimer = setTimeout(
+        () => fail(new Error(`Modbus response timeout Unit ${UNIT_ID} Register ${register} Quantity ${quantity}`)),
+        5000
+      );
+      socket.write(buildReadRequest(transaction, register, quantity));
+    });
+
+    socket.on("data", chunk => {
+      responseBuffer = Buffer.concat([responseBuffer, chunk]);
+      if (responseBuffer.length < 7) return;
+
+      const responseTransaction = responseBuffer.readUInt16BE(0);
+      const protocolId = responseBuffer.readUInt16BE(2);
+      const length = responseBuffer.readUInt16BE(4);
+      const responseUnit = responseBuffer[6];
+
+      if (length < 2 || length > 254) {
+        return fail(new Error(`Invalid Modbus response length ${length}`));
+      }
+
+      const completeLength = 6 + length;
+      if (responseBuffer.length < completeLength) return;
+      if (responseTransaction !== transaction) return fail(new Error("Transaction ID mismatch"));
+      if (protocolId !== 0) return fail(new Error("Protocol ID mismatch"));
+      if (responseUnit !== UNIT_ID) return fail(new Error("Unit ID mismatch"));
+
+      const pdu = responseBuffer.subarray(7, completeLength);
+      if (pdu.length < 2) return fail(new Error("Short Modbus response"));
+
+      const functionCode = pdu[0];
+      if ((functionCode & 0x80) !== 0) return fail(new Error(`Modbus exception ${pdu[1]}`));
+      if (functionCode !== 3) return fail(new Error("Unexpected Modbus function"));
+
+      const expectedByteCount = quantity * 2;
+      if (pdu.length !== 2 + expectedByteCount || pdu[1] !== expectedByteCount) {
+        return fail(new Error(`Unexpected FC03 response: expected ${expectedByteCount} data bytes, got ${pdu[1]}`));
+      }
+
+      const values = [];
+      for (let i = 0; i < quantity; i++) {
+        values.push(pdu.readUInt16BE(2 + i * 2));
+      }
+      succeed(values);
+    });
+
+    socket.on("error", error => fail(new Error(`TCP/Modbus error: ${error.message}`)));
+    socket.on("close", () => {
+      if (!completed) fail(new Error("Connection closed before complete response"));
+    });
+    socket.connect(BMS_PORT, BMS_HOST);
+  });
 }
 
+async function readRegister(register) {
+  const values = await readRegisters(register, 1);
+  return values[0];
+}
 
 
 /*
@@ -5629,132 +5162,29 @@ function saveTBeamsLiveSample() {
 
 /*
 ==================================================
-SIGNED 16 BIT
+PLANKS 32-BIT ANALOG DECODER
+EXACT SAME FORMAT AS WORKING GREENAIR-LIVE
+LOW WORD FIRST + HIGH WORD SECOND, SIGNED INT32 / 1000
 ==================================================
 */
-
-function signed16(
-  raw
-) {
-
-  if (
-    raw >=
-    32768
-  ) {
-
-    return raw -
-      65536;
-
-  }
-
-
-  return raw;
-
+function signed32LowHigh(lowWord, highWord) {
+  const unsigned32 = Number(highWord) * 65536 + Number(lowWord);
+  return unsigned32 >= 0x80000000
+    ? unsigned32 - 0x100000000
+    : unsigned32;
 }
 
-
-/*
-==================================================
-SIGNED 32-BIT LOW-WORD-FIRST ANALOG
-USED BY PLANKS CONCRETE 7491 + 7492
-==================================================
-*/
-
-function signed32LowHigh(
-  lowWord,
-  highWord
-) {
-
-  const unsigned =
-    (Number(highWord) * 65536)
-    +
-    Number(lowWord);
-
-
-  return unsigned >=
-    2147483648
-    ?
-    unsigned -
-      4294967296
-    :
-    unsigned;
-
-}
-
-
-async function readSigned32Analog(
-  register
-) {
-
-  const lowWord =
-    await readRegister(
-      register
-    );
-
-
-  const highWord =
-    await readRegister(
-      register + 1
-    );
-
-
+async function readPlanksAnalogPoint(point) {
+  const words = await readRegisters(point.register, 2);
+  const lowWord = words[0];
+  const highWord = words[1];
+  const signedRaw = signed32LowHigh(lowWord, highWord);
   return {
-    raw: [
-      lowWord,
-      highWord
-    ],
-    value:
-      signed32LowHigh(
-        lowWord,
-        highWord
-      )
-      /
-      1000
+    raw: signedRaw,
+    rawWords: [lowWord, highWord],
+    value: signedRaw / 1000
   };
-
 }
-
-
-/*
-==================================================
-SCALE VALUE
-==================================================
-*/
-
-function scaleValue(
-  point,
-  raw
-) {
-
-  if (
-    point.kind ===
-    "signedAnalog"
-  ) {
-
-    return (
-
-      signed16(
-        raw
-      )
-
-      /
-
-      1000
-
-    );
-
-  }
-
-
-  return (
-
-    raw /
-    1000
-
-  );
-
-}
-
 
 /*
 ==================================================
@@ -5763,166 +5193,46 @@ POLL BMS
 */
 
 async function pollBms() {
-
-  if (
-    polling
-  ) {
-
-    return;
-
-  }
-
-
-  polling =
-    true;
-
+  if (polling) return;
+  polling = true;
 
   try {
+    const results = [];
 
-    const results =
-      [];
-
-
-    for (
-      const point
-      of POINTS
-    ) {
-
-      if (
-        point.kind ===
-        "signed32Analog"
-      ) {
-
-        const reading =
-          await readSigned32Analog(
-            point.register
-          );
-
-
-        results.push({
-
-          ...point,
-
-          raw:
-            reading.raw,
-
-          value:
-            reading.value
-
-        });
-
-
-        continue;
-
-      }
-
-
-      const raw =
-
-        await readRegister(
-
-          point.register
-
-        );
-
-
+    for (const point of POINTS) {
+      const reading = await readPlanksAnalogPoint(point);
       results.push({
-
         ...point,
-
-        raw,
-
-        value:
-
-          scaleValue(
-
-            point,
-
-            raw
-
-          )
-
+        raw: reading.raw,
+        rawWords: reading.rawWords,
+        value: reading.value
       });
-
     }
 
-
     latest = {
-
-      ok:
-        true,
-
-      status:
-        "online",
-
-      error:
-        null,
-
-      host:
-        BMS_HOST,
-
-      port:
-        BMS_PORT,
-
-      unitId:
-        UNIT_ID,
-
-      function:
-        3,
-
+      ok: true,
+      status: "online",
+      error: null,
+      host: BMS_HOST,
+      port: BMS_PORT,
+      unitId: UNIT_ID,
+      function: 3,
       results,
-
-      timestamp:
-
-        new Date()
-          .toISOString()
-
+      timestamp: new Date().toISOString()
     };
-
-  }
-
-
-  catch (
-    error
-  ) {
-
+  } catch (error) {
     latest = {
-
       ...latest,
-
-      ok:
-        false,
-
-      status:
-        "offline",
-
-      error:
-        error.message,
-
-      timestamp:
-
-        new Date()
-          .toISOString()
-
+      ok: false,
+      status: "offline",
+      error: error.message,
+      timestamp: new Date().toISOString()
     };
-
+  } finally {
+    polling = false;
+    broadcast(latest);
   }
-
-
-  finally {
-
-    polling =
-      false;
-
-
-    broadcast(
-      latest
-    );
-
-  }
-
 }
-
 
 /*
 ==================================================
