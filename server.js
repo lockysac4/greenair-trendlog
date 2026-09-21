@@ -11391,77 +11391,6 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
-      T-BEAMS HISTORY ROLLOVER REPAIR PREVIEW
-      MASTER ONLY / READ ONLY
-      Looks at the last 5 days only. No UPDATE is run.
-      ================================================
-      */
-
-      if (
-        url.pathname ===
-        "/api/tbeams/history-repair-preview"
-        &&
-        request.method ===
-        "GET"
-      ) {
-
-        if (authUser.role !== "master") {
-          return sendJson(response, { ok: false, error: "Master access required" }, 403);
-        }
-
-        if (!db) {
-          return sendJson(response, { ok: false, error: "Database not configured" }, 503);
-        }
-
-        try {
-          const result = await db.query(`
-            WITH ordered AS (
-              SELECT
-                id,
-                recorded_at,
-                tbeams_in,
-                LAG(tbeams_in) OVER (ORDER BY recorded_at) AS previous_value,
-                LEAD(tbeams_in) OVER (ORDER BY recorded_at) AS next_value
-              FROM tbeams_trend_history
-              WHERE recorded_at >= NOW() - INTERVAL '5 days'
-            )
-            SELECT
-              id,
-              recorded_at,
-              tbeams_in,
-              previous_value,
-              next_value,
-              (tbeams_in + 65.536) AS proposed_value
-            FROM ordered
-            WHERE tbeams_in >= 0
-              AND tbeams_in < 15
-            ORDER BY recorded_at ASC
-          `);
-
-          return sendJson(response, {
-            ok: true,
-            mode: "PREVIEW ONLY - DATABASE NOT MODIFIED",
-            window: "last 5 days",
-            ruleShown: "candidate stored T-Beams In values >= 0C and < 15C; proposed value adds 65.536C",
-            candidateCount: result.rows.length,
-            candidates: result.rows.map(row => ({
-              id: row.id,
-              timestamp: new Date(row.recorded_at).toISOString(),
-              stored: Number(row.tbeams_in),
-              previous: row.previous_value === null ? null : Number(row.previous_value),
-              next: row.next_value === null ? null : Number(row.next_value),
-              proposed: Number(row.proposed_value)
-            }))
-          });
-        }
-        catch (error) {
-          return sendJson(response, { ok: false, error: error.message }, 500);
-        }
-      }
-
-
-      /*
-      ================================================
       MANUAL OVERRIDE AUDIT API
       MASTER ONLY
       ================================================
@@ -12628,6 +12557,265 @@ h1{color:#1b5e20;margin-top:0}
             502
           );
 
+        }
+
+      }
+
+
+
+
+
+      /*
+      ================================================
+      T-BEAMS HISTORY REPAIR - CLEANUP PASS
+      Repairs the rows missed by the first <15C pass.
+      The verified rollover windows are bounded by the
+      observed high-temperature episodes. Only tbeams_in
+      is changed. Already-repaired values >=65.536 stay.
+      ================================================
+      */
+      if (
+        url.pathname === "/api/tbeams/history-repair-cleanup"
+        &&
+        request.method === "GET"
+      ) {
+
+        if (authUser.role !== "master") {
+          return sendJson(response, { ok:false, error:"Master access required" }, 403);
+        }
+
+        if (url.searchParams.get("confirm") !== "CLEANUP_TBEAMS_ROLLOVER") {
+          return sendJson(response, { ok:false, applied:false, error:"Confirmation token required" }, 400);
+        }
+
+        if (!db) {
+          return sendJson(response, { ok:false, applied:false, error:"Database not configured" }, 500);
+        }
+
+        // Window 1 is the known 17 Sep high-temperature episode from the preview.
+        // Window 2 is precisely bounded by the 65.536C rollover crossing on 18 Sep.
+        const cleanupWindows = [
+          { from:"2026-09-17T16:29:00.000Z", to:"2026-09-17T23:28:00.000Z" },
+          { from:"2026-09-18T11:22:00.000Z", to:"2026-09-18T22:00:00.000Z" }
+        ];
+
+        const client = await db.connect();
+        try {
+          await client.query("BEGIN");
+
+          // The first pass already lifted values below 15C. This pass lifts the
+          // remaining wrapped low-word values. Values already >=65.536 are left alone.
+          const updated = await client.query(
+            `
+            UPDATE tbeams_trend_history
+            SET tbeams_in = tbeams_in + 65.536
+            WHERE (
+              recorded_at BETWEEN $1 AND $2
+              OR recorded_at BETWEEN $3 AND $4
+            )
+            AND tbeams_in >= 15
+            AND tbeams_in < 65.536
+            RETURNING id, recorded_at, tbeams_in
+            `,
+            [cleanupWindows[0].from, cleanupWindows[0].to, cleanupWindows[1].from, cleanupWindows[1].to]
+          );
+
+          await client.query("COMMIT");
+
+          return sendJson(response, {
+            ok:true,
+            applied:true,
+            repairedCount:updated.rowCount,
+            windows:cleanupWindows,
+            note:"Cleanup pass complete. Added 65.536C only to still-wrapped T-Beams In values from 15C up to 65.535C inside the verified rollover windows. Previously repaired values and the isolated 21 Sep zero were untouched."
+          });
+        } catch (error) {
+          try { await client.query("ROLLBACK"); } catch (_) {}
+          return sendJson(response, { ok:false, applied:false, error:error.message }, 500);
+        } finally {
+          client.release();
+        }
+      }
+
+      /*
+      ================================================
+      T-BEAMS HISTORY REPAIR - APPLY CONFIRMED ROLLOVER
+      MASTER ONLY. IDEMPOTENT: ONLY VALUES 0 <= x < 15
+      INSIDE THE VERIFIED 17-18 SEPTEMBER UTC WINDOWS.
+      ================================================
+      */
+      if (
+        url.pathname === "/api/tbeams/history-repair-apply"
+        &&
+        request.method === "GET"
+      ) {
+
+        if (
+          authUser.role !== "master"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: "Master access required"
+            },
+            403
+          );
+        }
+
+        if (
+          url.searchParams.get("confirm") !== "FIX_TBEAMS_5_DAYS"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Confirmation token required"
+            },
+            400
+          );
+        }
+
+        if (
+          !db
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Database not configured"
+            },
+            500
+          );
+        }
+
+        const repairWindows = [
+          {
+            from: "2026-09-17T16:29:00.000Z",
+            to: "2026-09-17T23:28:00.000Z"
+          },
+          {
+            from: "2026-09-18T11:22:00.000Z",
+            to: "2026-09-18T22:00:00.000Z"
+          }
+        ];
+
+        const client =
+          await db.connect();
+
+        try {
+
+          await client.query("BEGIN");
+
+          const before =
+            await client.query(
+              `
+              SELECT
+                id,
+                recorded_at,
+                tbeams_in
+              FROM tbeams_trend_history
+              WHERE
+                (
+                  recorded_at BETWEEN $1 AND $2
+                  OR
+                  recorded_at BETWEEN $3 AND $4
+                )
+                AND tbeams_in >= 0
+                AND tbeams_in < 15
+              ORDER BY recorded_at ASC
+              `,
+              [
+                repairWindows[0].from,
+                repairWindows[0].to,
+                repairWindows[1].from,
+                repairWindows[1].to
+              ]
+            );
+
+          const updated =
+            await client.query(
+              `
+              UPDATE tbeams_trend_history
+              SET tbeams_in = tbeams_in + 65.536
+              WHERE
+                (
+                  recorded_at BETWEEN $1 AND $2
+                  OR
+                  recorded_at BETWEEN $3 AND $4
+                )
+                AND tbeams_in >= 0
+                AND tbeams_in < 15
+              RETURNING
+                id,
+                recorded_at,
+                tbeams_in
+              `,
+              [
+                repairWindows[0].from,
+                repairWindows[0].to,
+                repairWindows[1].from,
+                repairWindows[1].to
+              ]
+            );
+
+          await client.query("COMMIT");
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              applied: true,
+              repairedCount: updated.rowCount,
+              expectedCandidateCount: 577,
+              windows: repairWindows,
+              note: "Only tbeams_in was changed. 65.536C was added to verified wrapped values. The isolated 2026-09-21 zero reading was excluded.",
+              firstBefore:
+                before.rows.length
+                ? {
+                    id: before.rows[0].id,
+                    timestamp: new Date(before.rows[0].recorded_at).toISOString(),
+                    value: Number(before.rows[0].tbeams_in)
+                  }
+                : null,
+              firstAfter:
+                updated.rows.length
+                ? {
+                    id: updated.rows[0].id,
+                    timestamp: new Date(updated.rows[0].recorded_at).toISOString(),
+                    value: Number(updated.rows[0].tbeams_in)
+                  }
+                : null
+            }
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          try {
+            await client.query("ROLLBACK");
+          }
+          catch {}
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
+
+        finally {
+          client.release();
         }
 
       }
