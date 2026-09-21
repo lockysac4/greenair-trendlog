@@ -11391,6 +11391,77 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      T-BEAMS HISTORY ROLLOVER REPAIR PREVIEW
+      MASTER ONLY / READ ONLY
+      Looks at the last 5 days only. No UPDATE is run.
+      ================================================
+      */
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history-repair-preview"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        if (authUser.role !== "master") {
+          return sendJson(response, { ok: false, error: "Master access required" }, 403);
+        }
+
+        if (!db) {
+          return sendJson(response, { ok: false, error: "Database not configured" }, 503);
+        }
+
+        try {
+          const result = await db.query(`
+            WITH ordered AS (
+              SELECT
+                id,
+                recorded_at,
+                tbeams_in,
+                LAG(tbeams_in) OVER (ORDER BY recorded_at) AS previous_value,
+                LEAD(tbeams_in) OVER (ORDER BY recorded_at) AS next_value
+              FROM tbeams_trend_history
+              WHERE recorded_at >= NOW() - INTERVAL '5 days'
+            )
+            SELECT
+              id,
+              recorded_at,
+              tbeams_in,
+              previous_value,
+              next_value,
+              (tbeams_in + 65.536) AS proposed_value
+            FROM ordered
+            WHERE tbeams_in >= 0
+              AND tbeams_in < 15
+            ORDER BY recorded_at ASC
+          `);
+
+          return sendJson(response, {
+            ok: true,
+            mode: "PREVIEW ONLY - DATABASE NOT MODIFIED",
+            window: "last 5 days",
+            ruleShown: "candidate stored T-Beams In values >= 0C and < 15C; proposed value adds 65.536C",
+            candidateCount: result.rows.length,
+            candidates: result.rows.map(row => ({
+              id: row.id,
+              timestamp: new Date(row.recorded_at).toISOString(),
+              stored: Number(row.tbeams_in),
+              previous: row.previous_value === null ? null : Number(row.previous_value),
+              next: row.next_value === null ? null : Number(row.next_value),
+              proposed: Number(row.proposed_value)
+            }))
+          });
+        }
+        catch (error) {
+          return sendJson(response, { ok: false, error: error.message }, 500);
+        }
+      }
+
+
+      /*
+      ================================================
       MANUAL OVERRIDE AUDIT API
       MASTER ONLY
       ================================================
