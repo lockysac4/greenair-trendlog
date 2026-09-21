@@ -1429,12 +1429,15 @@ PORT 505 / UNIT 68
 */
 
 const T_BEAMS_POINTS = [
-  { id: "in1", name: "T - Beams In", register: 7485, kind: "signed32Analog" },
-  { id: "in2", name: "T - Beams Out", register: 7487, kind: "signed32Analog" },
-  { id: "ambient", name: "Ambient", register: 8137, kind: "signed32Analog" },
-  { id: "in4", name: "T - Beams Concrete", register: 7491, kind: "signed32Analog" },
-  { id: "in5", name: "T - Beams Tank", register: 7493, kind: "signed32Analog" },
-  { id: "diff", name: "Ambient - Concrete Differential", register: 7503, kind: "signed32Analog" }
+  // T3000 stores these values as signed 32-bit integers scaled by 1000.
+  // The EVEN register is the HIGH/sign word and the ODD register is the LOW word.
+  // Diagnostic proof on 2026-09-21: 7484=1 and 7485=4464 -> 70000 -> 70.000 C.
+  { id: "in1", name: "T - Beams In", highRegister: 7484, register: 7485, kind: "signed32Analog" },
+  { id: "in2", name: "T - Beams Out", highRegister: 7486, register: 7487, kind: "signed32Analog" },
+  { id: "ambient", name: "Ambient", highRegister: 8136, register: 8137, kind: "signed32Analog" },
+  { id: "in4", name: "T - Beams Concrete", highRegister: 7490, register: 7491, kind: "signed32Analog" },
+  { id: "in5", name: "T - Beams Tank", highRegister: 7492, register: 7493, kind: "signed32Analog" },
+  { id: "diff", name: "Ambient - Concrete Differential", highRegister: 7502, register: 7503, kind: "signed32Analog" }
 ];
 
 
@@ -1536,6 +1539,15 @@ let nextArchiveAt =
 
 let archiveTimer =
   null;
+
+
+let lastTBeamsArchiveAt =
+  null;
+
+
+let lastTBeamsArchiveError =
+  null;
+
 /*
 ==================================================
 DATABASE SETUP
@@ -1599,6 +1611,46 @@ async function initialiseDatabase() {
       trend_history_recorded_at_idx
 
       ON trend_history(recorded_at)
+
+    `);
+
+
+    /*
+    T-BEAMS PERMANENT TREND HISTORY TABLE
+    Mirrors the proven Planks one-minute PostgreSQL logger.
+    */
+
+    await db.query(`
+
+      CREATE TABLE IF NOT EXISTS tbeams_trend_history (
+
+        id BIGSERIAL PRIMARY KEY,
+
+        recorded_at TIMESTAMPTZ NOT NULL,
+
+        tbeams_in DOUBLE PRECISION NOT NULL,
+
+        tbeams_out DOUBLE PRECISION NOT NULL,
+
+        ambient DOUBLE PRECISION NOT NULL,
+
+        tbeams_concrete DOUBLE PRECISION NOT NULL,
+
+        tbeams_tank DOUBLE PRECISION NOT NULL,
+
+        ambient_concrete_diff DOUBLE PRECISION NOT NULL
+
+      )
+
+    `);
+
+
+    await db.query(`
+
+      CREATE INDEX IF NOT EXISTS
+      tbeams_trend_history_recorded_at_idx
+
+      ON tbeams_trend_history(recorded_at)
 
     `);
 
@@ -1788,6 +1840,47 @@ async function initialiseDatabase() {
         new Date(
 
           previousArchive.rows[0]
+            .last_archive
+
+        );
+
+    }
+
+
+    /*
+    RECOVER LAST T-BEAMS ARCHIVE
+    */
+
+    const previousTBeamsArchive =
+
+      await db.query(`
+
+        SELECT
+
+          MAX(recorded_at)
+          AS last_archive
+
+        FROM tbeams_trend_history
+
+      `);
+
+
+    if (
+
+      previousTBeamsArchive.rows[0]
+
+      &&
+
+      previousTBeamsArchive.rows[0]
+        .last_archive
+
+    ) {
+
+      lastTBeamsArchiveAt =
+
+        new Date(
+
+          previousTBeamsArchive.rows[0]
             .last_archive
 
         );
@@ -1990,34 +2083,604 @@ MODBUS REQUEST
 
 function buildReadRequest(
   transaction,
-  register,
-  quantity = 1
+  register
 ) {
 
-  const request = Buffer.alloc(12);
-  request.writeUInt16BE(transaction, 0);
-  request.writeUInt16BE(0, 2);
-  request.writeUInt16BE(6, 4);
-  request[6] = UNIT_ID;
-  request[7] = 3;
-  request.writeUInt16BE(register, 8);
-  request.writeUInt16BE(quantity, 10);
+  const request =
+    Buffer.alloc(12);
+
+
+  /*
+  TRANSACTION ID
+  */
+
+  request.writeUInt16BE(
+    transaction,
+    0
+  );
+
+
+  /*
+  PROTOCOL ID
+  */
+
+  request.writeUInt16BE(
+    0,
+    2
+  );
+
+
+  /*
+  LENGTH
+  */
+
+  request.writeUInt16BE(
+    6,
+    4
+  );
+
+
+  /*
+  UNIT ID
+  */
+
+  request[6] =
+    UNIT_ID;
+
+
+  /*
+  FUNCTION 03
+  */
+
+  request[7] =
+    3;
+
+
+  /*
+  REGISTER
+  */
+
+  request.writeUInt16BE(
+    register,
+    8
+  );
+
+
+  /*
+  QUANTITY
+  */
+
+  request.writeUInt16BE(
+    1,
+    10
+  );
+
+
   return request;
+
 }
+/*
+==================================================
+READ MODBUS REGISTER
+==================================================
+*/
+
+function readRegister(
+  register
+) {
+
+  return new Promise(
+
+    (
+      resolve,
+      reject
+    ) => {
+
+
+      const transaction =
+        nextTransactionId();
+
+
+      const socket =
+        new net.Socket();
+
+
+      let completed =
+        false;
+
+
+      let responseBuffer =
+        Buffer.alloc(0);
+
+
+      let connectTimer =
+        null;
+
+
+      let responseTimer =
+        null;
+
+
+      function fail(
+        error
+      ) {
+
+        if (
+          completed
+        ) {
+
+          return;
+
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.destroy();
+
+
+        reject(
+
+          error instanceof Error
+
+          ?
+
+          error
+
+          :
+
+          new Error(
+            String(error)
+          )
+
+        );
+
+      }
+
+
+      function succeed(
+        value
+      ) {
+
+        if (
+          completed
+        ) {
+
+          return;
+
+        }
+
+
+        completed =
+          true;
+
+
+        clearTimeout(
+          connectTimer
+        );
+
+
+        clearTimeout(
+          responseTimer
+        );
+
+
+        socket.end();
+
+
+        resolve(
+          value
+        );
+
+      }
+
+
+      connectTimer =
+
+        setTimeout(
+
+          () => {
+
+            fail(
+
+              new Error(
+
+                `TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`
+
+              )
+
+            );
+
+          },
+
+          7000
+
+        );
+
+
+      socket.setNoDelay(
+        true
+      );
+
+
+      socket.once(
+
+        "connect",
+
+        () => {
+
+
+          clearTimeout(
+            connectTimer
+          );
+
+
+          responseTimer =
+
+            setTimeout(
+
+              () => {
+
+                fail(
+
+                  new Error(
+
+                    `Modbus response timeout Unit ${UNIT_ID} Register ${register}`
+
+                  )
+
+                );
+
+              },
+
+              5000
+
+            );
+
+
+          socket.write(
+
+            buildReadRequest(
+
+              transaction,
+
+              register
+
+            )
+
+          );
+
+        }
+
+      );
+
+
+      socket.on(
+
+        "data",
+
+        chunk => {
+
+
+          responseBuffer =
+
+            Buffer.concat(
+
+              [
+                responseBuffer,
+                chunk
+              ]
+
+            );
+
+
+          if (
+            responseBuffer.length <
+            7
+          ) {
+
+            return;
+
+          }
+
+
+          const responseTransaction =
+
+            responseBuffer
+              .readUInt16BE(0);
+
+
+          const protocolId =
+
+            responseBuffer
+              .readUInt16BE(2);
+
+
+          const length =
+
+            responseBuffer
+              .readUInt16BE(4);
+
+
+          const responseUnit =
+
+            responseBuffer[6];
+
+
+          if (
+            length < 2 ||
+            length > 254
+          ) {
+
+            return fail(
+
+              new Error(
+
+                `Invalid Modbus response length ${length}`
+
+              )
+
+            );
+
+          }
+
+
+          const completeLength =
+
+            6 +
+            length;
+
+
+          if (
+            responseBuffer.length <
+            completeLength
+          ) {
+
+            return;
+
+          }
+
+
+          if (
+            responseTransaction !==
+            transaction
+          ) {
+
+            return fail(
+
+              new Error(
+                "Transaction ID mismatch"
+              )
+
+            );
+
+          }
+
+
+          if (
+            protocolId !==
+            0
+          ) {
+
+            return fail(
+
+              new Error(
+                "Protocol ID mismatch"
+              )
+
+            );
+
+          }
+
+
+          if (
+            responseUnit !==
+            UNIT_ID
+          ) {
+
+            return fail(
+
+              new Error(
+                "Unit ID mismatch"
+              )
+
+            );
+
+          }
+
+
+          const pdu =
+
+            responseBuffer.subarray(
+
+              7,
+
+              completeLength
+
+            );
+
+
+          if (
+            pdu.length <
+            2
+          ) {
+
+            return fail(
+
+              new Error(
+                "Short Modbus response"
+              )
+
+            );
+
+          }
+
+
+          const functionCode =
+            pdu[0];
+
+
+          if (
+
+            (
+              functionCode &
+              0x80
+            ) !== 0
+
+          ) {
+
+            return fail(
+
+              new Error(
+
+                `Modbus exception ${pdu[1]}`
+
+              )
+
+            );
+
+          }
+
+
+          if (
+            functionCode !==
+            3
+          ) {
+
+            return fail(
+
+              new Error(
+                "Unexpected Modbus function"
+              )
+
+            );
+
+          }
+
+
+          if (
+
+            pdu.length !==
+            4
+
+            ||
+
+            pdu[1] !==
+            2
+
+          ) {
+
+            return fail(
+
+              new Error(
+                "Unexpected FC03 response"
+              )
+
+            );
+
+          }
+
+
+          const value =
+
+            pdu.readUInt16BE(
+              2
+            );
+
+
+          succeed(
+            value
+          );
+
+        }
+
+      );
+
+
+      socket.on(
+
+        "error",
+
+        error => {
+
+          fail(
+
+            new Error(
+
+              `TCP/Modbus error: ${error.message}`
+
+            )
+
+          );
+
+        }
+
+      );
+
+
+      socket.on(
+
+        "close",
+
+        () => {
+
+          if (
+            !completed
+          ) {
+
+            fail(
+
+              new Error(
+                "Connection closed before complete response"
+              )
+
+            );
+
+          }
+
+        }
+
+      );
+
+
+      socket.connect(
+
+        BMS_PORT,
+
+        BMS_HOST
+
+      );
+
+    }
+
+  );
+
+}
+
+
 
 /*
 ==================================================
-READ MODBUS HOLDING REGISTERS
-Supports one or more consecutive FC03 registers.
-Same proven method used by greenair-live.
+PLANKS CONCRETE - TWO REGISTER SIGNED 32-BIT READ
+ONLY IN4 / REGISTER 7490 + 7491 USES THIS PATH.
+AMBIENT AND ALL OTHER PLANKS POINTS KEEP THEIR
+ORIGINAL SINGLE-REGISTER READ METHOD.
 ==================================================
 */
-function readRegisters(register, quantity = 1) {
+function readPlanksConcrete32() {
   return new Promise((resolve, reject) => {
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 125) {
-      return reject(new Error(`Invalid Modbus quantity ${quantity}`));
-    }
-
     const transaction = nextTransactionId();
     const socket = new net.Socket();
     let completed = false;
@@ -2025,38 +2688,45 @@ function readRegisters(register, quantity = 1) {
     let connectTimer = null;
     let responseTimer = null;
 
-    const fail = error => {
+    function fail(error) {
       if (completed) return;
       completed = true;
       clearTimeout(connectTimer);
       clearTimeout(responseTimer);
       socket.destroy();
       reject(error instanceof Error ? error : new Error(String(error)));
-    };
+    }
 
-    const succeed = values => {
+    function succeed(value) {
       if (completed) return;
       completed = true;
       clearTimeout(connectTimer);
       clearTimeout(responseTimer);
       socket.end();
-      resolve(values);
-    };
+      resolve(value);
+    }
 
-    connectTimer = setTimeout(
-      () => fail(new Error(`TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`)),
-      7000
-    );
+    connectTimer = setTimeout(() => {
+      fail(new Error(`TCP connect timeout to ${BMS_HOST}:${BMS_PORT}`));
+    }, 7000);
 
     socket.setNoDelay(true);
 
     socket.once("connect", () => {
       clearTimeout(connectTimer);
-      responseTimer = setTimeout(
-        () => fail(new Error(`Modbus response timeout Unit ${UNIT_ID} Register ${register} Quantity ${quantity}`)),
-        5000
-      );
-      socket.write(buildReadRequest(transaction, register, quantity));
+      responseTimer = setTimeout(() => {
+        fail(new Error(`Modbus response timeout Unit ${UNIT_ID} Registers 7490-7491`));
+      }, 5000);
+
+      const request = Buffer.alloc(12);
+      request.writeUInt16BE(transaction, 0);
+      request.writeUInt16BE(0, 2);
+      request.writeUInt16BE(6, 4);
+      request[6] = UNIT_ID;
+      request[7] = 3;
+      request.writeUInt16BE(7490, 8);
+      request.writeUInt16BE(2, 10);
+      socket.write(request);
     });
 
     socket.on("data", chunk => {
@@ -2074,6 +2744,7 @@ function readRegisters(register, quantity = 1) {
 
       const completeLength = 6 + length;
       if (responseBuffer.length < completeLength) return;
+
       if (responseTransaction !== transaction) return fail(new Error("Transaction ID mismatch"));
       if (protocolId !== 0) return fail(new Error("Protocol ID mismatch"));
       if (responseUnit !== UNIT_ID) return fail(new Error("Unit ID mismatch"));
@@ -2085,31 +2756,39 @@ function readRegisters(register, quantity = 1) {
       if ((functionCode & 0x80) !== 0) return fail(new Error(`Modbus exception ${pdu[1]}`));
       if (functionCode !== 3) return fail(new Error("Unexpected Modbus function"));
 
-      const expectedByteCount = quantity * 2;
-      if (pdu.length !== 2 + expectedByteCount || pdu[1] !== expectedByteCount) {
-        return fail(new Error(`Unexpected FC03 response: expected ${expectedByteCount} data bytes, got ${pdu[1]}`));
+      // FC03 response for two registers = function + byteCount + 4 data bytes.
+      if (pdu.length !== 6 || pdu[1] !== 4) {
+        return fail(new Error("Unexpected FC03 two-register response for Planks Concrete 7490-7491"));
       }
 
-      const values = [];
-      for (let i = 0; i < quantity; i++) {
-        values.push(pdu.readUInt16BE(2 + i * 2));
-      }
-      succeed(values);
+      // T3000/Greenair format proven on greenair-live:
+      // T3000 stores this 32-bit point with the HIGH/sign word first.
+      // register 7490 = HIGH/sign word, register 7491 = LOW word.
+      const highWord = pdu.readUInt16BE(2);
+      const lowWord = pdu.readUInt16BE(4);
+      const unsigned32 = highWord * 65536 + lowWord;
+      const signedRaw = unsigned32 >= 0x80000000
+        ? unsigned32 - 0x100000000
+        : unsigned32;
+
+      succeed({
+        raw: signedRaw,
+        rawWords: [lowWord, highWord],
+        value: signedRaw / 1000
+      });
     });
 
-    socket.on("error", error => fail(new Error(`TCP/Modbus error: ${error.message}`)));
+    socket.on("error", error => {
+      fail(new Error(`TCP/Modbus error: ${error.message}`));
+    });
+
     socket.on("close", () => {
       if (!completed) fail(new Error("Connection closed before complete response"));
     });
+
     socket.connect(BMS_PORT, BMS_HOST);
   });
 }
-
-async function readRegister(register) {
-  const values = await readRegisters(register, 1);
-  return values[0];
-}
-
 
 /*
 ==================================================
@@ -4971,54 +5650,16 @@ async function pollTBeams() {
       of T_BEAMS_POINTS
     ) {
 
-      if (
-        point.kind ===
-        "signed32Analog"
-      ) {
-        /*
-        T-BEAMS 32-BIT ANALOG
-        Same format as the proven Planks decoder:
-        low word first + high word second, signed INT32 / 1000.
-        */
-        const lowWord =
-          await readRegisterFrom(
-            T_BEAMS_HOST,
-            T_BEAMS_PORT,
-            T_BEAMS_UNIT_ID,
-            point.register
-          );
+      // Read the proven T3000 32-bit pair: HIGH/sign word first, LOW word second.
+      const highWord =
+        await readRegisterFrom(
+          T_BEAMS_HOST,
+          T_BEAMS_PORT,
+          T_BEAMS_UNIT_ID,
+          point.highRegister
+        );
 
-        const highWord =
-          await readRegisterFrom(
-            T_BEAMS_HOST,
-            T_BEAMS_PORT,
-            T_BEAMS_UNIT_ID,
-            point.register + 1
-          );
-
-        const signedRaw =
-          signed32LowHigh(
-            lowWord,
-            highWord
-          );
-
-        results.push({
-          ...point,
-          raw: signedRaw,
-          rawWords: [
-            lowWord,
-            highWord
-          ],
-          value:
-            signedRaw /
-            1000
-        });
-
-        continue;
-      }
-
-
-      const raw =
+      const lowWord =
         await readRegisterFrom(
           T_BEAMS_HOST,
           T_BEAMS_PORT,
@@ -5026,15 +5667,19 @@ async function pollTBeams() {
           point.register
         );
 
+      const unsigned32 =
+        Number(highWord) * 65536 + Number(lowWord);
+
+      const raw =
+        unsigned32 >= 0x80000000
+        ? unsigned32 - 0x100000000
+        : unsigned32;
 
       results.push({
         ...point,
         raw,
-        value:
-          scaleTBeamsValue(
-            point,
-            raw
-          )
+        rawWords: [highWord, lowWord],
+        value: raw / 1000
       });
 
     }
@@ -5209,29 +5854,70 @@ function saveTBeamsLiveSample() {
 
 /*
 ==================================================
-PLANKS 32-BIT ANALOG DECODER
-EXACT SAME FORMAT AS WORKING GREENAIR-LIVE
-LOW WORD FIRST + HIGH WORD SECOND, SIGNED INT32 / 1000
+SIGNED 16 BIT
 ==================================================
 */
-function signed32LowHigh(lowWord, highWord) {
-  const unsigned32 = Number(highWord) * 65536 + Number(lowWord);
-  return unsigned32 >= 0x80000000
-    ? unsigned32 - 0x100000000
-    : unsigned32;
+
+function signed16(
+  raw
+) {
+
+  if (
+    raw >=
+    32768
+  ) {
+
+    return raw -
+      65536;
+
+  }
+
+
+  return raw;
+
 }
 
-async function readPlanksAnalogPoint(point) {
-  const words = await readRegisters(point.register, 2);
-  const lowWord = words[0];
-  const highWord = words[1];
-  const signedRaw = signed32LowHigh(lowWord, highWord);
-  return {
-    raw: signedRaw,
-    rawWords: [lowWord, highWord],
-    value: signedRaw / 1000
-  };
+
+/*
+==================================================
+SCALE VALUE
+==================================================
+*/
+
+function scaleValue(
+  point,
+  raw
+) {
+
+  if (
+    point.kind ===
+    "signedAnalog"
+  ) {
+
+    return (
+
+      signed16(
+        raw
+      )
+
+      /
+
+      1000
+
+    );
+
+  }
+
+
+  return (
+
+    raw /
+    1000
+
+  );
+
 }
+
 
 /*
 ==================================================
@@ -5240,46 +5926,167 @@ POLL BMS
 */
 
 async function pollBms() {
-  if (polling) return;
-  polling = true;
+
+  if (
+    polling
+  ) {
+
+    return;
+
+  }
+
+
+  polling =
+    true;
+
 
   try {
-    const results = [];
 
-    for (const point of POINTS) {
-      const reading = await readPlanksAnalogPoint(point);
+    const results =
+      [];
+
+
+    for (
+      const point
+      of POINTS
+    ) {
+
+      if (
+        point.id ===
+        "in4"
+      ) {
+
+        const concrete =
+          await readPlanksConcrete32();
+
+
+        results.push({
+
+          ...point,
+
+          raw:
+            concrete.raw,
+
+          rawWords:
+            concrete.rawWords,
+
+          value:
+            concrete.value
+
+        });
+
+
+        continue;
+
+      }
+
+
+      const raw =
+
+        await readRegister(
+
+          point.register
+
+        );
+
+
       results.push({
+
         ...point,
-        raw: reading.raw,
-        rawWords: reading.rawWords,
-        value: reading.value
+
+        raw,
+
+        value:
+
+          scaleValue(
+
+            point,
+
+            raw
+
+          )
+
       });
+
     }
 
+
     latest = {
-      ok: true,
-      status: "online",
-      error: null,
-      host: BMS_HOST,
-      port: BMS_PORT,
-      unitId: UNIT_ID,
-      function: 3,
+
+      ok:
+        true,
+
+      status:
+        "online",
+
+      error:
+        null,
+
+      host:
+        BMS_HOST,
+
+      port:
+        BMS_PORT,
+
+      unitId:
+        UNIT_ID,
+
+      function:
+        3,
+
       results,
-      timestamp: new Date().toISOString()
+
+      timestamp:
+
+        new Date()
+          .toISOString()
+
     };
-  } catch (error) {
-    latest = {
-      ...latest,
-      ok: false,
-      status: "offline",
-      error: error.message,
-      timestamp: new Date().toISOString()
-    };
-  } finally {
-    polling = false;
-    broadcast(latest);
+
   }
+
+
+  catch (
+    error
+  ) {
+
+    latest = {
+
+      ...latest,
+
+      ok:
+        false,
+
+      status:
+        "offline",
+
+      error:
+        error.message,
+
+      timestamp:
+
+        new Date()
+          .toISOString()
+
+    };
+
+  }
+
+
+  finally {
+
+    polling =
+      false;
+
+
+    broadcast(
+      latest
+    );
+
+  }
+
 }
+
 
 /*
 ==================================================
@@ -5683,6 +6490,228 @@ async function archiveTrendSample(
 
 /*
 ==================================================
+ARCHIVE T-BEAMS ONE-MINUTE HISTORY
+Replicates the working Planks permanent logger.
+==================================================
+*/
+
+async function archiveTBeamsTrendSample(
+  recordedAt
+) {
+
+  if (
+    !db
+  ) {
+
+    lastTBeamsArchiveError =
+      "DATABASE_URL not configured";
+
+    return false;
+
+  }
+
+
+  if (
+    !tBeamsLatest.ok
+  ) {
+
+    lastTBeamsArchiveError =
+      "T-Beams BMS offline at archive time";
+
+    return false;
+
+  }
+
+
+  const values = {
+
+    in1:
+      getTBeamsLatestValue("in1"),
+
+    in2:
+      getTBeamsLatestValue("in2"),
+
+    ambient:
+      getTBeamsLatestValue("ambient"),
+
+    in4:
+      getTBeamsLatestValue("in4"),
+
+    in5:
+      getTBeamsLatestValue("in5"),
+
+    diff:
+      getTBeamsLatestValue("diff")
+
+  };
+
+
+  if (
+
+    Object.values(
+      values
+    ).some(
+
+      value =>
+        value === null
+
+    )
+
+  ) {
+
+    lastTBeamsArchiveError =
+      "T-Beams values unavailable";
+
+    return false;
+
+  }
+
+
+  try {
+
+    const existing =
+
+      await db.query(
+
+        `
+
+        SELECT id
+
+        FROM tbeams_trend_history
+
+        WHERE recorded_at = $1
+
+        LIMIT 1
+
+        `,
+
+        [
+          recordedAt
+        ]
+
+      );
+
+
+    if (
+      existing.rowCount ===
+      0
+    ) {
+
+      await db.query(
+
+        `
+
+        INSERT INTO tbeams_trend_history (
+
+          recorded_at,
+
+          tbeams_in,
+
+          tbeams_out,
+
+          ambient,
+
+          tbeams_concrete,
+
+          tbeams_tank,
+
+          ambient_concrete_diff
+
+        )
+
+        VALUES (
+
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7
+
+        )
+
+        `,
+
+        [
+
+          recordedAt,
+
+          values.in1,
+
+          values.in2,
+
+          values.ambient,
+
+          values.in4,
+
+          values.in5,
+
+          values.diff
+
+        ]
+
+      );
+
+    }
+
+
+    databaseConnected =
+      true;
+
+
+    lastTBeamsArchiveAt =
+      recordedAt;
+
+
+    lastTBeamsArchiveError =
+      null;
+
+
+    console.log(
+
+      "T-Beams 1-minute trend history saved:",
+
+      recordedAt.toISOString()
+
+    );
+
+
+    return true;
+
+  }
+
+
+  catch (
+    error
+  ) {
+
+    databaseConnected =
+      false;
+
+
+    lastTBeamsArchiveError =
+      error.message;
+
+
+    console.error(
+
+      "T-Beams history save failed:",
+
+      error.message
+
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+/*
+==================================================
 SCHEDULE 1-MINUTE LOGGER
 ==================================================
 */
@@ -5715,6 +6744,11 @@ function scheduleNextArchive() {
       async () => {
 
         await archiveTrendSample(
+          next
+        );
+
+
+        await archiveTBeamsTrendSample(
           next
         );
 
@@ -5806,6 +6840,148 @@ async function queryHistory(
 
 
   return result.rows;
+
+}
+
+
+/*
+==================================================
+QUERY T-BEAMS PERMANENT HISTORY
+Returns the same sample field names used by the
+existing T-Beams trend page.
+==================================================
+*/
+
+async function queryTBeamsHistory(
+  from,
+  to
+) {
+
+  if (
+    !db
+  ) {
+
+    throw new Error(
+      "Database not configured"
+    );
+
+  }
+
+
+  const result =
+
+    await db.query(
+
+      `
+
+      SELECT
+
+        recorded_at,
+
+        tbeams_in,
+
+        tbeams_out,
+
+        ambient,
+
+        tbeams_concrete,
+
+        tbeams_tank,
+
+        ambient_concrete_diff
+
+      FROM tbeams_trend_history
+
+      WHERE
+
+        recorded_at >= $1
+
+      AND
+
+        recorded_at <= $2
+
+      ORDER BY
+
+        recorded_at ASC
+
+      `,
+
+      [
+        from,
+        to
+      ]
+
+    );
+
+
+  return result.rows.map(
+    row => ({
+      timestamp:
+        new Date(row.recorded_at).toISOString(),
+      in1:
+        Number(row.tbeams_in),
+      in2:
+        Number(row.tbeams_out),
+      ambient:
+        Number(row.ambient),
+      in4:
+        Number(row.tbeams_concrete),
+      in5:
+        Number(row.tbeams_tank),
+      diff:
+        Number(row.ambient_concrete_diff)
+    })
+  );
+
+}
+
+
+async function queryTBeamsHistoryRange() {
+
+  if (
+    !db
+  ) {
+
+    throw new Error(
+      "Database not configured"
+    );
+
+  }
+
+
+  const result =
+
+    await db.query(`
+
+      SELECT
+
+        COUNT(*)::INTEGER AS count,
+
+        MIN(recorded_at) AS first,
+
+        MAX(recorded_at) AS last
+
+      FROM tbeams_trend_history
+
+    `);
+
+
+  const row =
+    result.rows[0] || {};
+
+
+  return {
+    count:
+      Number(row.count || 0),
+    first:
+      row.first
+      ? new Date(row.first).toISOString()
+      : null,
+    last:
+      row.last
+      ? new Date(row.last).toISOString()
+      : null
+  };
 
 }
 
@@ -9252,37 +10428,38 @@ const server =
         "GET"
       ) {
 
-        const first =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[0].timestamp
-          :
-          null;
+        try {
+
+          const range =
+            await queryTBeamsHistoryRange();
 
 
-        const last =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[
-            tBeamsLiveHistory.length - 1
-          ].timestamp
-          :
-          null;
+          return sendJson(
+            response,
+            {
+              ok: true,
+              ...range
+            }
+          );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              tBeamsLiveHistory.length,
-            first,
-            last
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -9360,44 +10537,65 @@ const server =
         }
 
 
-        const samples =
-          tBeamsLiveHistory.filter(
-            sample => {
+        if (
+          from >
+          to
+        ) {
 
-              const time =
-                new Date(
-                  sample.timestamp
-                ).getTime();
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "From must be before To"
+            },
+            400
+          );
+
+        }
 
 
-              return (
-                time >=
-                from.getTime()
-                &&
-                time <=
-                to.getTime()
-              );
+        try {
 
+          const samples =
+            await queryTBeamsHistory(
+              from,
+              to
+            );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              count:
+                samples.length,
+              from:
+                from.toISOString(),
+              to:
+                to.toISOString(),
+              samples
             }
           );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              samples.length,
-            from:
-              from.toISOString(),
-            to:
-              to.toISOString(),
-            samples
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -10743,58 +11941,6 @@ h1{color:#1b5e20;margin-top:0}
 
       if (
         url.pathname ===
-        "/api/tbeams/raw-diagnostic"
-      ) {
-
-        try {
-          const registers = [
-            7484, 7485, 7486,
-            7487, 7488,
-            7490, 7491, 7492,
-            7493, 7494,
-            7502, 7503, 7504,
-            8136, 8137, 8138
-          ];
-
-          const values = {};
-
-          for (const register of registers) {
-            const raw = await readRegisterFrom(
-              T_BEAMS_HOST,
-              T_BEAMS_PORT,
-              T_BEAMS_UNIT_ID,
-              register
-            );
-
-            values[register] = {
-              unsigned16: raw,
-              signed16: signed16Value(raw),
-              hex: "0x" + Number(raw).toString(16).padStart(4, "0").toUpperCase()
-            };
-          }
-
-          return sendJson(response, {
-            ok: true,
-            diagnostic: "T-Beams raw Modbus FC03 registers - READ ONLY",
-            host: T_BEAMS_HOST,
-            port: T_BEAMS_PORT,
-            unitId: T_BEAMS_UNIT_ID,
-            timestamp: new Date().toISOString(),
-            displayedState: tBeamsLatest,
-            registers: values
-          });
-        } catch (error) {
-          return sendJson(response, {
-            ok: false,
-            error: error.message
-          }, 502);
-        }
-
-      }
-
-
-      if (
-        url.pathname ===
         "/api/tbeams/state"
       ) {
 
@@ -10835,43 +11981,54 @@ h1{color:#1b5e20;margin-top:0}
       if (
         url.pathname ===
         "/api/tbeams/history/range"
+
+        &&
+
+        request.method ===
+        "GET"
       ) {
 
-        const first =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[0].timestamp
-          :
-          null;
+        try {
+
+          const range =
+            await queryTBeamsHistoryRange();
 
 
-        const last =
-          tBeamsLiveHistory.length
-          ?
-          tBeamsLiveHistory[
-            tBeamsLiveHistory.length - 1
-          ].timestamp
-          :
-          null;
+          return sendJson(
+            response,
+            {
+              ok: true,
+              ...range
+            }
+          );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              tBeamsLiveHistory.length,
-            first,
-            last
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
         "/api/tbeams/history"
+
+        &&
+
+        request.method ===
+        "GET"
       ) {
 
         const fromText =
@@ -10940,44 +12097,65 @@ h1{color:#1b5e20;margin-top:0}
         }
 
 
-        const samples =
-          tBeamsLiveHistory.filter(
-            sample => {
+        if (
+          from >
+          to
+        ) {
 
-              const time =
-                new Date(
-                  sample.timestamp
-                ).getTime();
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error:
+                "From must be before To"
+            },
+            400
+          );
+
+        }
 
 
-              return (
-                time >=
-                from.getTime()
-                &&
-                time <=
-                to.getTime()
-              );
+        try {
 
+          const samples =
+            await queryTBeamsHistory(
+              from,
+              to
+            );
+
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              count:
+                samples.length,
+              from:
+                from.toISOString(),
+              to:
+                to.toISOString(),
+              samples
             }
           );
 
+        }
 
-        return sendJson(
-          response,
-          {
-            ok: true,
-            count:
-              samples.length,
-            from:
-              from.toISOString(),
-            to:
-              to.toISOString(),
-            samples
-          }
-        );
+        catch (
+          error
+        ) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
-
 
       if (
         url.pathname ===
@@ -11813,6 +12991,20 @@ h1{color:#1b5e20;margin-top:0}
 
             lastArchiveError,
 
+            lastTBeamsArchiveAt:
+
+              lastTBeamsArchiveAt
+
+              ?
+
+              lastTBeamsArchiveAt.toISOString()
+
+              :
+
+              null,
+
+            lastTBeamsArchiveError,
+
             emailConfigured,
 
             emailConnected,
@@ -12185,39 +13377,6 @@ If you received this email, the automatic 8-hour reporting system is configured 
 
       }
 
-
-      /*
-      ================================================
-      TEMPORARY T-BEAMS RAW REGISTER DIAGNOSTIC
-      READ ONLY - DOES NOT WRITE OR ALTER HISTORY
-      ================================================
-      */
-      if (request.method === "GET" && request.url === "/api/tbeams/raw-diagnostic") {
-        try {
-          const registers = {};
-          for (const register of [7484, 7485, 7486, 7487, 7488, 7490, 7491, 7492, 7493, 7494, 7502, 7503, 7504, 8136, 8137, 8138]) {
-            registers[register] = await readRegisterFrom(
-              T_BEAMS_HOST, T_BEAMS_PORT, T_BEAMS_UNIT_ID, register
-            );
-          }
-          return sendJson(response, {
-            ok: true,
-            readOnly: true,
-            host: T_BEAMS_HOST,
-            port: T_BEAMS_PORT,
-            unitId: T_BEAMS_UNIT_ID,
-            timestamp: new Date().toISOString(),
-            registers
-          });
-        } catch (error) {
-          return sendJson(response, {
-            ok: false,
-            readOnly: true,
-            error: error.message,
-            timestamp: new Date().toISOString()
-          }, 500);
-        }
-      }
 
       /*
       ================================================
