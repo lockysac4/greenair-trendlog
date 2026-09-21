@@ -10743,6 +10743,58 @@ h1{color:#1b5e20;margin-top:0}
 
       if (
         url.pathname ===
+        "/api/tbeams/raw-diagnostic"
+      ) {
+
+        try {
+          const registers = [
+            7484, 7485, 7486,
+            7487, 7488,
+            7490, 7491, 7492,
+            7493, 7494,
+            7502, 7503, 7504,
+            8136, 8137, 8138
+          ];
+
+          const values = {};
+
+          for (const register of registers) {
+            const raw = await readRegisterFrom(
+              T_BEAMS_HOST,
+              T_BEAMS_PORT,
+              T_BEAMS_UNIT_ID,
+              register
+            );
+
+            values[register] = {
+              unsigned16: raw,
+              signed16: signed16Value(raw),
+              hex: "0x" + Number(raw).toString(16).padStart(4, "0").toUpperCase()
+            };
+          }
+
+          return sendJson(response, {
+            ok: true,
+            diagnostic: "T-Beams raw Modbus FC03 registers - READ ONLY",
+            host: T_BEAMS_HOST,
+            port: T_BEAMS_PORT,
+            unitId: T_BEAMS_UNIT_ID,
+            timestamp: new Date().toISOString(),
+            displayedState: tBeamsLatest,
+            registers: values
+          });
+        } catch (error) {
+          return sendJson(response, {
+            ok: false,
+            error: error.message
+          }, 502);
+        }
+
+      }
+
+
+      if (
+        url.pathname ===
         "/api/tbeams/state"
       ) {
 
@@ -12133,6 +12185,39 @@ If you received this email, the automatic 8-hour reporting system is configured 
 
       }
 
+
+      /*
+      ================================================
+      TEMPORARY T-BEAMS RAW REGISTER DIAGNOSTIC
+      READ ONLY - DOES NOT WRITE OR ALTER HISTORY
+      ================================================
+      */
+      if (request.method === "GET" && request.url === "/api/tbeams/raw-diagnostic") {
+        try {
+          const registers = {};
+          for (const register of [7484, 7485, 7486, 7487, 7488, 7490, 7491, 7492, 7493, 7494, 7502, 7503, 7504, 8136, 8137, 8138]) {
+            registers[register] = await readRegisterFrom(
+              T_BEAMS_HOST, T_BEAMS_PORT, T_BEAMS_UNIT_ID, register
+            );
+          }
+          return sendJson(response, {
+            ok: true,
+            readOnly: true,
+            host: T_BEAMS_HOST,
+            port: T_BEAMS_PORT,
+            unitId: T_BEAMS_UNIT_ID,
+            timestamp: new Date().toISOString(),
+            registers
+          });
+        } catch (error) {
+          return sendJson(response, {
+            ok: false,
+            readOnly: true,
+            error: error.message,
+            timestamp: new Date().toISOString()
+          }, 500);
+        }
+      }
 
       /*
       ================================================
