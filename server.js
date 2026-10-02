@@ -1,4 +1,3 @@
-/* Greenair TrendLog permanent T-Beams 65.536C rollover fix - 2026-09-22 */
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -1430,12 +1429,12 @@ PORT 505 / UNIT 68
 */
 
 const T_BEAMS_POINTS = [
-  // T3000 stores these values as signed 32-bit integers scaled by 1000.
-  // The EVEN register is the HIGH/sign word and the ODD register is the LOW word.
-  // Diagnostic proof on 2026-09-21: 7484=1 and 7485=4464 -> 70000 -> 70.000 C.
+  // T-Beams temperatures are mostly signed 32-bit integers scaled by 1000.
+  // Ambient is the exception: it is a single 16-bit register at 8137, scaled by 1000.
+  // Do not combine Ambient with 8136. That false 32-bit pair created the giant spikes.
   { id: "in1", name: "T - Beams In", highRegister: 7484, register: 7485, kind: "signed32Analog" },
   { id: "in2", name: "T - Beams Out", highRegister: 7486, register: 7487, kind: "signed32Analog" },
-  { id: "ambient", name: "Ambient", highRegister: 8136, register: 8137, kind: "signed32Analog" },
+  { id: "ambient", name: "Ambient", register: 8137, kind: "uint16Analog" },
   { id: "in4", name: "T - Beams Concrete", highRegister: 7490, register: 7491, kind: "signed32Analog" },
   { id: "in5", name: "T - Beams Tank", highRegister: 7492, register: 7493, kind: "signed32Analog" },
   { id: "diff", name: "Ambient - Concrete Differential", highRegister: 7502, register: 7503, kind: "signed32Analog" }
@@ -5651,7 +5650,48 @@ async function pollTBeams() {
       of T_BEAMS_POINTS
     ) {
 
-      // Read the proven T3000 32-bit pair: HIGH/sign word first, LOW word second.
+      // T-BEAMS AMBIENT IS A SINGLE 16-BIT REGISTER AT 8137.
+      // Do not combine it with 8136. The old 32-bit pairing is what
+      // produced the enormous historical Ambient spikes.
+      if (
+        point.id ===
+        "ambient"
+      ) {
+
+        const raw =
+          await readRegisterFrom(
+            T_BEAMS_HOST,
+            T_BEAMS_PORT,
+            T_BEAMS_UNIT_ID,
+            point.register
+          );
+
+        const value =
+          Number(raw) /
+          1000;
+
+        // Reject an impossible Ambient sample instead of allowing one bad
+        // Modbus value to destroy the chart scale and permanent history.
+        results.push({
+          ...point,
+          raw,
+          rawWords: [raw],
+          value:
+            value >= -30 &&
+            value <= 60
+            ? value
+            : null,
+          valid:
+            value >= -30 &&
+            value <= 60
+        });
+
+        continue;
+
+      }
+
+      // The remaining T-Beams temperatures are signed 32-bit values:
+      // HIGH/sign word first, LOW word second, scaled by 1000.
       const highWord =
         await readRegisterFrom(
           T_BEAMS_HOST,
@@ -5680,7 +5720,8 @@ async function pollTBeams() {
         ...point,
         raw,
         rawWords: [highWord, lowWord],
-        value: raw / 1000
+        value: raw / 1000,
+        valid: true
       });
 
     }
@@ -5813,10 +5854,22 @@ function saveTBeamsLiveSample() {
         "in5"
       ),
     diff:
-      getTBeamsLatestValue(
-        "diff"
-      )
+      null
   };
+
+
+  if (
+    sample.ambient !== null &&
+    sample.in4 !== null
+  ) {
+    sample.diff =
+      Number(
+        (
+          sample.in4 -
+          sample.ambient
+        ).toFixed(3)
+      );
+  }
 
 
   if (
@@ -6542,9 +6595,23 @@ async function archiveTBeamsTrendSample(
       getTBeamsLatestValue("in5"),
 
     diff:
-      getTBeamsLatestValue("diff")
+      null
 
   };
+
+
+  if (
+    values.ambient !== null &&
+    values.in4 !== null
+  ) {
+    values.diff =
+      Number(
+        (
+          values.in4 -
+          values.ambient
+        ).toFixed(3)
+      );
+  }
 
 
   if (
@@ -6565,62 +6632,6 @@ async function archiveTBeamsTrendSample(
 
     return false;
 
-  }
-
-
-  // Reject obvious one-sample communications dropouts before they are archived.
-  // The existing database/table is preserved; no DROP/TRUNCATE/migration is used.
-  try {
-    const previousResult = await db.query(`
-      SELECT tbeams_in, tbeams_out, ambient, tbeams_concrete, tbeams_tank, ambient_concrete_diff
-      FROM tbeams_trend_history
-      WHERE recorded_at < $1
-      ORDER BY recorded_at DESC
-      LIMIT 1
-    `, [recordedAt]);
-
-    if (previousResult.rowCount > 0) {
-      const p = previousResult.rows[0];
-      const previous = {
-        in1: Number(p.tbeams_in), in2: Number(p.tbeams_out), ambient: Number(p.ambient),
-        in4: Number(p.tbeams_concrete), in5: Number(p.tbeams_tank), diff: Number(p.ambient_concrete_diff)
-      };
-
-      // Hard plausibility guard: corrupt Modbus/error values must never reach PostgreSQL.
-      // T-Beams temperatures are expected to remain in a sane HVAC/process range.
-      // Differential may legitimately be negative, so it has its own range.
-      const validRanges = {
-        in1: [-50, 100],
-        in2: [-50, 100],
-        ambient: [-50, 100],
-        in4: [-50, 100],
-        in5: [-50, 100],
-        diff: [-100, 100]
-      };
-
-      for (const key of Object.keys(values)) {
-        const current = Number(values[key]);
-        const last = Number(previous[key]);
-        const [min, max] = validRanges[key] || [-100, 100];
-
-        if (!Number.isFinite(current) || current < min || current > max) {
-          // Replace an impossible sample with the previous valid database value.
-          // This specifically blocks values such as +/-790000 from destroying
-          // the chart scale while preserving the existing history table.
-          if (Number.isFinite(last) && last >= min && last <= max) {
-            console.warn(`T-Beams ${key} rejected before archive: ${current}; keeping ${last}`);
-            values[key] = last;
-          } else {
-            lastTBeamsArchiveError = `T-Beams ${key} invalid and no valid previous value`;
-            return false;
-          }
-        }
-        else if (Number.isFinite(last) && current <= 1 && last > 10) values[key] = last;
-        else if (Number.isFinite(last) && Math.abs(current - last) >= 20) values[key] = last;
-      }
-    }
-  } catch (guardError) {
-    console.warn("T-Beams dropout guard could not read previous sample:", guardError.message);
   }
 
 
@@ -6971,48 +6982,44 @@ async function queryTBeamsHistory(
     );
 
 
-  const rows = result.rows.map(
-    row => ({
-      timestamp:
-        new Date(row.recorded_at).toISOString(),
-      in1: Number(row.tbeams_in),
-      in2: Number(row.tbeams_out),
-      ambient: Number(row.ambient),
-      in4: Number(row.tbeams_concrete),
-      in5: Number(row.tbeams_tank),
-      diff: Number(row.ambient_concrete_diff)
-    })
-  );
+  return result.rows.map(
+    row => {
+      const ambient =
+        Number(row.ambient);
 
-  // T-Beams dropout guard (2026-09-25).
-  // Preserve the PostgreSQL history table exactly as-is, but remove isolated
-  // communications dropouts from the history returned to the chart. A point is
-  // repaired only when both neighbouring samples agree that it is an outlier.
-  const fields = ["in1", "in2", "ambient", "in4", "in5", "diff"];
-  const repaired = rows.map(row => ({ ...row }));
+      const concrete =
+        Number(row.tbeams_concrete);
 
-  for (const field of fields) {
-    for (let i = 1; i < rows.length - 1; i++) {
-      const prev = Number(rows[i - 1][field]);
-      const cur  = Number(rows[i][field]);
-      const next = Number(rows[i + 1][field]);
+      const ambientValid =
+        Number.isFinite(ambient) &&
+        ambient >= -30 &&
+        ambient <= 60;
 
-      if (![prev, cur, next].every(Number.isFinite)) continue;
-
-      const neighbourSpread = Math.abs(prev - next);
-      const expected = (prev + next) / 2;
-      const deviation = Math.abs(cur - expected);
-      const zeroDropout = cur <= 1 && prev > 10 && next > 10;
-      const isolatedJump = neighbourSpread <= 5 && deviation >= 15;
-      const impossibleValue = Math.abs(cur) > 100;
-
-      if (zeroDropout || isolatedJump || impossibleValue) {
-        repaired[i][field] = Number(expected.toFixed(3));
-      }
+      return {
+        timestamp:
+          new Date(row.recorded_at).toISOString(),
+        in1:
+          Number(row.tbeams_in),
+        in2:
+          Number(row.tbeams_out),
+        ambient:
+          ambientValid
+          ? ambient
+          : null,
+        in4:
+          concrete,
+        in5:
+          Number(row.tbeams_tank),
+        // Recalculate differential from the two temperatures. If an old
+        // Ambient row was corrupt, return a gap instead of a giant spike.
+        diff:
+          ambientValid &&
+          Number.isFinite(concrete)
+          ? Number((concrete - ambient).toFixed(3))
+          : null
+      };
     }
-  }
-
-  return repaired;
+  );
 
 }
 
@@ -12643,6 +12650,191 @@ h1{color:#1b5e20;margin-top:0}
       }
 
 
+
+      /*
+      ================================================
+      T-BEAMS HISTORY REPAIR - APPLY CONFIRMED ROLLOVER
+      MASTER ONLY. IDEMPOTENT: ONLY VALUES 0 <= x < 15
+      INSIDE THE VERIFIED 17-18 SEPTEMBER UTC WINDOWS.
+      ================================================
+      */
+      if (
+        url.pathname === "/api/tbeams/history-repair-apply"
+        &&
+        request.method === "GET"
+      ) {
+
+        if (
+          authUser.role !== "master"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: "Master access required"
+            },
+            403
+          );
+        }
+
+        if (
+          url.searchParams.get("confirm") !== "FIX_TBEAMS_5_DAYS"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Confirmation token required"
+            },
+            400
+          );
+        }
+
+        if (
+          !db
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Database not configured"
+            },
+            500
+          );
+        }
+
+        const repairWindows = [
+          {
+            from: "2026-09-17T16:29:00.000Z",
+            to: "2026-09-17T23:28:00.000Z"
+          },
+          {
+            from: "2026-09-18T11:22:00.000Z",
+            to: "2026-09-18T22:00:00.000Z"
+          }
+        ];
+
+        const client =
+          await db.connect();
+
+        try {
+
+          await client.query("BEGIN");
+
+          const before =
+            await client.query(
+              `
+              SELECT
+                id,
+                recorded_at,
+                tbeams_in
+              FROM tbeams_trend_history
+              WHERE
+                (
+                  recorded_at BETWEEN $1 AND $2
+                  OR
+                  recorded_at BETWEEN $3 AND $4
+                )
+                AND tbeams_in >= 0
+                AND tbeams_in < 15
+              ORDER BY recorded_at ASC
+              `,
+              [
+                repairWindows[0].from,
+                repairWindows[0].to,
+                repairWindows[1].from,
+                repairWindows[1].to
+              ]
+            );
+
+          const updated =
+            await client.query(
+              `
+              UPDATE tbeams_trend_history
+              SET tbeams_in = tbeams_in + 65.536
+              WHERE
+                (
+                  recorded_at BETWEEN $1 AND $2
+                  OR
+                  recorded_at BETWEEN $3 AND $4
+                )
+                AND tbeams_in >= 0
+                AND tbeams_in < 15
+              RETURNING
+                id,
+                recorded_at,
+                tbeams_in
+              `,
+              [
+                repairWindows[0].from,
+                repairWindows[0].to,
+                repairWindows[1].from,
+                repairWindows[1].to
+              ]
+            );
+
+          await client.query("COMMIT");
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              applied: true,
+              repairedCount: updated.rowCount,
+              expectedCandidateCount: 577,
+              windows: repairWindows,
+              note: "Only tbeams_in was changed. 65.536C was added to verified wrapped values. The isolated 2026-09-21 zero reading was excluded.",
+              firstBefore:
+                before.rows.length
+                ? {
+                    id: before.rows[0].id,
+                    timestamp: new Date(before.rows[0].recorded_at).toISOString(),
+                    value: Number(before.rows[0].tbeams_in)
+                  }
+                : null,
+              firstAfter:
+                updated.rows.length
+                ? {
+                    id: updated.rows[0].id,
+                    timestamp: new Date(updated.rows[0].recorded_at).toISOString(),
+                    value: Number(updated.rows[0].tbeams_in)
+                  }
+                : null
+            }
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          try {
+            await client.query("ROLLBACK");
+          }
+          catch {}
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
+
+        finally {
+          client.release();
+        }
+
+      }
+
+
       /*
       ================================================
       CURRENT BMS STATE
@@ -13458,238 +13650,6 @@ If you received this email, the automatic 8-hour reporting system is configured 
 
       }
 
-
-
-      /*
-      ================================================
-      T-BEAMS 65.536C HISTORY REPAIR - 2026-09-22
-      Repairs the historical low-word rollover after T-Beams In crosses 65.536C.
-      Master-only, creates its own backup, and is idempotent.
-      ================================================
-      */
-      if (
-        url.pathname === "/api/tbeams/history-65c-repair"
-        &&
-        request.method === "GET"
-      ) {
-        if (authUser.role !== "master") {
-          return sendJson(response, { ok:false, error:"Master access required" }, 403);
-        }
-
-        if (url.searchParams.get("confirm") !== "FIX_TBEAMS_65C_HISTORY") {
-          return sendJson(response, {
-            ok:false,
-            applied:false,
-            error:"Confirmation required",
-            usage:"?confirm=FIX_TBEAMS_65C_HISTORY"
-          }, 400);
-        }
-
-        if (!db) {
-          return sendJson(response, { ok:false, applied:false, error:"Database unavailable" }, 503);
-        }
-
-        const client = await db.connect();
-
-        try {
-          await client.query("BEGIN");
-
-          await client.query(`
-            CREATE TABLE IF NOT EXISTS tbeams_trend_history_backup_20260922_65c
-            AS TABLE tbeams_trend_history WITH NO DATA
-          `);
-
-          const backupCount = await client.query(
-            `SELECT COUNT(*)::int AS count FROM tbeams_trend_history_backup_20260922_65c`
-          );
-
-          if (backupCount.rows[0].count === 0) {
-            await client.query(`
-              INSERT INTO tbeams_trend_history_backup_20260922_65c
-              SELECT * FROM tbeams_trend_history
-            `);
-          }
-
-          /*
-           * Old logger defect:
-           * values above 65.535C were stored from only the LOW 16-bit word.
-           * Therefore 65.536C became 0.000C, 66.000C became 0.464C, etc.
-           *
-           * Restrict the repair to the known rollover episodes and only values
-           * still below 15C. Already-repaired values are >65.536C and cannot
-           * be modified a second time.
-           */
-          const repaired = await client.query(`
-            UPDATE tbeams_trend_history
-            SET tbeams_in = tbeams_in + 65.536
-            WHERE recorded_at >= TIMESTAMPTZ '2026-09-17 00:00:00+00'
-              AND recorded_at <  TIMESTAMPTZ '2026-09-19 12:00:00+00'
-              AND tbeams_in >= 0
-              AND tbeams_in < 15
-            RETURNING id, recorded_at, tbeams_in
-          `);
-
-          await client.query("COMMIT");
-
-          return sendJson(response, {
-            ok:true,
-            applied:true,
-            repairedCount:repaired.rowCount,
-            backupTable:"tbeams_trend_history_backup_20260922_65c",
-            note:"T-Beams In 65.536C rollover history repaired. Existing corrected values cannot be double-adjusted."
-          });
-        }
-        catch (error) {
-          try { await client.query("ROLLBACK"); } catch {}
-          return sendJson(response, { ok:false, applied:false, error:error.message }, 500);
-        }
-        finally {
-          client.release();
-        }
-      }
-
-
-      /*
-      ================================================
-      FINAL T-BEAMS HISTORY REPAIR - 2026-09-21
-      Repairs only rows proven corrupt by the 5-day diagnostic.
-      Creates a database backup snapshot before modifying history.
-      ================================================
-      */
-      if (
-        url.pathname === "/api/tbeams/history-final-repair"
-        &&
-        request.method === "GET"
-      ) {
-        if (authUser.role !== "master") {
-          return sendJson(response, { ok:false, error:"Master access required" }, 403);
-        }
-
-        if (url.searchParams.get("confirm") !== "FINAL_FIX_TBEAMS_HISTORY") {
-          return sendJson(response, {
-            ok:false,
-            error:"Confirmation required",
-            usage:"?confirm=FINAL_FIX_TBEAMS_HISTORY"
-          }, 400);
-        }
-
-        if (!db) {
-          return sendJson(response, { ok:false, error:"Database unavailable" }, 503);
-        }
-
-        const inletIds = [30469, 30470, 30471, 30480, 30481, 30490, 30491, 30492, 30493, 30503, 30504, 30505, 30506, 30515, 30516, 30517, 30518, 30528, 30529, 30530, 30531, 30541, 30542, 30543, 30544, 30552, 30553, 30554, 30555, 30565, 30566, 30567, 30577, 30578, 30579, 30580, 30590, 30591, 30592, 30602, 30603, 30604, 30614, 30615, 30616, 30625, 30626, 30627, 30628, 30636, 30637, 30638, 30639, 30649, 30650, 30651, 30660, 30661, 30662, 30663, 30673, 30674, 30675, 30685, 30686, 30687, 30688, 30698, 30699, 30700, 30709, 30710, 30711, 30712, 30721, 30722, 30723, 30733, 30734, 30735, 30736, 30745, 30746, 30747, 30757, 30758, 30759, 30766, 30767, 30768, 30769, 30776, 30777, 30778, 30787, 30788, 30798, 30799, 30800, 30810, 30811, 30812, 30813, 30821, 30829, 30830, 30831, 30832, 30841, 30842, 30843, 30844, 30853, 30854, 30855, 30864, 30865, 30866, 30867, 30876, 30877, 30878, 30879, 30889, 30890, 30891, 30901, 30902, 30903, 30904, 30911, 30912, 30913, 30923, 30924, 30925, 30926, 30935, 30936, 30937, 30938, 30948, 30949, 30950, 30951, 30960, 30961, 30962, 30963, 30973, 30974, 30975, 30984, 30985, 30986, 30987, 30997, 30998, 30999, 31000, 31009, 31010, 31011, 31021, 31022, 31023, 31024, 31033, 31034, 31035, 31036, 31045, 31046, 31047, 31048, 31058, 31059, 31060, 31061, 31070, 31071, 31072, 31073];
-        const diffIds = [30958, 30959, 30960, 30961, 30962, 30963, 30964, 30965, 30966, 30967, 30968, 30969, 30970, 30971, 30972, 30973, 30974, 30975, 30976, 30977, 30978, 30979, 30980, 30981, 30982, 30983, 30984, 30985, 30986, 30987, 30988, 30989, 30990, 30991, 30992, 30993, 30994, 30995, 30996, 30997, 30998, 30999, 31000, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31013, 31014, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 31025];
-        const client = await db.connect();
-
-        try {
-          await client.query("BEGIN");
-
-          await client.query(`
-            CREATE TABLE IF NOT EXISTS tbeams_trend_history_backup_20260921
-            AS TABLE tbeams_trend_history WITH NO DATA
-          `);
-
-          const backupCount = await client.query(
-            `SELECT COUNT(*)::int AS count FROM tbeams_trend_history_backup_20260921`
-          );
-
-          if (backupCount.rows[0].count === 0) {
-            await client.query(`
-              INSERT INTO tbeams_trend_history_backup_20260921
-              SELECT * FROM tbeams_trend_history
-              WHERE timestamp >= NOW() - INTERVAL '6 days'
-            `);
-          }
-
-          // Proven 16-bit rollover: low-word values 0..~1.7C really mean 65.536..~67.2C.
-          // Explicit IDs came from the complete 5-day diagnostic.
-          const inletResult = await client.query(
-            `UPDATE tbeams_trend_history
-             SET tbeams_in = tbeams_in + 65.536
-             WHERE id = ANY($1::bigint[])
-               AND tbeams_in >= 0
-               AND tbeams_in < 10
-             RETURNING id`,
-            [inletIds]
-          );
-
-          // Proven signed-16 rollover in Ambient-Concrete Differential.
-          const diffResult = await client.query(
-            `UPDATE tbeams_trend_history
-             SET ambient_concrete_diff = ambient_concrete_diff + 65.536
-             WHERE id = ANY($1::bigint[])
-               AND ambient_concrete_diff < -20
-             RETURNING id`,
-            [diffIds]
-          );
-
-          // Three isolated communication/dropout records.
-          // Replace only the fields proven bad, using the adjacent minute values.
-          const dropout1 = await client.query(
-            `UPDATE tbeams_trend_history
-             SET ambient = 19.05,
-                 ambient_concrete_diff = 0.2
-             WHERE id = 28945
-               AND ambient = 0
-             RETURNING id`
-          );
-
-          const dropout2 = await client.query(
-            `UPDATE tbeams_trend_history
-             SET ambient = 17.9
-             WHERE id = 34014
-               AND ambient = 0
-             RETURNING id`
-          );
-
-          const dropout3 = await client.query(
-            `UPDATE tbeams_trend_history
-             SET tbeams_in = 16.21,
-                 tbeams_out = 15.771,
-                 ambient = 17.8,
-                 tbeams_concrete = 19.6,
-                 tbeams_tank = 15.2,
-                 ambient_concrete_diff = 1.8
-             WHERE id = 34415
-               AND tbeams_in = 0
-               AND tbeams_out = 0
-               AND ambient = 0
-               AND tbeams_concrete = 0
-               AND tbeams_tank = 0
-             RETURNING id`
-          );
-
-          await client.query("COMMIT");
-
-          return sendJson(response, {
-            ok:true,
-            applied:true,
-            backupTable:"tbeams_trend_history_backup_20260921",
-            repaired:{
-              inletRollover: inletResult.rowCount,
-              differentialRollover: diffResult.rowCount,
-              isolatedAmbientDropout1: dropout1.rowCount,
-              isolatedAmbientDropout2: dropout2.rowCount,
-              fullSensorDropout: dropout3.rowCount
-            },
-            expected:{
-              inletRollover:183,
-              differentialRollover:68,
-              isolatedAmbientDropout1:1,
-              isolatedAmbientDropout2:1,
-              fullSensorDropout:1
-            },
-            note:"Safe to refresh history graph. Re-running is guarded and will not double-add rollover corrections."
-          });
-        }
-        catch (error) {
-          try { await client.query("ROLLBACK"); } catch {}
-          return sendJson(response, { ok:false, error:error.message }, 500);
-        }
-        finally {
-          client.release();
-        }
-      }
 
       /*
       ================================================
