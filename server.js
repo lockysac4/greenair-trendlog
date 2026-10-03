@@ -6943,17 +6943,61 @@ async function queryTBeamsHistory(
 
 
   return result.rows.map(
-    row => {
+    (row, index, rows) => {
       const ambient =
         Number(row.ambient);
 
       const concrete =
         Number(row.tbeams_concrete);
 
+      const previousAmbient =
+        index > 0
+        ? Number(rows[index - 1].ambient)
+        : null;
+
+      const nextAmbient =
+        index < rows.length - 1
+        ? Number(rows[index + 1].ambient)
+        : null;
+
+      const previousTime =
+        index > 0
+        ? new Date(rows[index - 1].recorded_at).getTime()
+        : null;
+
+      const currentTime =
+        new Date(row.recorded_at).getTime();
+
+      const nextTime =
+        index < rows.length - 1
+        ? new Date(rows[index + 1].recorded_at).getTime()
+        : null;
+
+      // Historical T-Beams Ambient suffered isolated false zero samples
+      // before the 32-bit register fix. Repair only a single zero bracketed
+      // by two plausible, closely matching readings. This changes display
+      // history only; PostgreSQL remains untouched until the result is verified.
+      const isolatedZero =
+        ambient === 0 &&
+        Number.isFinite(previousAmbient) &&
+        Number.isFinite(nextAmbient) &&
+        previousAmbient > 5 &&
+        nextAmbient > 5 &&
+        Math.abs(previousAmbient - nextAmbient) <= 5 &&
+        Number.isFinite(previousTime) &&
+        Number.isFinite(nextTime) &&
+        currentTime - previousTime <= 180000 &&
+        nextTime - currentTime <= 180000;
+
+      const displayAmbient =
+        isolatedZero
+        ? Number(((previousAmbient + nextAmbient) / 2).toFixed(3))
+        : ambient;
+
       const ambientValid =
-        Number.isFinite(ambient) &&
-        ambient >= -30 &&
-        ambient <= 60;
+        Number.isFinite(displayAmbient) &&
+        displayAmbient >= -30 &&
+        displayAmbient <= 60;
 
       return {
         timestamp:
@@ -6964,18 +7008,16 @@ async function queryTBeamsHistory(
           Number(row.tbeams_out),
         ambient:
           ambientValid
-          ? ambient
+          ? displayAmbient
           : null,
         in4:
           concrete,
         in5:
           Number(row.tbeams_tank),
-        // Recalculate differential from the two temperatures. If an old
-        // Ambient row was corrupt, return a gap instead of a giant spike.
         diff:
           ambientValid &&
           Number.isFinite(concrete)
-          ? Number((concrete - ambient).toFixed(3))
+          ? Number((concrete - displayAmbient).toFixed(3))
           : null
       };
     }
