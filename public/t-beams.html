@@ -1176,6 +1176,13 @@ TOOLBAR
     Last 5 min
   </button>
 
+  <button
+    id="repair5DaysButton"
+    type="button"
+  >
+    Repair Last 5 Days
+  </button>
+
 
   <button
     id="printButton"
@@ -2835,6 +2842,98 @@ document
 
     }
 
+  );
+
+
+/* ==================================================
+REPAIR LAST 5 DAYS
+================================================== */
+
+document
+  .getElementById(
+    "repair5DaysButton"
+  )
+  .addEventListener(
+    "click",
+    async () => {
+
+      const button =
+        document.getElementById(
+          "repair5DaysButton"
+        );
+
+      if (
+        !confirm(
+          "Repair corrupt T-Beams history for the last 5 days? Valid readings will be kept."
+        )
+      ) {
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Repairing...";
+
+      try {
+
+        const response =
+          await fetch(
+            "/api/tbeams/history/repair-last-5-days",
+            {
+              method: "POST",
+              cache: "no-store"
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.ok
+        ) {
+          throw new Error(
+            data.error ||
+            "Repair failed"
+          );
+        }
+
+        alert(
+          "Repair complete. Scanned " +
+          data.scanned +
+          " records and repaired " +
+          data.repaired +
+          " corrupt records."
+        );
+
+        if (
+          currentMode === "history" &&
+          fromDate.value &&
+          toDate.value
+        ) {
+          await loadHistory();
+        }
+        else {
+          await loadLiveTrend();
+        }
+
+      }
+      catch (error) {
+
+        alert(
+          "Repair failed: " +
+          error.message
+        );
+
+      }
+      finally {
+
+        button.disabled = false;
+        button.textContent =
+          "Repair Last 5 Days";
+
+      }
+
+    }
   );
 
 
