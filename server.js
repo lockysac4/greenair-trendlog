@@ -10492,6 +10492,70 @@ const server =
         "GET"
       ) {
 
+        // Clean only isolated historical Ambient zero dropouts in the live
+        // buffer before sending them to the graph. Keep the stored buffer
+        // untouched. Recalculate the differential from the repaired Ambient.
+        const repairedSamples =
+          tBeamsLiveHistory.map(
+            (sample, index, samples) => {
+
+              const ambient =
+                Number(sample.ambient);
+
+              const previous =
+                index > 0
+                ? samples[index - 1]
+                : null;
+
+              const next =
+                index < samples.length - 1
+                ? samples[index + 1]
+                : null;
+
+              const previousAmbient =
+                previous
+                ? Number(previous.ambient)
+                : null;
+
+              const nextAmbient =
+                next
+                ? Number(next.ambient)
+                : null;
+
+              const isolatedZero =
+                ambient === 0 &&
+                Number.isFinite(previousAmbient) &&
+                Number.isFinite(nextAmbient) &&
+                previousAmbient > 5 &&
+                nextAmbient > 5 &&
+                Math.abs(previousAmbient - nextAmbient) <= 5;
+
+              if (!isolatedZero) {
+                return sample;
+              }
+
+              const repairedAmbient =
+                Number(
+                  (
+                    (previousAmbient + nextAmbient) / 2
+                  ).toFixed(3)
+                );
+
+              const concrete =
+                Number(sample.in4);
+
+              return {
+                ...sample,
+                ambient: repairedAmbient,
+                diff:
+                  Number.isFinite(concrete)
+                  ? Number((concrete - repairedAmbient).toFixed(3))
+                  : sample.diff
+              };
+
+            }
+          );
+
         return sendJson(
           response,
           {
@@ -10499,9 +10563,9 @@ const server =
             sampleIntervalMs:
               LIVE_SAMPLE_MS,
             count:
-              tBeamsLiveHistory.length,
+              repairedSamples.length,
             samples:
-              tBeamsLiveHistory
+              repairedSamples
           }
         );
 
@@ -12052,6 +12116,70 @@ h1{color:#1b5e20;margin-top:0}
         "/api/tbeams/trend"
       ) {
 
+        // Clean only isolated historical Ambient zero dropouts in the live
+        // buffer before sending them to the graph. Keep the stored buffer
+        // untouched. Recalculate the differential from the repaired Ambient.
+        const repairedSamples =
+          tBeamsLiveHistory.map(
+            (sample, index, samples) => {
+
+              const ambient =
+                Number(sample.ambient);
+
+              const previous =
+                index > 0
+                ? samples[index - 1]
+                : null;
+
+              const next =
+                index < samples.length - 1
+                ? samples[index + 1]
+                : null;
+
+              const previousAmbient =
+                previous
+                ? Number(previous.ambient)
+                : null;
+
+              const nextAmbient =
+                next
+                ? Number(next.ambient)
+                : null;
+
+              const isolatedZero =
+                ambient === 0 &&
+                Number.isFinite(previousAmbient) &&
+                Number.isFinite(nextAmbient) &&
+                previousAmbient > 5 &&
+                nextAmbient > 5 &&
+                Math.abs(previousAmbient - nextAmbient) <= 5;
+
+              if (!isolatedZero) {
+                return sample;
+              }
+
+              const repairedAmbient =
+                Number(
+                  (
+                    (previousAmbient + nextAmbient) / 2
+                  ).toFixed(3)
+                );
+
+              const concrete =
+                Number(sample.in4);
+
+              return {
+                ...sample,
+                ambient: repairedAmbient,
+                diff:
+                  Number.isFinite(concrete)
+                  ? Number((concrete - repairedAmbient).toFixed(3))
+                  : sample.diff
+              };
+
+            }
+          );
+
         return sendJson(
           response,
           {
@@ -12059,9 +12187,9 @@ h1{color:#1b5e20;margin-top:0}
             sampleIntervalMs:
               LIVE_SAMPLE_MS,
             count:
-              tBeamsLiveHistory.length,
+              repairedSamples.length,
             samples:
-              tBeamsLiveHistory
+              repairedSamples
           }
         );
 
