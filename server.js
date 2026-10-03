@@ -7202,6 +7202,71 @@ async function repairTBeamsHistory(
     }
   }
 
+  // Pass 3: targeted Ambient near-zero cleanup. This is deliberately
+  // separate from the generic spike rules because Ambient should not fall
+  // from normal outdoor temperature to ~0 C for a few minutes and return.
+  // Repair runs up to 60 minutes when valid normal readings bracket the run.
+  let ambientCursor = 1;
+
+  while (ambientCursor < rows.length - 1) {
+    const ambientValue = Number(rows[ambientCursor].ambient);
+    const nearZero =
+      !Number.isFinite(ambientValue) ||
+      ambientValue <= 5;
+
+    if (!nearZero) {
+      ambientCursor++;
+      continue;
+    }
+
+    const runStart = ambientCursor;
+
+    while (
+      ambientCursor < rows.length - 1 &&
+      (
+        !Number.isFinite(Number(rows[ambientCursor].ambient)) ||
+        Number(rows[ambientCursor].ambient) <= 5
+      )
+    ) {
+      ambientCursor++;
+    }
+
+    const runEnd = ambientCursor - 1;
+    const beforeIndex = runStart - 1;
+    const afterIndex = ambientCursor;
+    const runLength = runEnd - runStart + 1;
+
+    if (
+      runLength <= 60 &&
+      beforeIndex >= 0 &&
+      afterIndex < rows.length
+    ) {
+      const beforeAmbient = Number(rows[beforeIndex].ambient);
+      const afterAmbient = Number(rows[afterIndex].ambient);
+
+      if (
+        valid(beforeAmbient) &&
+        valid(afterAmbient) &&
+        beforeAmbient > 10 &&
+        afterAmbient > 10 &&
+        Math.abs(beforeAmbient - afterAmbient) <= 8
+      ) {
+        for (let j = runStart; j <= runEnd; j++) {
+          const fraction =
+            (j - beforeIndex) /
+            (afterIndex - beforeIndex);
+
+          setUpdate(
+            rows[j],
+            "ambient",
+            beforeAmbient +
+            (afterAmbient - beforeAmbient) * fraction
+          );
+        }
+      }
+    }
+  }
+
   let repaired = 0;
 
   for (const row of rows) {
