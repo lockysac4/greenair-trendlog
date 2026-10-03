@@ -7077,6 +7077,7 @@ async function repairTBeamsHistory(
     [from, to]
   );
 
+  const rows = result.rows;
   const fields = [
     "tbeams_in",
     "tbeams_out",
@@ -7090,24 +7091,21 @@ async function repairTBeamsHistory(
     return Number.isFinite(n) && n >= -50 && n <= 150;
   };
 
-  let repaired = 0;
+  const updatesById = new Map();
 
-  for (let i = 1; i < result.rows.length - 1; i++) {
-    const row = result.rows[i];
-    const previous = result.rows[i - 1];
-    const next = result.rows[i + 1];
-    const updates = {};
-
-    for (const field of fields) {
-      if (!valid(row[field]) && valid(previous[field]) && valid(next[field])) {
-        updates[field] =
-          Number(((Number(previous[field]) + Number(next[field])) / 2).toFixed(3));
-      }
+  const setUpdate = (row, field, value) => {
+    if (!updatesById.has(row.id)) {
+      updatesById.set(row.id, {});
     }
+    updatesById.get(row.id)[field] = Number(Number(value).toFixed(3));
+  };
 
-    // Repair isolated one-sample dropouts/spikes without smoothing
-    // genuine heating and cooling curves. A point is considered corrupt only
-    // when its neighbours agree closely and the middle point jumps far away.
+  // Pass 1: impossible values and isolated spikes.
+  for (let i = 1; i < rows.length - 1; i++) {
+    const row = rows[i];
+    const previous = rows[i - 1];
+    const next = rows[i + 1];
+
     for (const field of fields) {
       const currentValue = Number(row[field]);
       const previousValue = Number(previous[field]);
@@ -7118,11 +7116,11 @@ async function repairTBeamsHistory(
         valid(nextValue) &&
         Math.abs(previousValue - nextValue) <= 3;
 
+      const impossible = !valid(currentValue);
       const isolatedZero =
         currentValue === 0 &&
         previousValue > 5 &&
         nextValue > 5;
-
       const isolatedSpike =
         valid(currentValue) &&
         Math.abs(currentValue - previousValue) >= 5 &&
@@ -7130,14 +7128,85 @@ async function repairTBeamsHistory(
 
       if (
         neighboursPlausible &&
-        (isolatedZero || isolatedSpike)
+        (impossible || isolatedZero || isolatedSpike)
       ) {
-        updates[field] =
-          Number(((previousValue + nextValue) / 2).toFixed(3));
+        setUpdate(
+          row,
+          field,
+          (previousValue + nextValue) / 2
+        );
       }
     }
+  }
 
-    if (!Object.keys(updates).length) {
+  // Pass 2: repair short runs of zero/dropout samples.
+  // Up to 10 consecutive one-minute samples are interpolated only when
+  // both ends are plausible and close, so real operating changes survive.
+  for (const field of fields) {
+    let i = 1;
+
+    while (i < rows.length - 1) {
+      const value = Number(rows[i][field]);
+      const dropout =
+        !valid(value) ||
+        value === 0;
+
+      if (!dropout) {
+        i++;
+        continue;
+      }
+
+      const runStart = i;
+
+      while (
+        i < rows.length - 1 &&
+        (
+          !valid(Number(rows[i][field])) ||
+          Number(rows[i][field]) === 0
+        )
+      ) {
+        i++;
+      }
+
+      const runEnd = i - 1;
+      const runLength = runEnd - runStart + 1;
+      const beforeIndex = runStart - 1;
+      const afterIndex = i;
+
+      if (
+        runLength <= 10 &&
+        beforeIndex >= 0 &&
+        afterIndex < rows.length
+      ) {
+        const beforeValue = Number(rows[beforeIndex][field]);
+        const afterValue = Number(rows[afterIndex][field]);
+
+        if (
+          valid(beforeValue) &&
+          valid(afterValue) &&
+          beforeValue > 5 &&
+          afterValue > 5 &&
+          Math.abs(beforeValue - afterValue) <= 5
+        ) {
+          for (let j = runStart; j <= runEnd; j++) {
+            const fraction =
+              (j - beforeIndex) /
+              (afterIndex - beforeIndex);
+            const repairedValue =
+              beforeValue +
+              (afterValue - beforeValue) * fraction;
+            setUpdate(rows[j], field, repairedValue);
+          }
+        }
+      }
+    }
+  }
+
+  let repaired = 0;
+
+  for (const row of rows) {
+    const updates = updatesById.get(row.id);
+    if (!updates) {
       continue;
     }
 
@@ -7178,11 +7247,10 @@ async function repairTBeamsHistory(
   }
 
   return {
-    scanned: result.rows.length,
+    scanned: rows.length,
     repaired
   };
 }
-
 
 async function queryTBeamsHistoryRange() {
 
