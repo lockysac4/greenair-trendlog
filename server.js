@@ -12797,6 +12797,196 @@ h1{color:#1b5e20;margin-top:0}
 
       /*
       ================================================
+      T-BEAMS AMBIENT ZERO-DROPOUT REPAIR - LAST 5 DAYS
+      MASTER ONLY. Repairs only isolated 0C rows whose immediate neighbours
+      are sane (>5C), close to each other (<=5C), and within 3 minutes.
+      Uses linear interpolation and recalculates the differential.
+      ================================================
+      */
+      if (
+        url.pathname === "/api/tbeams/repair-ambient-last-5-days"
+        &&
+        request.method === "GET"
+      ) {
+
+        if (
+          authUser.role !== "master"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: "Master access required"
+            },
+            403
+          );
+        }
+
+        if (
+          url.searchParams.get("confirm") !== "REPAIR_AMBIENT_5_DAYS"
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Confirmation token required"
+            },
+            400
+          );
+        }
+
+        if (
+          !db
+        ) {
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: "Database not configured"
+            },
+            500
+          );
+        }
+
+        const client =
+          await db.connect();
+
+        try {
+
+          await client.query("BEGIN");
+
+          // Lock the candidate rows while we calculate the repair. Only
+          // isolated zeroes are touched. Normal ambient history is preserved.
+          const candidates =
+            await client.query(
+              `
+              WITH ordered AS (
+                SELECT
+                  id,
+                  recorded_at,
+                  ambient,
+                  tbeams_concrete,
+                  LAG(ambient) OVER (ORDER BY recorded_at) AS prev_ambient,
+                  LEAD(ambient) OVER (ORDER BY recorded_at) AS next_ambient,
+                  LAG(recorded_at) OVER (ORDER BY recorded_at) AS prev_time,
+                  LEAD(recorded_at) OVER (ORDER BY recorded_at) AS next_time
+                FROM tbeams_trend_history
+                WHERE recorded_at >= NOW() - INTERVAL '5 days' - INTERVAL '2 minutes'
+              )
+              SELECT *
+              FROM ordered
+              WHERE
+                recorded_at >= NOW() - INTERVAL '5 days'
+                AND ambient = 0
+                AND prev_ambient > 5
+                AND next_ambient > 5
+                AND ABS(prev_ambient - next_ambient) <= 5
+                AND recorded_at - prev_time <= INTERVAL '3 minutes'
+                AND next_time - recorded_at <= INTERVAL '3 minutes'
+              ORDER BY recorded_at
+              `
+            );
+
+          const repaired = [];
+
+          for (
+            const row
+            of candidates.rows
+          ) {
+
+            const repairedAmbient =
+              Number(
+                (
+                  (
+                    Number(row.prev_ambient) +
+                    Number(row.next_ambient)
+                  ) / 2
+                ).toFixed(3)
+              );
+
+            const concrete =
+              Number(row.tbeams_concrete);
+
+            const repairedDiff =
+              Number.isFinite(concrete)
+              ? Number((concrete - repairedAmbient).toFixed(3))
+              : null;
+
+            await client.query(
+              `
+              UPDATE tbeams_trend_history
+              SET
+                ambient = $2,
+                ambient_concrete_diff = $3
+              WHERE id = $1
+                AND ambient = 0
+              `,
+              [
+                row.id,
+                repairedAmbient,
+                repairedDiff
+              ]
+            );
+
+            repaired.push({
+              id: row.id,
+              timestamp: new Date(row.recorded_at).toISOString(),
+              oldAmbient: 0,
+              newAmbient: repairedAmbient,
+              previousAmbient: Number(row.prev_ambient),
+              nextAmbient: Number(row.next_ambient)
+            });
+
+          }
+
+          await client.query("COMMIT");
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              applied: true,
+              repairedCount: repaired.length,
+              period: "last 5 days",
+              method: "isolated zero dropout linear interpolation",
+              repaired
+            }
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          try {
+            await client.query("ROLLBACK");
+          }
+          catch {}
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              applied: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
+
+        finally {
+          client.release();
+        }
+
+      }
+
+
+      /*
+      ================================================
       CURRENT BMS STATE
       ================================================
       */
