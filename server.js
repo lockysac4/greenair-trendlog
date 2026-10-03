@@ -7105,17 +7105,36 @@ async function repairTBeamsHistory(
       }
     }
 
-    // Also repair the old isolated Ambient zero/dropout pattern.
-    if (
-      Number(row.ambient) === 0 &&
-      valid(previous.ambient) &&
-      valid(next.ambient) &&
-      Number(previous.ambient) > 5 &&
-      Number(next.ambient) > 5 &&
-      Math.abs(Number(previous.ambient) - Number(next.ambient)) <= 5
-    ) {
-      updates.ambient =
-        Number(((Number(previous.ambient) + Number(next.ambient)) / 2).toFixed(3));
+    // Repair isolated one-sample dropouts/spikes without smoothing
+    // genuine heating and cooling curves. A point is considered corrupt only
+    // when its neighbours agree closely and the middle point jumps far away.
+    for (const field of fields) {
+      const currentValue = Number(row[field]);
+      const previousValue = Number(previous[field]);
+      const nextValue = Number(next[field]);
+
+      const neighboursPlausible =
+        valid(previousValue) &&
+        valid(nextValue) &&
+        Math.abs(previousValue - nextValue) <= 3;
+
+      const isolatedZero =
+        currentValue === 0 &&
+        previousValue > 5 &&
+        nextValue > 5;
+
+      const isolatedSpike =
+        valid(currentValue) &&
+        Math.abs(currentValue - previousValue) >= 5 &&
+        Math.abs(currentValue - nextValue) >= 5;
+
+      if (
+        neighboursPlausible &&
+        (isolatedZero || isolatedSpike)
+      ) {
+        updates[field] =
+          Number(((previousValue + nextValue) / 2).toFixed(3));
+      }
     }
 
     if (!Object.keys(updates).length) {
