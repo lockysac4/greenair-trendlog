@@ -7042,6 +7042,129 @@ async function queryTBeamsHistory(
 }
 
 
+/*
+==================================================
+REPAIR T-BEAMS HISTORY
+Repairs isolated corrupt samples during the requested period by
+interpolating each bad field between the nearest valid neighbours.
+==================================================
+*/
+
+async function repairTBeamsHistory(
+  from,
+  to
+) {
+
+  if (!db) {
+    throw new Error("Database not configured");
+  }
+
+  const result = await db.query(
+    `
+    SELECT
+      id,
+      recorded_at,
+      tbeams_in,
+      tbeams_out,
+      ambient,
+      tbeams_concrete,
+      tbeams_tank,
+      ambient_concrete_diff
+    FROM tbeams_trend_history
+    WHERE recorded_at >= $1 AND recorded_at <= $2
+    ORDER BY recorded_at ASC
+    `,
+    [from, to]
+  );
+
+  const fields = [
+    "tbeams_in",
+    "tbeams_out",
+    "ambient",
+    "tbeams_concrete",
+    "tbeams_tank"
+  ];
+
+  const valid = value => {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= -50 && n <= 150;
+  };
+
+  let repaired = 0;
+
+  for (let i = 1; i < result.rows.length - 1; i++) {
+    const row = result.rows[i];
+    const previous = result.rows[i - 1];
+    const next = result.rows[i + 1];
+    const updates = {};
+
+    for (const field of fields) {
+      if (!valid(row[field]) && valid(previous[field]) && valid(next[field])) {
+        updates[field] =
+          Number(((Number(previous[field]) + Number(next[field])) / 2).toFixed(3));
+      }
+    }
+
+    // Also repair the old isolated Ambient zero/dropout pattern.
+    if (
+      Number(row.ambient) === 0 &&
+      valid(previous.ambient) &&
+      valid(next.ambient) &&
+      Number(previous.ambient) > 5 &&
+      Number(next.ambient) > 5 &&
+      Math.abs(Number(previous.ambient) - Number(next.ambient)) <= 5
+    ) {
+      updates.ambient =
+        Number(((Number(previous.ambient) + Number(next.ambient)) / 2).toFixed(3));
+    }
+
+    if (!Object.keys(updates).length) {
+      continue;
+    }
+
+    const repairedConcrete =
+      updates.tbeams_concrete ?? Number(row.tbeams_concrete);
+    const repairedAmbient =
+      updates.ambient ?? Number(row.ambient);
+
+    const repairedDiff =
+      valid(repairedConcrete) && valid(repairedAmbient)
+      ? Number((repairedConcrete - repairedAmbient).toFixed(3))
+      : Number(row.ambient_concrete_diff);
+
+    await db.query(
+      `
+      UPDATE tbeams_trend_history
+      SET
+        tbeams_in = $2,
+        tbeams_out = $3,
+        ambient = $4,
+        tbeams_concrete = $5,
+        tbeams_tank = $6,
+        ambient_concrete_diff = $7
+      WHERE id = $1
+      `,
+      [
+        row.id,
+        updates.tbeams_in ?? Number(row.tbeams_in),
+        updates.tbeams_out ?? Number(row.tbeams_out),
+        repairedAmbient,
+        repairedConcrete,
+        updates.tbeams_tank ?? Number(row.tbeams_tank),
+        repairedDiff
+      ]
+    );
+
+    repaired++;
+  }
+
+  return {
+    scanned: result.rows.length,
+    repaired
+  };
+}
+
+
 async function queryTBeamsHistoryRange() {
 
   if (
@@ -10584,6 +10707,61 @@ const server =
               repairedSamples
           }
         );
+
+      }
+
+
+      if (
+        url.pathname ===
+        "/api/tbeams/history/repair-last-5-days"
+
+        &&
+
+        request.method ===
+        "POST"
+      ) {
+
+        try {
+
+          const to =
+            new Date();
+
+          const from =
+            new Date(
+              to.getTime() -
+              5 * 24 * 60 * 60 * 1000
+            );
+
+          const repair =
+            await repairTBeamsHistory(
+              from,
+              to
+            );
+
+          return sendJson(
+            response,
+            {
+              ok: true,
+              from: from.toISOString(),
+              to: to.toISOString(),
+              ...repair
+            }
+          );
+
+        }
+
+        catch (error) {
+
+          return sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message
+            },
+            500
+          );
+
+        }
 
       }
 
