@@ -5676,12 +5676,20 @@ async function pollTBeams() {
         ? unsigned32 - 0x100000000
         : unsigned32;
 
+      const decodedValue =
+        raw / 1000;
+
+      const valid =
+        Number.isFinite(decodedValue) &&
+        decodedValue >= -50 &&
+        decodedValue <= 150;
+
       results.push({
         ...point,
         raw,
         rawWords: [highWord, lowWord],
-        value: raw / 1000,
-        valid: true
+        value: valid ? decodedValue : null,
+        valid
       });
 
     }
@@ -5769,13 +5777,21 @@ function getTBeamsLatestValue(
     );
 
 
-  return Number.isFinite(
-    value
-  )
-  ?
-  value
-  :
-  null;
+  /*
+  Reject impossible T-Beams temperatures before they can enter
+  live history or PostgreSQL. A torn 32-bit HIGH/LOW Modbus read
+  can briefly decode as hundreds of thousands of degrees.
+  */
+  if (
+    !Number.isFinite(value) ||
+    value < -50 ||
+    value > 150
+  ) {
+    return null;
+  }
+
+
+  return value;
 
 }
 
@@ -10717,18 +10733,33 @@ const server =
               to
             );
 
+          const cleanSamples =
+            samples.filter(
+              sample =>
+                ["in1", "in2", "ambient", "in4", "in5"].every(
+                  key => {
+                    const value = Number(sample[key]);
+                    return Number.isFinite(value) && value >= -50 && value <= 150;
+                  }
+                ) &&
+                Number.isFinite(Number(sample.diff)) &&
+                Number(sample.diff) >= -150 &&
+                Number(sample.diff) <= 150
+            );
+
 
           return sendJson(
             response,
             {
               ok: true,
               count:
-                samples.length,
+                cleanSamples.length,
               from:
                 from.toISOString(),
               to:
                 to.toISOString(),
-              samples
+              samples:
+                cleanSamples
             }
           );
 
