@@ -10718,69 +10718,93 @@ const server =
         "GET"
       ) {
 
-        // Clean only isolated historical Ambient zero dropouts in the live
-        // buffer before sending them to the graph. Keep the stored buffer
-        // untouched. Recalculate the differential from the repaired Ambient.
+        // Clean short Ambient zero/dropout runs in the live buffer before
+        // sending them to the graph. This also catches the multi-sample
+        // vertical plunge that the old single-point repair missed.
         const repairedSamples =
-          tBeamsLiveHistory.map(
-            (sample, index, samples) => {
+          tBeamsLiveHistory.map(sample => ({ ...sample }));
 
-              const ambient =
-                Number(sample.ambient);
+        let ambientIndex = 1;
 
-              const previous =
-                index > 0
-                ? samples[index - 1]
-                : null;
+        while (ambientIndex < repairedSamples.length - 1) {
 
-              const next =
-                index < samples.length - 1
-                ? samples[index + 1]
-                : null;
+          const ambientValue =
+            Number(repairedSamples[ambientIndex].ambient);
 
-              const previousAmbient =
-                previous
-                ? Number(previous.ambient)
-                : null;
+          if (
+            Number.isFinite(ambientValue) &&
+            ambientValue !== 0
+          ) {
+            ambientIndex++;
+            continue;
+          }
 
-              const nextAmbient =
-                next
-                ? Number(next.ambient)
-                : null;
+          const runStart = ambientIndex;
 
-              const isolatedZero =
-                ambient === 0 &&
-                Number.isFinite(previousAmbient) &&
-                Number.isFinite(nextAmbient) &&
-                previousAmbient > 5 &&
-                nextAmbient > 5 &&
-                Math.abs(previousAmbient - nextAmbient) <= 5;
+          while (
+            ambientIndex < repairedSamples.length - 1 &&
+            (
+              !Number.isFinite(
+                Number(repairedSamples[ambientIndex].ambient)
+              ) ||
+              Number(repairedSamples[ambientIndex].ambient) === 0
+            )
+          ) {
+            ambientIndex++;
+          }
 
-              if (!isolatedZero) {
-                return sample;
+          const runEnd = ambientIndex - 1;
+          const beforeIndex = runStart - 1;
+          const afterIndex = ambientIndex;
+          const runLength = runEnd - runStart + 1;
+
+          if (
+            runLength <= 40 &&
+            beforeIndex >= 0 &&
+            afterIndex < repairedSamples.length
+          ) {
+            const beforeAmbient =
+              Number(repairedSamples[beforeIndex].ambient);
+            const afterAmbient =
+              Number(repairedSamples[afterIndex].ambient);
+
+            if (
+              Number.isFinite(beforeAmbient) &&
+              Number.isFinite(afterAmbient) &&
+              beforeAmbient > 5 &&
+              afterAmbient > 5 &&
+              Math.abs(beforeAmbient - afterAmbient) <= 5
+            ) {
+              for (let j = runStart; j <= runEnd; j++) {
+                const fraction =
+                  (j - beforeIndex) /
+                  (afterIndex - beforeIndex);
+
+                const repairedAmbient =
+                  Number(
+                    (
+                      beforeAmbient +
+                      (afterAmbient - beforeAmbient) * fraction
+                    ).toFixed(3)
+                  );
+
+                repairedSamples[j].ambient =
+                  repairedAmbient;
+
+                const concrete =
+                  Number(repairedSamples[j].in4);
+
+                if (Number.isFinite(concrete)) {
+                  repairedSamples[j].diff =
+                    Number(
+                      (concrete - repairedAmbient).toFixed(3)
+                    );
+                }
               }
-
-              const repairedAmbient =
-                Number(
-                  (
-                    (previousAmbient + nextAmbient) / 2
-                  ).toFixed(3)
-                );
-
-              const concrete =
-                Number(sample.in4);
-
-              return {
-                ...sample,
-                ambient: repairedAmbient,
-                diff:
-                  Number.isFinite(concrete)
-                  ? Number((concrete - repairedAmbient).toFixed(3))
-                  : sample.diff
-              };
-
             }
-          );
+          }
+        }
+
 
         return sendJson(
           response,
