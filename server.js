@@ -1429,12 +1429,11 @@ PORT 505 / UNIT 68
 */
 
 const T_BEAMS_POINTS = [
-  // T-Beams temperatures are mostly signed 32-bit integers scaled by 1000.
-  // Ambient is the exception: it is a single 16-bit register at 8137, scaled by 1000.
-  // Do not combine Ambient with 8136. That false 32-bit pair created the giant spikes.
+  // T-Beams temperatures are signed 32-bit integers scaled by 1000.
+  // Each point uses HIGH/sign word first, LOW word second.
   { id: "in1", name: "T - Beams In", highRegister: 7484, register: 7485, kind: "signed32Analog" },
   { id: "in2", name: "T - Beams Out", highRegister: 7486, register: 7487, kind: "signed32Analog" },
-  { id: "ambient", name: "Ambient", register: 8137, kind: "uint16Analog" },
+  { id: "ambient", name: "Ambient", highRegister: 8136, register: 8137, kind: "signed32Analog" },
   { id: "in4", name: "T - Beams Concrete", highRegister: 7490, register: 7491, kind: "signed32Analog" },
   { id: "in5", name: "T - Beams Tank", highRegister: 7492, register: 7493, kind: "signed32Analog" },
   { id: "diff", name: "Ambient - Concrete Differential", highRegister: 7502, register: 7503, kind: "signed32Analog" }
@@ -5650,47 +5649,8 @@ async function pollTBeams() {
       of T_BEAMS_POINTS
     ) {
 
-      // T-BEAMS AMBIENT IS A SINGLE 16-BIT REGISTER AT 8137.
-      // Do not combine it with 8136. The old 32-bit pairing is what
-      // produced the enormous historical Ambient spikes.
-      if (
-        point.id ===
-        "ambient"
-      ) {
-
-        const raw =
-          await readRegisterFrom(
-            T_BEAMS_HOST,
-            T_BEAMS_PORT,
-            T_BEAMS_UNIT_ID,
-            point.register
-          );
-
-        const value =
-          Number(raw) /
-          1000;
-
-        // Reject an impossible Ambient sample instead of allowing one bad
-        // Modbus value to destroy the chart scale and permanent history.
-        results.push({
-          ...point,
-          raw,
-          rawWords: [raw],
-          value:
-            value >= -30 &&
-            value <= 60
-            ? value
-            : null,
-          valid:
-            value >= -30 &&
-            value <= 60
-        });
-
-        continue;
-
-      }
-
-      // The remaining T-Beams temperatures are signed 32-bit values:
+      // All T-Beams temperatures, including Ambient, use the same signed
+      // 32-bit HIGH/LOW register format and are scaled by 1000.
       // HIGH/sign word first, LOW word second, scaled by 1000.
       const highWord =
         await readRegisterFrom(
