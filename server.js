@@ -1294,7 +1294,7 @@ const POINTS = [
       "Ambient",
 
     register:
-      7489,
+      7499,
 
     kind:
       "analog"
