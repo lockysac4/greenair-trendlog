@@ -11836,6 +11836,14 @@ h1{color:#1b5e20;margin-top:0}
       }
 
 
+      /* ADMIN-ONLY BOILER DIAGNOSTICS: READ ONLY */
+      if (url.pathname === "/boiler-diagnostics" || url.pathname === "/boiler-diagnostics.html") {
+        if (request.method !== "GET" && request.method !== "HEAD") return sendJson(response,{ok:false,error:"Method not allowed"},405);
+        if (authUser.role !== "master") return sendJson(response,{ok:false,error:"Master access required"},403);
+        response.setHeader("Cache-Control","no-store");
+        return servePublicFile(response,"boiler-diagnostics.html");
+      }
+
       /*
       ================================================
       EMAIL ALARM REGISTER PAGE
