@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Greenair | Boiler Diagnostics</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#182b21;background:#f1f5f2}*{box-sizing:border-box}body{margin:0}
+header{background:#fff;border-bottom:1px solid #d7e2da;padding:18px 5%;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+h1{font-size:24px;margin:0}h2{font-size:17px;margin:0 0 10px}a{color:#146a39}main{max-width:1100px;margin:28px auto;padding:0 18px}
+.status{background:#fff;border:1px solid #d9e2dc;border-radius:10px;padding:16px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.card{background:white;border:1px solid #dce4df;border-radius:10px;padding:18px}.point{font-size:12px;color:#627469}.value{font-size:28px;font-weight:750;margin:12px 0}.muted{color:#66776b;font-size:13px}button{background:#176b3c;color:white;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+</style></head><body>
+<header><div><strong>GREENAIR</strong><h1>Boiler Control Diagnostics</h1><span class="muted">Administrator only · Read-only</span></div><nav><a href="/admin">Administration</a> &nbsp; <a href="/">Trendlog</a></nav></header>
+<main><div class="status"><strong id="status">Checking administrator access…</strong><p class="muted" id="updated">No controller values loaded</p><button id="refresh" type="button">Refresh readings</button></div><div class="grid" id="grid"></div></main>
+<script>
+const points=[["IN1","Live water temperature","°C"],["OUT1","Boiler enable",""],["OUT10","Boiler reset","%"],["VAR38","Next stage",""],["VAR39","Water temperature","°C"],["VAR40","Elapsed time",""],["VAR41","Ramp target","°C"],["VAR42","Reset percentage","%"],["VAR43","Startup timer",""],["VAR44","Starting temperature","°C"]];
+const grid=document.getElementById("grid"),status=document.getElementById("status"),updated=document.getElementById("updated");
+for(const [point,name,unit] of points){const card=document.createElement("section");card.className="card";const title=document.createElement("h2");title.textContent=name;const id=document.createElement("div");id.className="point";id.textContent=point;const value=document.createElement("div");value.className="value";value.id="value-"+point;value.textContent="—";const suffix=document.createElement("div");suffix.className="muted";suffix.textContent=unit||"Status unavailable";card.append(title,id,value,suffix);grid.append(card)}
+async function load(){try{const auth=await fetch("/api/auth/me",{credentials:"same-origin",cache:"no-store"});if(auth.status===401){location.replace("/login");return}if(!auth.ok)throw Error("Authentication unavailable");const data=await auth.json();if(!data.user||data.user.role!=="master"){document.body.replaceChildren(document.createTextNode("Administrator access required"));return}status.textContent="Administrator authenticated · Live register connection pending";updated.textContent="This page does not invent readings. The server-side read-only register endpoint must be connected before live values are displayed."}catch(e){status.textContent="Unable to verify access";updated.textContent=e.message}}
+document.getElementById("refresh").addEventListener("click",load);load();
+</script></body></html>
