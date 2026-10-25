@@ -74,7 +74,7 @@ input[type=range]{width:100%}
     <div class="controls">
 
       <div class="row">
-        <div><div class="name">BMS Control Mode</div><div class="meta">Holding Register 7874 • AUTO = 0 / MANUAL = 1</div></div>
+        <div><div class="name">BMS Control Mode</div><div class="meta">Holding Register 7873 • AUTO = 0 / MANUAL = 1</div></div>
         <div class="btns"><button class="ctrl auto" disabled>AUTO</button><button class="ctrl manual" disabled>MANUAL</button></div>
       </div>
       <div class="row">
@@ -88,7 +88,7 @@ input[type=range]{width:100%}
         </div>
       </div>
       <div class="actions">
-        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. Mode register 7874: AUTO = 0, MANUAL = 1. Switch register 7495: OFF = 0, ON = 1. Read-only until safe write behaviour and interlocks are verified.</div>
+        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. Mode register 7873: AUTO = 0, MANUAL = 1. Switch register 7495: OFF = 0, ON = 1. Read-only until safe write behaviour and interlocks are verified.</div>
         <div><button class="refresh" onclick="refreshRotary()">Refresh</button></div>
       </div>
       </div>
@@ -108,7 +108,7 @@ async function refreshRotary() {
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || "Register read failed");
     status.textContent = "READ ONLY • CONTROL LOCKED";
-    last.textContent = data.mode + " (7874=" + data.modeRaw + "), " + data.position + " (7495=" + data.raw + ") • " + new Date().toLocaleTimeString();
+    last.textContent = data.mode + " (7873=" + data.modeRaw + "), " + data.position + " (7495=" + data.raw + ") • " + new Date().toLocaleTimeString();
     document.querySelectorAll("button.ctrl").forEach(b => {
       const isMode = b.classList.contains("auto") || b.classList.contains("manual");
       b.classList.toggle("selected", b.textContent.trim() === (isMode ? data.mode : data.position));
