@@ -88,7 +88,7 @@ input[type=range]{width:100%}
         </div>
       </div>
       <div class="actions">
-        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. Mode register 7873: AUTO = 0, MANUAL = 1. Switch register 7495: OFF = 0, ON = 1. Read-only until safe write behaviour and interlocks are verified.</div>
+        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. Mode register 7873: AUTO = 0, MANUAL = 1. Switch register 7495: OFF = 0, ON = 1. Manual ON/OFF will require MANUAL mode. Write validation is still pending, so commands remain locked.</div>
         <div><button class="refresh" onclick="refreshRotary()">Refresh</button></div>
       </div>
       </div>
@@ -107,7 +107,7 @@ async function refreshRotary() {
     const response = await fetch("/api/boiler/planks/rotary", {cache:"no-store", credentials:"same-origin"});
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || "Register read failed");
-    status.textContent = "READ ONLY • CONTROL LOCKED";
+    status.textContent = data.mode === "MANUAL" ? "MANUAL • WRITE LOCKED" : data.mode === "AUTO" ? "AUTO • WRITE LOCKED" : "UNKNOWN MODE • WRITE LOCKED";
     last.textContent = data.mode + " (7873=" + data.modeRaw + "), " + data.position + " (7495=" + data.raw + ") • " + new Date().toLocaleTimeString();
     document.querySelectorAll("button.ctrl").forEach(b => {
       const isMode = b.classList.contains("auto") || b.classList.contains("manual");
