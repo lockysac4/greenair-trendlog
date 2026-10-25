@@ -12171,11 +12171,11 @@ h1{color:#1b5e20;margin-top:0}
       // Read-only rotary switch diagnostic. No Modbus writes or database changes.
       if (url.pathname === "/api/boiler/planks/rotary" && request.method === "GET") {
         try {
-          const [raw, modeRaw] = await Promise.all([readRegister(7495), readRegister(7874)]);
+          const [raw, modeRaw] = await Promise.all([readRegister(7495), readRegister(7873)]);
           return sendJson(response, {
             ok: true, register: 7495, unitId: UNIT_ID, raw,
             position: raw === 0 ? "OFF" : raw === 1 ? "ON" : "UNKNOWN",
-            modeRegister: 7874, modeRaw,
+            modeRegister: 7873, modeRaw,
             mode: modeRaw === 0 ? "AUTO" : modeRaw === 1 ? "MANUAL" : "UNKNOWN"
           });
         } catch (error) {
