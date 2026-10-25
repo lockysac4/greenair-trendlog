@@ -76,15 +76,16 @@ input[type=range]{width:100%}
       <div class="row">
         <div>
           <div class="name">Planks Rotary Start Switch</div>
-          <div class="meta">Holding Register 7495 • ON / OFF (read-only)</div>
+          <div class="meta">Holding Register 7495 • AUTO / ON / OFF (read-only)</div>
         </div>
         <div class="btns">
+          <button class="ctrl auto" disabled>AUTO</button>
           <button class="ctrl on" disabled>ON</button>
           <button class="ctrl off" disabled>OFF</button>
         </div>
       </div>
       <div class="actions">
-        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. ON/OFF status is read-only. Commands remain disabled until safe write behaviour and interlocks are validated.</div>
+        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. 0 = OFF and 1 = ON are verified readings. AUTO is BMS automatic control; its override-release method is not yet verified. Commands remain disabled until safe write behaviour and interlocks are validated.</div>
         <div><button class="refresh" onclick="refreshRotary()">Refresh</button></div>
       </div>
       </div>
