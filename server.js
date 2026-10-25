@@ -12168,6 +12168,19 @@ h1{color:#1b5e20;margin-top:0}
       }
 
 
+      // Read-only rotary switch diagnostic. No Modbus writes or database changes.
+      if (url.pathname === "/api/boiler/planks/rotary" && request.method === "GET") {
+        try {
+          const raw = await readRegister(7495);
+          return sendJson(response, {
+            ok: true, register: 7495, unitId: UNIT_ID, raw,
+            position: raw === 0 ? "OFF" : raw === 1 ? "ON" : "UNKNOWN"
+          });
+        } catch (error) {
+          return sendJson(response, {ok: false, error: error.message}, 502);
+        }
+      }
+
       /*
       ================================================
       PLANKS MANUAL CONTROL STATE
