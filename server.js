@@ -1355,6 +1355,9 @@ STRICT ALLOW-LIST
 */
 
 const PLANKS_WRITE_POINTS = {
+  rotaryMode: { name: "Planks Rotary AUTO / MANUAL", register: 7873, min: 0, max: 1 },
+  rotaryPosition: { name: "Planks Rotary ON / OFF", register: 7495, min: 0, max: 1 },
+
 
   boilerEnable: {
     name: "Boiler Override",
@@ -12326,6 +12329,14 @@ h1{color:#1b5e20;margin-top:0}
 
           }
 
+
+          // Fail closed: rotary position may only be written while controller is in MANUAL.
+          if (control === "rotaryPosition") {
+            const liveMode = await readRegister(7873);
+            if (liveMode !== 1) {
+              return sendJson(response, {ok:false,error:"Rotary position requires MANUAL mode (7873=1). Current mode: "+liveMode},409);
+            }
+          }
 
           auditControl = control;
           auditPoint = point;
