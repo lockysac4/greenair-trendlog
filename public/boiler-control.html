@@ -63,7 +63,6 @@ input[type=range]{width:100%}
 
 <div class="wrap">
   <h1>Planks Rotary Start Switch</h1>
-  <div class="sub">Authenticated operator controls • Modbus TCP Unit 69</div>
   <div class="topnote"><strong>Note:</strong> This shows the actual rotary switch position in the plant room when in AUTO. When you activate MANUAL, you can override the switch position so the plant shuts down as if the switch were operated physically.</div>
 
   <div class="statusbar">
@@ -76,13 +75,13 @@ input[type=range]{width:100%}
     <div class="controls">
 
       <div class="row">
-        <div><div class="name">BMS Control Mode</div><div class="meta">Holding Register 7873 • AUTO = 0 / MANUAL = 1</div></div>
+        <div><div class="name">BMS Control Mode</div><div class="meta">AUTO / MANUAL</div></div>
         <div class="btns"><button class="ctrl auto" onclick="sendRotary('rotaryMode',0)">AUTO</button><button class="ctrl manual" onclick="sendRotary('rotaryMode',1)">MANUAL</button></div>
       </div>
       <div class="row">
         <div>
           <div class="name">Planks Rotary Start Switch</div>
-          <div class="meta">Holding Register 7495 • ON / OFF (MANUAL only)</div>
+          <div class="meta">ON / OFF (MANUAL only)</div>
         </div>
         <div class="btns">
           <button class="ctrl on" disabled onclick="sendRotary('rotaryPosition',1)">ON</button>
@@ -121,7 +120,7 @@ async function sendRotary(control, value) {
     });
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || "Command failed");
-    showMessage(label + " confirmed. Register " + data.register + " read-back = " + data.readBack + (control === "rotaryMode" && value === 0 ? ". Manual command released; waiting for controller switch status." : ""), true);
+    showMessage(label + " confirmed." + (control === "rotaryMode" && value === 0 ? " Manual command released; waiting for controller switch status." : ""), true);
   } catch(error) { showMessage("Command not verified: " + error.message, false); }
   finally {
     busy = false;
@@ -145,7 +144,7 @@ async function refreshRotary() {
     document.querySelectorAll("button.ctrl").forEach(b => {
       b.disabled = busy || (liveMode !== 0 && liveMode !== 1) || ((b.classList.contains("on") || b.classList.contains("off")) && liveMode !== 1);
     });
-    last.textContent = data.mode + " (7873=" + data.modeRaw + "), rotary reading " + data.position + " (7495=" + data.raw + ") • " + new Date().toLocaleTimeString();
+    last.textContent = data.mode + " • Rotary switch " + data.position + " • " + new Date().toLocaleTimeString();
     document.querySelectorAll("button.ctrl").forEach(b => {
       const isMode = b.classList.contains("auto") || b.classList.contains("manual");
       b.classList.toggle("selected", b.textContent.trim() === (isMode ? data.mode : data.position));
