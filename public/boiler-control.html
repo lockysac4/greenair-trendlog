@@ -85,8 +85,8 @@ input[type=range]{width:100%}
         </div>
       </div>
       <div class="actions">
-        <div class="notice">Register 7495: three-position control pending verified AUTO / ON / OFF register values. Commands are disabled until mapping and server write validation are confirmed.</div>
-        <div><button class="refresh" onclick="location.reload()">Refresh</button></div>
+        <div class="notice">Register 7495: read-only status: 0 = OFF, 1 = ON. AUTO remains unverified. Commands stay disabled until the controller mapping and safe write behaviour are validated.</div>
+        <div><button class="refresh" onclick="refreshRotary()">Refresh</button></div>
       </div>
       </div>
 
@@ -96,8 +96,27 @@ input[type=range]{width:100%}
 </div>
 
 <script>
-document.getElementById("connection").textContent = "CONTROL LOCKED";
-document.getElementById("lastRead").textContent = "Mapping not verified";
+async function refreshRotary() {
+  const status = document.getElementById("connection");
+  const last = document.getElementById("lastRead");
+  status.textContent = "READING…";
+  try {
+    const response = await fetch("/api/boiler/planks/rotary", {cache:"no-store", credentials:"same-origin"});
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Register read failed");
+    status.textContent = "READ ONLY • CONTROL LOCKED";
+    last.textContent = data.position + " (raw " + data.raw + ") • " + new Date().toLocaleTimeString();
+    document.querySelectorAll("button.ctrl").forEach(b => {
+      b.classList.toggle("selected", b.textContent.trim() === data.position);
+    });
+  } catch(error) {
+    status.textContent = "READ FAILED • CONTROL LOCKED";
+    last.textContent = error.message;
+  }
+}
+document.getElementById("connection").textContent = "READ ONLY • CONTROL LOCKED";
+document.getElementById("lastRead").textContent = "Waiting for read";
+refreshRotary();
 </script>
 </body>
 </html>
