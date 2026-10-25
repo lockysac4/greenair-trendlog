@@ -41,6 +41,7 @@ input[type=range]{width:100%}
 .apply:disabled{opacity:.45;cursor:not-allowed}
 .refresh{height:38px;border:1px solid #bbb;border-radius:5px;background:#fff;font-weight:800;padding:0 15px;cursor:pointer}
 .notice{font-size:13px;color:#8a4b00}
+.topnote{background:#fff8e8;border-left:4px solid #bf8a31;padding:12px 14px;margin:0 0 16px;border-radius:4px;line-height:1.45;font-size:14px}
 .message{margin-top:14px;padding:10px 12px;border-radius:5px;display:none}
 .message.ok{display:block;background:#e8f5e9;color:#176d2d;border:1px solid #b7dfbd}
 .message.bad{display:block;background:#ffebee;color:#a31324;border:1px solid #efbbc1}
@@ -63,6 +64,7 @@ input[type=range]{width:100%}
 <div class="wrap">
   <h1>Planks Rotary Start Switch</h1>
   <div class="sub">Authenticated operator controls • Modbus TCP Unit 69</div>
+  <div class="topnote"><strong>Note:</strong> This shows the actual rotary switch position in the plant room when in AUTO. When you activate MANUAL, you can override the switch position so the plant shuts down as if the switch were operated physically.</div>
 
   <div class="statusbar">
     <span>Controller: <strong id="connection">LOADING…</strong></span>
@@ -88,7 +90,7 @@ input[type=range]{width:100%}
         </div>
       </div>
       <div class="actions">
-        <div class="notice">AUTO releases the webpage manual mode (7873 = 0) and follows the controller. ON/OFF is available only in MANUAL. Status refreshes every 5 seconds. Commands require confirmation and are audited.</div>
+        
         <div><button class="refresh" onclick="refreshRotary()">Refresh</button></div>
       </div>
       </div>
