@@ -6961,6 +6961,14 @@ async function queryTBeamsHistory(
     );
 
 
+  // Display-only repair for three verified T-Beams Ambient dropouts
+  // on 31 October 2026 (Adelaide time). Original PostgreSQL data is preserved.
+  const ambientCorrections = new Map([
+    ["2026-10-31T04:03:00.000Z", 23.4],
+    ["2026-10-31T04:12:00.000Z", 23.7],
+    ["2026-10-31T04:13:00.000Z", 23.75]
+  ]);
+
   return result.rows.map(
     (row, index, rows) => {
       const ambient =
@@ -7008,10 +7016,16 @@ async function queryTBeamsHistory(
         currentTime - previousTime <= 180000 &&
         nextTime - currentTime <= 180000;
 
+      const timestampKey = new Date(row.recorded_at).toISOString();
+      const verifiedCorrection = ambient === 0
+        ? ambientCorrections.get(timestampKey)
+        : undefined;
       const displayAmbient =
-        isolatedZero
-        ? Number(((previousAmbient + nextAmbient) / 2).toFixed(3))
-        : ambient;
+        verifiedCorrection !== undefined
+        ? verifiedCorrection
+        : isolatedZero
+          ? Number(((previousAmbient + nextAmbient) / 2).toFixed(3))
+          : ambient;
 
       const ambientValid =
         Number.isFinite(displayAmbient) &&
