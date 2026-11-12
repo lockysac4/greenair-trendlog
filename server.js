@@ -6899,6 +6899,15 @@ existing T-Beams trend page.
 ==================================================
 */
 
+// The 12 Nov 2026 16:41 Adelaide discontinuity affects multiple sensors at once.
+// Break the historical graph line for the affected channels at the transition.
+// Keep all original temperatures in PostgreSQL and preserve later/live readings.
+const isNov12Transition = t => {
+ const x = new Date(t).toISOString();
+ return x === "2026-11-12T06:10:00.000Z" ||
+        x === "2026-11-12T06:11:00.000Z";
+};
+
 async function queryTBeamsHistory(
   from,
   to
@@ -7032,6 +7041,7 @@ async function queryTBeamsHistory(
         displayAmbient >= -30 &&
         displayAmbient <= 60;
 
+      const transitionGap = isNov12Transition(row.recorded_at);
       return {
         timestamp:
           new Date(row.recorded_at).toISOString(),
@@ -7040,6 +7050,7 @@ async function queryTBeamsHistory(
         in2:
           Number(row.tbeams_out),
         ambient:
+          transitionGap ? null :
           ambientValid
           ? displayAmbient
           : null,
@@ -7048,7 +7059,7 @@ async function queryTBeamsHistory(
         in5:
           Number(row.tbeams_tank),
         diff:
-          ambientValid &&
+          !transitionGap && ambientValid &&
           Number.isFinite(concrete)
           ? Number((concrete - displayAmbient).toFixed(3))
           : null
@@ -13824,16 +13835,14 @@ h1{color:#1b5e20;margin-top:0}
                   ),
 
                 in4:
-
-                  Number(
-                    row.planks_concrete
-                  ),
+                  isNov12Transition(row.recorded_at)
+                    ? null
+                    : Number(row.planks_concrete),
 
                 in5:
-
-                  Number(
-                    row.planks_tank
-                  ),
+                  isNov12Transition(row.recorded_at)
+                    ? null
+                    : Number(row.planks_tank),
 
                 diff:
 
