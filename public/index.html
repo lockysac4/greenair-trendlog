@@ -1769,11 +1769,14 @@ function renderState(
       element
     ) {
 
+      const concrete = state.results.find(item => item.id === "in4");
+      const ambient = state.results.find(item => item.id === "in3");
+      const displayedValue = result.id === "diff" && concrete && ambient
+        ? Number(concrete.value) - Number(ambient.value)
+        : Number(result.value);
       element.textContent =
 
-        Number(
-          result.value
-        ).toFixed(1)
+        displayedValue.toFixed(1)
 
         +
 
@@ -2349,6 +2352,30 @@ function displayConcrete(samples) {
   return result;
 }
 
+
+function displayTank(samples) {
+  const values = samples.map(sample => Number(sample.in5));
+  const result = values.map(v => Number.isFinite(v) ? v : null);
+  let i = 0;
+  while (i < values.length) {
+    if (!(Number.isFinite(values[i]) && values[i] <= 1)) { i++; continue; }
+    const start = i;
+    while (i < values.length && Number.isFinite(values[i]) && values[i] <= 1) i++;
+    const before = start - 1, after = i;
+    if (i - start <= 12 && before >= 0 && after < values.length &&
+        Number.isFinite(values[before]) && Number.isFinite(values[after]) &&
+        values[before] >= 10 && values[after] >= 10 &&
+        Math.abs(values[before] - values[after]) <= 8) {
+      for (let j = start; j < i; j++)
+        result[j] = values[before] +
+          (values[after] - values[before]) * (j - before) / (after - before);
+    } else {
+      for (let j = start; j < i; j++) result[j] = null;
+    }
+  }
+  return result;
+}
+
 function drawTrend() {
 
   const samples =
@@ -2356,6 +2383,7 @@ function drawTrend() {
 
   const planksInDisplay = displayPlanksIn(samples);
   const concreteDisplay = displayConcrete(samples);
+  const tankDisplay = displayTank(samples);
 
   POINTS.forEach(
 
@@ -2384,7 +2412,12 @@ function drawTrend() {
                 ? planksInDisplay[samples.indexOf(sample)]
                 : point.id === "in4"
                   ? concreteDisplay[samples.indexOf(sample)]
-                  : Number(sample[point.id])
+                  : point.id === "in5"
+                    ? tankDisplay[samples.indexOf(sample)]
+                    : point.id === "diff"
+                      ? (Number.isFinite(Number(sample.in4)) && Number.isFinite(Number(sample.in3))
+                        ? Number(sample.in4) - Number(sample.in3) : null)
+                      : Number(sample[point.id])
 
           })
 
