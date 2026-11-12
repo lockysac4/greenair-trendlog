@@ -2291,15 +2291,28 @@ A five-sample median suppresses isolated oscillating spikes.
 
 function displayPlanksIn(samples) {
   const values = samples.map(sample => Number(sample.in1));
-  return values.map((value, i) => {
+  // Median removes rapid alternating Modbus/sensor noise; a centered
+  // average then softens remaining jitter without modifying the database.
+  const medianValues = values.map((value, i) => {
     if (!Number.isFinite(value)) return null;
-    const window = values.slice(Math.max(0, i - 2), Math.min(values.length, i + 3))
-      .filter(Number.isFinite).sort((a, b) => a - b);
-    if (window.length < 3) return value;
-    const mid = Math.floor(window.length / 2);
-    const median = window.length % 2 ? window[mid] : (window[mid - 1] + window[mid]) / 2;
-    // Preserve genuine gradual changes and minor normal variation.
-    return Math.abs(value - median) > 0.8 ? median : value;
+    const neighbours = values
+      .slice(Math.max(0, i - 4), Math.min(values.length, i + 5))
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    if (neighbours.length < 3) return value;
+    const mid = Math.floor(neighbours.length / 2);
+    return neighbours.length % 2
+      ? neighbours[mid]
+      : (neighbours[mid - 1] + neighbours[mid]) / 2;
+  });
+  return medianValues.map((value, i) => {
+    if (value === null) return null;
+    const neighbours = medianValues
+      .slice(Math.max(0, i - 4), Math.min(values.length, i + 5))
+      .filter(Number.isFinite);
+    return neighbours.length
+      ? neighbours.reduce((sum, v) => sum + v, 0) / neighbours.length
+      : value;
   });
 }
 
