@@ -2284,6 +2284,26 @@ function visibleSamples() {
 
 
 /* ==================================================
+DISPLAY-ONLY PLANKS IN NOISE FILTER
+Keep stored samples, exports and other sensors unchanged.
+A five-sample median suppresses isolated oscillating spikes.
+================================================== */
+
+function displayPlanksIn(samples) {
+  const values = samples.map(sample => Number(sample.in1));
+  return values.map((value, i) => {
+    if (!Number.isFinite(value)) return null;
+    const window = values.slice(Math.max(0, i - 2), Math.min(values.length, i + 3))
+      .filter(Number.isFinite).sort((a, b) => a - b);
+    if (window.length < 3) return value;
+    const mid = Math.floor(window.length / 2);
+    const median = window.length % 2 ? window[mid] : (window[mid - 1] + window[mid]) / 2;
+    // Preserve genuine gradual changes and minor normal variation.
+    return Math.abs(value - median) > 0.8 ? median : value;
+  });
+}
+
+/* ==================================================
 DRAW
 ================================================== */
 
@@ -2292,6 +2312,7 @@ function drawTrend() {
   const samples =
     visibleSamples();
 
+  const planksInDisplay = displayPlanksIn(samples);
 
   POINTS.forEach(
 
@@ -2316,11 +2337,9 @@ function drawTrend() {
 
             y:
 
-              Number(
-                sample[
-                  point.id
-                ]
-              )
+              point.id === "in1"
+                ? planksInDisplay[samples.indexOf(sample)]
+                : Number(sample[point.id])
 
           })
 
