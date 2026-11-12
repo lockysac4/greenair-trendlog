@@ -2320,12 +2320,42 @@ function displayPlanksIn(samples) {
 DRAW
 ================================================== */
 
+
+/* Display-only correction for isolated concrete sensor dropouts.
+   Only bridge a short near-zero run surrounded by plausible readings.
+   Never change stored history, live measurements or CSV exports. */
+function displayConcrete(samples) {
+  const values = samples.map(sample => Number(sample.in4));
+  const result = values.map(v => Number.isFinite(v) ? v : null);
+  let i = 0;
+  while (i < values.length) {
+    if (!(Number.isFinite(values[i]) && values[i] <= 1)) { i++; continue; }
+    const start = i;
+    while (i < values.length && Number.isFinite(values[i]) && values[i] <= 1) i++;
+    const end = i;
+    const before = start - 1;
+    const after = end;
+    // Only correct brief dropouts (up to 3 readings), with a valid
+    // warm temperature on both sides and no significant real step.
+    if (end - start > 3 || before < 0 || after >= values.length ||
+        !Number.isFinite(values[before]) || !Number.isFinite(values[after]) ||
+        values[before] < 10 || values[after] < 10 ||
+        Math.abs(values[after] - values[before]) > 8) continue;
+    for (let j = start; j < end; j++) {
+      result[j] = values[before] +
+        (values[after] - values[before]) * (j - before) / (after - before);
+    }
+  }
+  return result;
+}
+
 function drawTrend() {
 
   const samples =
     visibleSamples();
 
   const planksInDisplay = displayPlanksIn(samples);
+  const concreteDisplay = displayConcrete(samples);
 
   POINTS.forEach(
 
@@ -2352,7 +2382,9 @@ function drawTrend() {
 
               point.id === "in1"
                 ? planksInDisplay[samples.indexOf(sample)]
-                : Number(sample[point.id])
+                : point.id === "in4"
+                  ? concreteDisplay[samples.indexOf(sample)]
+                  : Number(sample[point.id])
 
           })
 
