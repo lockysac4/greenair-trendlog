@@ -1238,6 +1238,15 @@ TOOLBAR
 
 
 <button
+  id="rotarySwitchButton"
+  class="boiler-button"
+  type="button"
+>
+  T-Beams Rotary Switch
+</button>
+
+
+<button
   id="userManagementButton"
   class="user-button"
   type="button"
@@ -3951,6 +3960,10 @@ boilerControlButton.addEventListener(
       "/t-beams-control.html";
   }
 );
+document.getElementById("rotarySwitchButton").addEventListener("click", () => {
+  window.location.href = "/t-beams-rotary-switch.html";
+});
+
 userManagementButton.addEventListener(
 
   "click",

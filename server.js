@@ -1423,6 +1423,13 @@ const T_BEAMS_WRITE_POINTS = {
 
 };
 
+// IN6 uses the controller's input-specific mode, separate from appOverride.
+const T_BEAMS_ROTARY_POINTS = {
+  rotaryMode: { name: "T-Beams Rotary AUTO / MANUAL", register: 7873, min: 0, max: 1 },
+  rotaryPosition: { name: "T-Beams Rotary ON / OFF", register: 7495, min: 0, max: 1 }
+};
+let tBeamsRotaryWriteInProgress = false;
+
 
 /*
 ==================================================
@@ -5508,6 +5515,10 @@ function writeSingleRegisterTo(
 }
 
 
+function readTBeamsRegister(register) {
+  return readRegisterFrom(T_BEAMS_HOST, T_BEAMS_PORT, T_BEAMS_UNIT_ID, register);
+}
+
 async function readTBeamsControlState() {
 
   const result = {};
@@ -5523,13 +5534,7 @@ async function readTBeamsControlState() {
     )
   ) {
 
-    const raw =
-      await readRegisterFrom(
-        T_BEAMS_HOST,
-        T_BEAMS_PORT,
-        T_BEAMS_UNIT_ID,
-        point.register
-      );
+    const raw = await readTBeamsRegister(point.register);
 
 
     result[id] = {
@@ -12948,6 +12953,21 @@ h1{color:#1b5e20;margin-top:0}
       }
 
 
+      if (url.pathname === "/api/boiler/tbeams/rotary" && request.method === "GET") {
+        try {
+          const modeRaw = await readTBeamsRegister(T_BEAMS_ROTARY_POINTS.rotaryMode.register);
+          const raw = await readTBeamsRegister(T_BEAMS_ROTARY_POINTS.rotaryPosition.register);
+          return sendJson(response, {
+            ok: true,
+            modeRaw,
+            mode: modeRaw === 0 ? "AUTO" : modeRaw === 1 ? "MANUAL" : "UNKNOWN",
+            position: raw === 0 ? "OFF" : "ON"
+          });
+        } catch (error) {
+          return sendJson(response, { ok: false, error: error.message }, 502);
+        }
+      }
+
       /*
       ================================================
       T-BEAMS MANUAL CONTROL WRITE
@@ -12959,9 +12979,9 @@ h1{color:#1b5e20;margin-top:0}
       ================================================
       */
 
+      const isTBeamsRotaryWrite = url.pathname === "/api/boiler/tbeams/rotary/write";
       if (
-        url.pathname ===
-        "/api/boiler/tbeams/write"
+        (url.pathname === "/api/boiler/tbeams/write" || isTBeamsRotaryWrite)
         &&
         request.method ===
         "POST"
@@ -12971,6 +12991,7 @@ h1{color:#1b5e20;margin-top:0}
         let auditPoint = null;
         let auditOldValue = null;
         let auditRequestedValue = null;
+        let hasRotaryWriteLock = false;
 
 
         try {
@@ -12987,10 +13008,8 @@ h1{color:#1b5e20;margin-top:0}
             );
 
 
-          const point =
-            T_BEAMS_WRITE_POINTS[
-              control
-            ];
+          const points = isTBeamsRotaryWrite ? T_BEAMS_ROTARY_POINTS : T_BEAMS_WRITE_POINTS;
+          const point = Object.hasOwn(points, control) ? points[control] : null;
 
 
           if (
@@ -13009,10 +13028,7 @@ h1{color:#1b5e20;margin-top:0}
           }
 
 
-          const value =
-            Number(
-              body.value
-            );
+          const value = isTBeamsRotaryWrite ? body.value : Number(body.value);
 
 
           if (
@@ -13044,15 +13060,28 @@ h1{color:#1b5e20;margin-top:0}
           auditPoint = point;
           auditRequestedValue = value;
 
+          if (isTBeamsRotaryWrite) {
+            if (tBeamsRotaryWriteInProgress) {
+              return sendJson(response, { ok: false, error: "Another rotary switch command is in progress" }, 409);
+            }
+            tBeamsRotaryWriteInProgress = true;
+            hasRotaryWriteLock = true;
+          }
 
           auditOldValue =
-            await readRegisterFrom(
-              T_BEAMS_HOST,
-              T_BEAMS_PORT,
-              T_BEAMS_UNIT_ID,
-              point.register
-            );
+            await readTBeamsRegister(point.register);
 
+          if (isTBeamsRotaryWrite) {
+            const mode = control === "rotaryMode"
+              ? auditOldValue
+              : await readTBeamsRegister(T_BEAMS_ROTARY_POINTS.rotaryMode.register);
+            if ((mode !== 0 && mode !== 1) || (control === "rotaryPosition" && mode !== 1)) {
+              return sendJson(response, {
+                ok: false,
+                error: mode === 0 ? "Select MANUAL before changing the rotary switch" : "Controller mode is unknown"
+              }, 409);
+            }
+          }
 
           await writeSingleRegisterTo(
             T_BEAMS_HOST,
@@ -13064,12 +13093,7 @@ h1{color:#1b5e20;margin-top:0}
 
 
           const readBack =
-            await readRegisterFrom(
-              T_BEAMS_HOST,
-              T_BEAMS_PORT,
-              T_BEAMS_UNIT_ID,
-              point.register
-            );
+            await readTBeamsRegister(point.register);
 
 
           if (
@@ -13219,6 +13243,9 @@ h1{color:#1b5e20;margin-top:0}
             502
           );
 
+        }
+        finally {
+          if (hasRotaryWriteLock) tBeamsRotaryWriteInProgress = false;
         }
 
       }

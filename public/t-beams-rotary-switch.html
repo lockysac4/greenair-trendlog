@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bianco Precast - T-Beams Rotary Start Switch</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;color:#222}
+.top{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #d6d6d6;padding:12px 18px}
+.brand .bianco{color:#f57c00;font-size:21px;font-weight:900;letter-spacing:1px}
+.brand .greenair{color:#1b5e20;font-size:16px;font-weight:800;margin-top:2px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav button{height:34px;border:1px solid #c7c7c7;border-radius:4px;background:#fff;padding:0 13px;font-weight:800;cursor:pointer}
+.nav .active{background:#ef6c00;color:#fff;border-color:#ef6c00}
+.wrap{max-width:980px;margin:24px auto;padding:0 16px 40px}
+h1{margin:0 0 5px;font-size:27px}
+.statusbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #d4d4d4;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.statusbar strong{color:#1b5e20}
+.panel{background:#fff;border:1px solid #d4d4d4;border-radius:8px;overflow:hidden}
+.panel-head{background:#082847;color:#fff;padding:11px 15px;font-weight:900}
+.controls{padding:5px 18px 18px}
+.row{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:center;padding:18px 0;border-bottom:1px solid #e3e3e3}
+.row:last-child{border-bottom:0}
+.name{font-weight:900}
+.meta{font-size:11px;color:#777;margin-top:4px}
+.btns{display:flex;gap:9px;flex-wrap:wrap}
+button.ctrl{height:38px;min-width:100px;border:1px solid #b9c1c6;border-radius:5px;background:#fff;font-weight:900;cursor:pointer}
+button.ctrl.selected.on{background:#1b8d3d;color:#fff;border-color:#1b8d3d}
+button.ctrl.selected.off{background:#b71c1c;color:#fff;border-color:#b71c1c}
+button.ctrl.selected.auto{background:#1565c0;color:#fff;border-color:#1565c0}
+button.ctrl.selected.manual{background:#ef6c00;color:#fff;border-color:#ef6c00}
+button.ctrl:disabled{opacity:.42;cursor:not-allowed}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.refresh{height:38px;border:1px solid #bbb;border-radius:5px;background:#fff;font-weight:800;padding:0 15px;cursor:pointer}
+.topnote{background:#fff8e8;border-left:4px solid #bf8a31;padding:12px 14px;margin:0 0 16px;border-radius:4px;line-height:1.45;font-size:14px}
+.message{margin-top:14px;padding:10px 12px;border-radius:5px;display:none}
+.message.ok{display:block;background:#e8f5e9;color:#176d2d;border:1px solid #b7dfbd}
+.message.bad{display:block;background:#ffebee;color:#a31324;border:1px solid #efbbc1}
+@media(max-width:650px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">
+    <div class="bianco">BIANCO PRECAST</div>
+    <div class="greenair">GREENAIR TRENDLOG</div>
+  </div>
+  <div class="nav">
+    <button onclick="location.href='/'">Planks</button>
+    <button onclick="location.href='/t-beams.html'">T-Beams</button>
+    <button class="active" type="button" aria-current="page">T-Beams Rotary Switch</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>T-Beams Rotary Start Switch</h1>
+  <div class="topnote"><strong>Note:</strong> In AUTO, the controller follows the physical rotary switch in the plant room. In MANUAL, ON and OFF override the T-Beams rotary start switch. Select AUTO to return control to the physical switch.</div>
+
+  <div class="statusbar">
+    <span>Controller: <strong id="connection">LOADING…</strong></span>
+    <span>Last read: <strong id="lastRead">—</strong></span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">T-BEAMS ROTARY START SWITCH</div>
+    <div class="controls">
+
+      <div class="row">
+        <div><div class="name">BMS Control Mode</div><div class="meta">AUTO / MANUAL</div></div>
+        <div class="btns"><button class="ctrl auto" disabled onclick="sendRotary('rotaryMode',0)">AUTO</button><button class="ctrl manual" disabled onclick="sendRotary('rotaryMode',1)">MANUAL</button></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="name">T-Beams Rotary Start Switch</div>
+          <div class="meta">ON / OFF (MANUAL only)</div>
+        </div>
+        <div class="btns">
+          <button class="ctrl on" disabled onclick="sendRotary('rotaryPosition',1)">ON</button>
+          <button class="ctrl off" disabled onclick="sendRotary('rotaryPosition',0)">OFF</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="refresh" onclick="refreshRotary()">Refresh</button>
+      </div>
+      <div id="message" class="message" role="status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let busy = false;
+let reading = false;
+let liveMode = null;
+function showMessage(message, ok) {
+  const el = document.getElementById("message");
+  el.className = "message " + (ok ? "ok" : "bad");
+  el.textContent = message;
+}
+async function sendRotary(control, value) {
+  if (busy || reading || (liveMode !== 0 && liveMode !== 1) || (control === "rotaryPosition" && liveMode !== 1)) return;
+  const label = control === "rotaryMode" ? (value ? "MANUAL" : "AUTO") : (value ? "ON" : "OFF");
+  if (!confirm("Send T-Beams rotary command: " + label + "? Verify plant safety and interlocks first.")) return;
+  busy = true;
+  document.querySelectorAll("button.ctrl").forEach(b => b.disabled = true);
+  try {
+    const response = await fetch("/api/boiler/tbeams/rotary/write", {
+      method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({control,value})
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Command failed");
+    showMessage(label + " confirmed." + (control === "rotaryMode" && value === 0 ? " Manual command released; waiting for controller switch status." : ""), true);
+  } catch(error) { showMessage("Command not verified: " + error.message, false); }
+  finally {
+    busy = false;
+    await refreshRotary();
+    if (control === "rotaryMode" && value === 0) {
+      setTimeout(refreshRotary, 1200);
+      setTimeout(refreshRotary, 3500);
+    }
+  }
+}
+async function refreshRotary() {
+  if (busy || reading) return;
+  reading = true;
+  const status = document.getElementById("connection");
+  const last = document.getElementById("lastRead");
+  try {
+    const response = await fetch("/api/boiler/tbeams/rotary", {cache:"no-store", credentials:"same-origin"});
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Register read failed");
+    liveMode = data.modeRaw;
+    status.textContent = data.mode === "AUTO" ? "AUTO • CONTROLLER CONTROL" : data.mode === "MANUAL" ? "MANUAL • WEB CONTROL" : "UNKNOWN MODE • CONTROL LOCKED";
+    document.querySelectorAll("button.ctrl").forEach(b => {
+      b.disabled = busy || (liveMode !== 0 && liveMode !== 1) || ((b.classList.contains("on") || b.classList.contains("off")) && liveMode !== 1);
+    });
+    last.textContent = data.mode + " • Rotary switch " + data.position + " • " + new Date().toLocaleTimeString();
+    document.querySelectorAll("button.ctrl").forEach(b => {
+      const isMode = b.classList.contains("auto") || b.classList.contains("manual");
+      b.classList.toggle("selected", b.textContent.trim() === (isMode ? data.mode : data.position));
+    });
+  } catch(error) {
+    liveMode = null;
+    document.querySelectorAll("button.ctrl").forEach(b => b.disabled = true);
+    status.textContent = "READ FAILED • CONTROL LOCKED";
+    last.textContent = error.message;
+  } finally {
+    reading = false;
+  }
+}
+document.getElementById("connection").textContent = "WAITING FOR CONTROLLER";
+document.getElementById("lastRead").textContent = "Waiting for read";
+refreshRotary();
+setInterval(() => { if (!busy && !document.hidden) refreshRotary(); }, 5000);
+</script>
+</body>
+</html>
